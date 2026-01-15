@@ -8,8 +8,8 @@ The platform is designed for DJs looking to get booked more efficiently, event p
 
 ## Tech Stack
 
-* **Frontend:** React
-* **Backend API:** Node.js + Express.js
+* **Frontend:** [Frontend Repo](https://github.com/MixMatch-Inc/mixmatch)
+* **Backend API:** [Backend Repo](https://github.com/MixMatch-Inc/mixmatch)
 * **Database:** MongoDB
 * **Payments & Subscriptions:** Stellar Network
 * **Auth:** JWT-based authentication

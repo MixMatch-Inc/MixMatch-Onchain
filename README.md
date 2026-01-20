@@ -3,13 +3,15 @@
 MixMatch is a music-driven event and DJ discovery platform that connects DJs with event organizers and music lovers through smart matching and seamless booking flows. Instead of relying on manual searches or word-of-mouth, MixMatch helps users discover DJs based on music taste, event type, availability, and vibe.
 
 The platform is designed for DJs looking to get booked more efficiently, event planners seeking reliable talent, and music enthusiasts who want curated, experience-driven matches. MixMatch blends a Web2-first architecture with selective Web3 integrations to enable transparent payments and subscriptions without introducing unnecessary complexity.
-
+* **ALWAYS REFER TO THIS:** [APP FIGMA DESIGNS](https://www.figma.com/design/XxbRbJ5TjwTwHTyoNoOjmm/MIXMATCH?node-id=0-1&t=Dfgo0X63EphWovMy-1)
 ---
+
 
 ## Tech Stack
 
 * **Frontend:** [Frontend Repo](https://github.com/MixMatch-Inc/mixmatch)
 * **Backend API:** [Backend Repo](https://github.com/MixMatch-Inc/mixmatch)
+
 * **Database:** MongoDB
 * **Payments & Subscriptions:** Stellar Network
 * **Auth:** JWT-based authentication

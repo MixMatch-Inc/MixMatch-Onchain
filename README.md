@@ -1,178 +1,163 @@
-# MixMatch 🎧
+# MixMatch
 
-MixMatch is a music-driven event and DJ discovery platform that connects DJs with event organizers and music lovers through smart matching and seamless booking flows. Instead of relying on manual searches or word-of-mouth, MixMatch helps users discover DJs based on music taste, event type, availability, and vibe.
+Welcome to the MixMatch codebase! This is a **monorepo** managing the frontend, backend API, and Stellar/Web3 services for the MixMatch platform.
 
-The platform is designed for DJs looking to get booked more efficiently, event planners seeking reliable talent, and music enthusiasts who want curated, experience-driven matches. MixMatch blends a Web2-first architecture with selective Web3 integrations to enable transparent payments and subscriptions without introducing unnecessary complexity.
-* **ALWAYS REFER TO THIS:** [APP FIGMA DESIGNS](https://www.figma.com/design/XxbRbJ5TjwTwHTyoNoOjmm/MIXMATCH?node-id=0-1&t=Dfgo0X63EphWovMy-1)
----
+We use **[pnpm workspaces](https://pnpm.io/workspaces)** for dependency management and **[TurboRepo](https://turbo.build/)** for high-performance build orchestration.
 
+## 🚀 Tech Stack
 
-## Tech Stack
-
-* **Frontend:** [Frontend Repo](https://github.com/MixMatch-Inc/mixmatch)
-* **Backend API:** [Backend Repo](https://github.com/MixMatch-Inc/mixmatch)
-
-* **Database:** MongoDB
-* **Payments & Subscriptions:** Stellar Network
-* **Auth:** JWT-based authentication
+- **Monorepo Manager:** pnpm workspaces + TurboRepo
+- **Frontend:** Next.js 14+ (App Router), TailwindCSS
+- **Backend:** Node.js, Express, TypeScript
+- **Web3:** Stellar SDK (Soroban)
+- **Language:** TypeScript (Strict Mode)
 
 ---
 
-## Repository Overview
+## 🛠 Prerequisites
 
-This repository contains the core backend services that power MixMatch.
+Before you start, ensure you have the following installed:
+
+1. **Node.js** (v18 or higher recommended)
+2. **pnpm** (We use this instead of npm/yarn)
+
+```bash
+corepack enable
+# OR
+npm install -g pnpm
 
 ```
+
+---
+
+## ⚡️ Getting Started
+
+Follow these steps to get the entire platform running locally.
+
+### 1. Clone & Install
+
+```bash
+git clone <your-repo-url>
+cd MixMatch-Onchain
+
+# Install all dependencies for all apps and packages
+pnpm install
+
+```
+
+### 2. Run Development Server
+
+This command starts **all** applications (Web, API, and Stellar Service) in parallel.
+
+```bash
+pnpm dev
+
+```
+
+You will see output from all services in your terminal. They are available at:
+
+- **Web App:** [http://localhost:3000](https://www.google.com/search?q=http://localhost:3000)
+- **Backend API:** [http://localhost:3001](https://www.google.com/search?q=http://localhost:3001)
+- **Stellar Service:** [http://localhost:3002](https://www.google.com/search?q=http://localhost:3002)
+
+---
+
+## 📂 Project Structure
+
+```text
 mixmatch/
-├── src/
-│   ├── config/              # Environment, DB, Stellar setup
-│   ├── modules/
-│   │   ├── auth/            # Authentication & sessions
-│   │   ├── users/           # DJs and organizers profiles
-│   │   ├── matches/         # Matching & recommendation logic
-│   │   ├── events/          # Event creation and management
-│   │   ├── bookings/        # DJ booking lifecycle
-│   │   ├── reviews/         # Ratings and feedback
-│   │   └── payments/        # Stellar payments & subscriptions
-│   ├── middlewares/         # Auth, validation, error handling
-│   ├── routes/              # API route registration
-│   ├── utils/               # Shared helpers
-│   └── app.ts               # Express app bootstrap
-├── tests/                   # Unit and integration tests
-├── .env.example
-├── package.json
-└── README.md
-```
+├── apps/
+│   ├── web/               # Next.js Frontend (User & Admin Interface)
+│   ├── api/               # Core Backend API (Express + Node.js)
+│   └── stellar-service/   # Isolated Service for Blockchain/Payments
+│
+├── packages/
+│   ├── types/             # Shared TypeScript interfaces & DTOs
+│   ├── config/            # Shared configurations (TSConfig, ESLint)
+│   └── ui/                # Shared React UI components (Tailwind)
+│
+└── turbo.json             # Build pipeline configuration
 
-The codebase follows a **feature-based modular structure**, allowing contributors to work independently on specific domains like bookings, matching, or payments.
-
----
-
-## API Structure
-
-### Base URL
-
-```
-/api/v1
-```
-
-### Authentication
-
-```
-POST   /auth/register
-POST   /auth/login
-POST   /auth/logout
-GET    /auth/me
-```
-
-### Users & Profiles
-
-```
-GET    /users/:id
-PATCH  /users/:id
-GET    /djs
-```
-
-### Matching
-
-```
-GET    /matches/feed          # DJ / event recommendations
-POST   /matches/swipe         # Like / pass actions
-```
-
-### Events
-
-```
-POST   /events
-GET    /events/:id
-GET    /events/user/:userId
-```
-
-### Bookings
-
-```
-POST   /bookings
-PATCH  /bookings/:id/status
-GET    /bookings/:id
-```
-
-### Payments (Stellar)
-
-```
-POST   /payments/intent
-POST   /payments/confirm
-GET    /payments/:id
 ```
 
 ---
 
-## Getting Started
+## 📜 Available Scripts
 
-### Prerequisites
+Run these from the **root** folder:
 
-* Node.js (>= 18)
-* MongoDB
-* Stellar testnet account
-* Yarn or npm
+| Command      | Description                                  |
+| ------------ | -------------------------------------------- |
+| `pnpm dev`   | Starts all apps in development mode.         |
+| `pnpm build` | Builds all apps and packages for production. |
+| `pnpm lint`  | Runs ESLint across the entire monorepo.      |
+| `pnpm test`  | Runs tests for all packages (when added).    |
+| `pnpm clean` | (Optional) Clears Turbo cache and artifacts. |
 
-### Installation
+---
+
+## 🧩 Adding Dependencies
+
+Since we use a monorepo, you must specify **where** to install a package.
+
+**To add a library to the Frontend (`apps/web`):**
 
 ```bash
-git clone https://github.com/your-org/mixmatch.git
-cd mixmatch
-npm install
+# Example: Adding Framer Motion to the web app
+cd apps/web
+pnpm add framer-motion
+
 ```
 
-### Environment Setup
+**To add a library to the Backend (`apps/api`):**
 
 ```bash
-cp .env.example .env
+cd apps/api
+pnpm add mongoose
+
 ```
 
-### Run the API
+**To use a shared package (e.g., using Types in API):**
+_Note: This is already set up, but for reference:_
 
 ```bash
-npm run dev
-```
+cd apps/api
+pnpm add "@mixmatch/types@workspace:*" -D
 
-### Run Tests
-
-```bash
-npm test
 ```
 
 ---
 
-## Contributing Guidelines
+## ⚠️ Troubleshooting
 
-MixMatch is an open-source project and welcomes community contributions.
+**"Module not found" or Type Errors**
+If you just pulled fresh code or switched branches:
 
-### How to Contribute
+```bash
+pnpm install
+# If issues persist, force a clean install
+rm -rf node_modules
+pnpm install
 
-1. Fork the repository
-2. Create a feature branch from `main`
-3. Pick an existing issue or propose one before starting
-4. Keep changes focused and well-documented
-5. Add or update tests where applicable
-6. Open a Pull Request with a clear summary
+```
 
-### Best Practices
+**Git is ignoring files I want to commit**
+We strictly ignore `node_modules` and build artifacts (`.next`, `dist`).
 
-* Follow the established module structure
-* Avoid large, unrelated PRs
-* Use clear and descriptive commit messages
-* Document new endpoints and logic
-* Discuss breaking changes before implementation
+- **Do not** force commit `node_modules`.
+- If your `node_modules` are showing up in Git, run:
 
-### Contributor Support
+```bash
+git rm -r --cached .
+git add .
+git commit -m "fix: clear cached node_modules"
 
-Questions or ideas? Join the MixMatch contributor Telegram group:
-
-👉 **Telegram:** [MIXMATCH](https://t.me/mixmatchinc)
+```
 
 ---
 
-## License
+## 🤝 Contribution Guidelines
 
-This project is open-source and released under the **MIT License**.
-
+1. Always run `pnpm lint` before pushing.
+2. Keep shared logic (types, configs) in `packages/`.
+3. Do not edit `apps/*/node_modules` manually.

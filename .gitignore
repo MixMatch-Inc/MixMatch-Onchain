@@ -1,6 +1,36 @@
-# Rust's output directory
+
 target
 
-# Local settings
+
 .soroban
 .stellar
+
+
+node_modules
+.pnpm-store
+
+
+dist
+build
+.next
+out
+
+
+.env
+.env.local
+.env.*.local
+
+
+.turbo
+
+
+.DS_Store
+.vscode
+.idea
+*.log
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+
+
+coverage

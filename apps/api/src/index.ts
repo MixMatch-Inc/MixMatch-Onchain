@@ -1,14 +1,19 @@
-import express from "express";
-import { User } from "@mixmatch/types";
+import express from 'express';
+import cors from 'cors';
+import connectDB from './config/db';
 
 const app = express();
-const port = 3001;
+const port = process.env.PORT || 3001;
 
-app.get("/", (req, res) => {
-  const user: User = { id: "1", role: "DJ", email: "test@dj.com" };
-  res.json({ message: "MixMatch API Running", user });
+app.use(cors());
+app.use(express.json());
+
+connectDB();
+
+app.get('/', (req, res) => {
+  res.json({ message: 'MixMatch API Running', status: 'OK' });
 });
 
 app.listen(port, () => {
-  console.log(`API listening on port ${port}`);
+  console.log(`🚀 API listening on port ${port}`);
 });

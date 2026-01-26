@@ -63,6 +63,12 @@ importers:
       '@types/node':
         specifier: ^20.10.0
         version: 20.19.30
+      '@typescript-eslint/parser':
+        specifier: ^8.0.0
+        version: 8.53.1(eslint@9.39.2)(typescript@5.9.3)
+      eslint:
+        specifier: ^9.0.0
+        version: 9.39.2
       ts-node-dev:
         specifier: ^2.0.0
         version: 2.0.0(@types/node@20.19.30)(typescript@5.9.3)
@@ -79,9 +85,18 @@ importers:
         specifier: ^4.18.2
         version: 4.22.1
     devDependencies:
+      '@mixmatch/config':
+        specifier: workspace:*
+        version: link:../../packages/config
       '@types/express':
         specifier: ^4.17.21
         version: 4.17.25
+      '@typescript-eslint/parser':
+        specifier: ^8.0.0
+        version: 8.53.1(eslint@9.39.2)(typescript@5.9.3)
+      eslint:
+        specifier: ^9.0.0
+        version: 9.39.2
       ts-node-dev:
         specifier: ^2.0.0
         version: 2.0.0(@types/node@20.19.30)(typescript@5.9.3)

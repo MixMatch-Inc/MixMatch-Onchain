@@ -161,3 +161,19 @@ git commit -m "fix: clear cached node_modules"
 1. Always run `pnpm lint` before pushing.
 2. Keep shared logic (types, configs) in `packages/`.
 3. Do not edit `apps/*/node_modules` manually.
+
+---
+
+## 🔒 Branch Protection (Repository Admin)
+
+To enforce CI checks and prevent breaking changes from being merged:
+
+1. Navigate to **Settings** → **Branches** → **Add branch protection rule**
+2. Set branch name pattern: `main`
+3. Enable the following rules:
+   - ✅ **Require status checks to pass before merging**
+   - ✅ **Require branches to be up to date before merging**
+   - ✅ Select required status check: `Lint, Typecheck, and Build / ci`
+   - ✅ **Restrict who can push to matching branches** (prevents direct pushes to main)
+
+This ensures all pull requests pass linting, type checking, and build validation before merging.

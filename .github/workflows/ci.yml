@@ -3,7 +3,7 @@ name: CI
 on:
   push:
     branches:
-      - main
+      - chore/setup-github-actions-ci
   pull_request:
     branches:
       - main

@@ -3,10 +3,10 @@ name: CI
 on:
   push:
     branches:
-      - main
+      - System625:chore/setup-github-actions-ci
   pull_request:
     branches:
-      - chore/setup-github-actions-ci
+      - main
 
 jobs:
   ci:

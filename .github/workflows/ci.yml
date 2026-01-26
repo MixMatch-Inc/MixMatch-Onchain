@@ -3,10 +3,10 @@ name: CI
 on:
   push:
     branches:
-      - chore/setup-github-actions-ci
+      - main
   pull_request:
     branches:
-      - main
+      - chore/setup-github-actions-ci
 
 jobs:
   ci:

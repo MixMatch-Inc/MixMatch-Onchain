@@ -3,7 +3,7 @@ name: CI
 on:
   push:
     branches:
-      - System625:chore/setup-github-actions-ci
+      - main
   pull_request:
     branches:
       - main

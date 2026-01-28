@@ -1,28 +1,29 @@
-import express from 'express';
-import { Keypair, Operation } from '@stellar/stellar-sdk';
-import { getNetworkConfig, serverKeypair } from './config/stellar';
-import { buildAndSubmitTx } from './services/transaction.service';
-import { ensureFunded } from './services/friendbot';
-import { sendPayment } from './services/payment.service';
-import { checkAccount } from './services/account.service';
+import express from "express";
+import { Keypair, Operation } from "@stellar/stellar-sdk";
+import { getNetworkConfig, serverKeypair } from "./config/stellar";
+import { buildAndSubmitTx } from "./services/transaction.service";
+import { ensureFunded } from "./services/friendbot";
+import { sendPayment } from "./services/payment.service";
+import { checkAccount } from "./services/account.service";
+import { pollHistory } from "./services/history.service";
 
 const app = express();
 const port = process.env.PORT || 3002;
 
-app.get('/', (req: express.Request, res: express.Response) => {
+app.get("/", (req: express.Request, res: express.Response) => {
   res.json({
-    service: 'MixMatch Stellar Service',
-    status: 'Active',
+    service: "MixMatch Stellar Service",
+    status: "Active",
     config: getNetworkConfig(),
   });
 });
 
-app.post('/payment', async (req, res) => {
+app.post("/payment", async (req, res) => {
   try {
     const { destination, amount, memo } = req.body;
 
     if (!destination || !amount) {
-      res.status(400).json({ error: 'Missing destination or amount' });
+      res.status(400).json({ error: "Missing destination or amount" });
       return;
     }
 
@@ -37,13 +38,13 @@ app.post('/payment', async (req, res) => {
     console.error(error);
     res.status(500).json({
       success: false,
-      error: error.message || 'Payment Failed',
+      error: error.message || "Payment Failed",
     });
   }
 });
 
 app.get(
-  '/account/:publicKey',
+  "/account/:publicKey",
   async (req: express.Request, res: express.Response) => {
     try {
       const { publicKey } = req.params;
@@ -65,4 +66,31 @@ app.listen(port, async () => {
   console.log(`✨ Stellar Service running on port ${port}`);
 
   await ensureFunded();
+});
+
+app.post("/payment", async (req, res) => {
+  try {
+    const { destination, amount, memo } = req.body;
+    if (!destination || !amount) {
+      res.status(400).json({ error: "Missing destination or amount" });
+      return;
+    }
+    const result = await sendPayment(destination, amount, memo);
+    res.json({
+      success: true,
+      hash: result.hash,
+      message: `Sent ${amount} XLM`,
+    });
+  } catch (e: any) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.listen(port, async () => {
+  console.log(`✨ Stellar Service running on port ${port}`);
+  console.log(`   Public Key: ${serverKeypair.publicKey()}`);
+
+  await ensureFunded();
+
+  pollHistory();
 });

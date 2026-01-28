@@ -4,11 +4,12 @@ import { getNetworkConfig, serverKeypair } from './config/stellar';
 import { buildAndSubmitTx } from './services/transaction.service';
 import { ensureFunded } from './services/friendbot';
 import { sendPayment } from './services/payment.service';
+import { checkAccount } from './services/account.service';
 
 const app = express();
 const port = process.env.PORT || 3002;
 
-app.get('/', (req, res) => {
+app.get('/', (req: express.Request, res: express.Response) => {
   res.json({
     service: 'MixMatch Stellar Service',
     status: 'Active',
@@ -41,26 +42,27 @@ app.post('/payment', async (req, res) => {
   }
 });
 
+app.get(
+  '/account/:publicKey',
+  async (req: express.Request, res: express.Response) => {
+    try {
+      const { publicKey } = req.params;
+      const result = await checkAccount(publicKey);
+
+      if (!result.exists) {
+        res.status(404).json(result);
+        return;
+      }
+
+      res.json(result);
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  },
+);
+
 app.listen(port, async () => {
   console.log(`✨ Stellar Service running on port ${port}`);
-
-  try {
-    console.log('STARTING TEST: Creating a new account on-chain...');
-
-    const fakeDjParams = Keypair.random();
-
-    const createOp = Operation.createAccount({
-      destination: fakeDjParams.publicKey(),
-      startingBalance: '10',
-    });
-
-    await buildAndSubmitTx([createOp]);
-
-    console.log('TEST PASSED: Transaction Builder works!');
-  } catch (e) {
-    console.error('Test Failed:', e);
-  }
-  console.log(`   Public Key: ${serverKeypair.publicKey()}`);
 
   await ensureFunded();
 });

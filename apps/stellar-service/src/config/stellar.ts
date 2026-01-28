@@ -26,3 +26,7 @@ export const getNetworkConfig = () => ({
   horizonUrl: process.env.STELLAR_HORIZON_URL,
   publicKey: serverKeypair.publicKey(),
 });
+
+export const PLATFORM_FEE = Number(process.env.PLATFORM_FEE_PERCENT || 0.1);
+export const TREASURY_KEY =
+  process.env.TREASURY_PUB_KEY || serverKeypair.publicKey();

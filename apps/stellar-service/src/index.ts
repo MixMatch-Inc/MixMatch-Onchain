@@ -2,6 +2,7 @@ import express from 'express';
 import { Keypair, Operation } from '@stellar/stellar-sdk';
 import { getNetworkConfig, serverKeypair } from './config/stellar';
 import { buildAndSubmitTx } from './services/transaction.service';
+import { ensureFunded } from './services/friendbot';
 
 const app = express();
 const port = process.env.PORT || 3002;
@@ -33,4 +34,7 @@ app.listen(port, async () => {
   } catch (e) {
     console.error('Test Failed:', e);
   }
+  console.log(`   Public Key: ${serverKeypair.publicKey()}`);
+
+  await ensureFunded();
 });

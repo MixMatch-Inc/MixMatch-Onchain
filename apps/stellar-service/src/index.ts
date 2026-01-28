@@ -1,5 +1,7 @@
 import express from 'express';
+import { Keypair, Operation } from '@stellar/stellar-sdk';
 import { getNetworkConfig, serverKeypair } from './config/stellar';
+import { buildAndSubmitTx } from './services/transaction.service';
 import { ensureFunded } from './services/friendbot';
 
 const app = express();
@@ -15,6 +17,23 @@ app.get('/', (req, res) => {
 
 app.listen(port, async () => {
   console.log(`✨ Stellar Service running on port ${port}`);
+
+  try {
+    console.log('STARTING TEST: Creating a new account on-chain...');
+
+    const fakeDjParams = Keypair.random();
+
+    const createOp = Operation.createAccount({
+      destination: fakeDjParams.publicKey(),
+      startingBalance: '10',
+    });
+
+    await buildAndSubmitTx([createOp]);
+
+    console.log('TEST PASSED: Transaction Builder works!');
+  } catch (e) {
+    console.error('Test Failed:', e);
+  }
   console.log(`   Public Key: ${serverKeypair.publicKey()}`);
 
   await ensureFunded();

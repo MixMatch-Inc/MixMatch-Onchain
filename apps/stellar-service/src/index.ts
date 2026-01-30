@@ -1,30 +1,31 @@
-import express from "express";
-import { Keypair, Operation } from "@stellar/stellar-sdk";
-import { getNetworkConfig, serverKeypair } from "./config/stellar";
-import { buildAndSubmitTx } from "./services/transaction.service";
-import { ensureFunded } from "./services/friendbot";
-import { sendPayment } from "./services/payment.service";
-import { checkAccount } from "./services/account.service";
-import { pollHistory } from "./services/history.service";
+import express from 'express';
+import { Keypair, Operation } from '@stellar/stellar-sdk';
+import { getNetworkConfig, serverKeypair } from './config/stellar';
+import { buildAndSubmitTx } from './services/transaction.service';
+import { ensureFunded } from './services/friendbot';
+import { sendPayment } from './services/payment.service';
+import { checkAccount } from './services/account.service';
+import { pollHistory } from './services/history.service';
 import { createEscrow } from './services/escrow.service';
+import { claimFunds } from './services/claim.service';
 
 const app = express();
 const port = process.env.PORT || 3002;
 
-app.get("/", (req: express.Request, res: express.Response) => {
+app.get('/', (req: express.Request, res: express.Response) => {
   res.json({
-    service: "MixMatch Stellar Service",
-    status: "Active",
+    service: 'MixMatch Stellar Service',
+    status: 'Active',
     config: getNetworkConfig(),
   });
 });
 
-app.post("/payment", async (req, res) => {
+app.post('/payment', async (req, res) => {
   try {
     const { destination, amount, memo } = req.body;
 
     if (!destination || !amount) {
-      res.status(400).json({ error: "Missing destination or amount" });
+      res.status(400).json({ error: 'Missing destination or amount' });
       return;
     }
 
@@ -39,13 +40,13 @@ app.post("/payment", async (req, res) => {
     console.error(error);
     res.status(500).json({
       success: false,
-      error: error.message || "Payment Failed",
+      error: error.message || 'Payment Failed',
     });
   }
 });
 
 app.get(
-  "/account/:publicKey",
+  '/account/:publicKey',
   async (req: express.Request, res: express.Response) => {
     try {
       const { publicKey } = req.params;
@@ -62,41 +63,39 @@ app.get(
     }
   },
 );
+
 app.post('/escrow', async (req, res) => {
   try {
     const { destination, amount, unlockDate } = req.body;
 
     if (!destination || !amount || !unlockDate) {
-      res.status(400).json({ error: 'Missing destination, amount, or unlockDate' });
+      res
+        .status(400)
+        .json({ error: 'Missing destination, amount, or unlockDate' });
       return;
     }
 
     const result = await createEscrow(destination, amount, unlockDate);
-    
+
     res.json({
       success: true,
       hash: result.hash,
-      message: `Escrow created! Funds locked until ${unlockDate}`
+      message: `Escrow created! Funds locked until ${unlockDate}`,
     });
   } catch (error: any) {
     console.error(error);
-    res.status(500).json({ 
-      success: false, 
-      error: error.message || 'Escrow Creation Failed' 
+    res.status(500).json({
+      success: false,
+      error: error.message || 'Escrow Creation Failed',
     });
   }
 });
-app.listen(port, async () => {
-  console.log(`✨ Stellar Service running on port ${port}`);
 
-  await ensureFunded();
-});
-
-app.post("/payment", async (req, res) => {
+app.post('/payment', async (req, res) => {
   try {
     const { destination, amount, memo } = req.body;
     if (!destination || !amount) {
-      res.status(400).json({ error: "Missing destination or amount" });
+      res.status(400).json({ error: 'Missing destination or amount' });
       return;
     }
     const result = await sendPayment(destination, amount, memo);
@@ -107,6 +106,31 @@ app.post("/payment", async (req, res) => {
     });
   } catch (e: any) {
     res.status(500).json({ error: e.message });
+  }
+});
+
+app.post('/claim', async (req, res) => {
+  try {
+    const { secretKey } = req.body;
+
+    if (!secretKey) {
+      res.status(400).json({ error: 'Missing secretKey' });
+      return;
+    }
+
+    const result = await claimFunds(secretKey);
+
+    res.json({
+      success: true,
+      message: `Successfully claimed ${result.amount} XLM!`,
+      hash: result.hash,
+    });
+  } catch (error: any) {
+    console.error(error);
+    res.status(500).json({
+      success: false,
+      error: error.message || 'Claim Failed',
+    });
   }
 });
 

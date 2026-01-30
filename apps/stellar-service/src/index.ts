@@ -6,6 +6,7 @@ import { ensureFunded } from "./services/friendbot";
 import { sendPayment } from "./services/payment.service";
 import { checkAccount } from "./services/account.service";
 import { pollHistory } from "./services/history.service";
+import { createEscrow } from './services/escrow.service';
 
 const app = express();
 const port = process.env.PORT || 3002;
@@ -61,7 +62,30 @@ app.get(
     }
   },
 );
+app.post('/escrow', async (req, res) => {
+  try {
+    const { destination, amount, unlockDate } = req.body;
 
+    if (!destination || !amount || !unlockDate) {
+      res.status(400).json({ error: 'Missing destination, amount, or unlockDate' });
+      return;
+    }
+
+    const result = await createEscrow(destination, amount, unlockDate);
+    
+    res.json({
+      success: true,
+      hash: result.hash,
+      message: `Escrow created! Funds locked until ${unlockDate}`
+    });
+  } catch (error: any) {
+    console.error(error);
+    res.status(500).json({ 
+      success: false, 
+      error: error.message || 'Escrow Creation Failed' 
+    });
+  }
+});
 app.listen(port, async () => {
   console.log(`✨ Stellar Service running on port ${port}`);
 

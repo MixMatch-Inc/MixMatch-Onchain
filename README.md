@@ -14,6 +14,8 @@ We use **[pnpm workspaces](https://pnpm.io/workspaces)** for dependency manageme
 
 ---
 
+[MIXMATCH FIGMA](https://www.figma.com/design/wYIPrjvmHc1UuR2kFgXdao/Mixmatch?node-id=0-1&t=YGbg33TLval6HRoP-1)
+
 ## 🛠 Prerequisites
 
 Before you start, ensure you have the following installed:

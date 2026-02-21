@@ -30,20 +30,17 @@ const PricingSchema = new Schema<IPricing>(
       type: Number,
       required: [true, 'Maximum price is required'],
       min: [0, 'Maximum price cannot be negative'],
+      validate: {
+        validator(value: number): boolean {
+          const minValue = (this as { min?: unknown }).min;
+          return typeof minValue === 'number' ? value >= minValue : true;
+        },
+        message: 'Maximum price must be greater than or equal to minimum price',
+      },
     },
   },
   { _id: false },
 );
-
-PricingSchema.pre('validate', function enforcePricingBounds(next) {
-  const pricing = this as unknown as IPricing;
-
-  if (typeof pricing.min === 'number' && typeof pricing.max === 'number' && pricing.min > pricing.max) {
-    this.invalidate('max', 'Maximum price must be greater than or equal to minimum price');
-  }
-
-  next();
-});
 
 const SocialLinksSchema = new Schema<ISocialLinks>(
   {

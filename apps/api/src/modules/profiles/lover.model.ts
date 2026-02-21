@@ -1,12 +1,12 @@
 import mongoose, { Document, Schema } from 'mongoose';
 import { DjGenre, ILoverProfile } from '@mixmatch/types';
 
-export interface ILoverProfileDocument extends Omit<ILoverProfile, 'id' | 'createdAt' | 'updatedAt'>, Document {
+type ILoverProfileDocumentFields = Omit<ILoverProfile, 'id' | 'user' | 'followedDjs' | 'createdAt' | 'updatedAt'> & {
   user: mongoose.Types.ObjectId;
   followedDjs: mongoose.Types.ObjectId[];
-  createdAt: Date;
-  updatedAt: Date;
-}
+};
+
+export interface ILoverProfileDocument extends ILoverProfileDocumentFields, Document {}
 
 const LoverProfileSchema = new Schema<ILoverProfileDocument>(
   {
@@ -37,7 +37,7 @@ const LoverProfileSchema = new Schema<ILoverProfileDocument>(
     timestamps: true,
   },
 );
-apps/api/src/modules/profiles/lover.model.ts
+
 const LoverProfile = mongoose.model<ILoverProfileDocument>('LoverProfile', LoverProfileSchema);
 
 export default LoverProfile;

@@ -11,13 +11,13 @@ interface IPricing {
   max: number;
 }
 
-export interface IDjProfileDocument extends Omit<IDjProfile, 'id' | 'createdAt' | 'updatedAt'>, Document {
+type IDjProfileDocumentFields = Omit<IDjProfile, 'id' | 'user' | 'createdAt' | 'updatedAt'> & {
   user: mongoose.Types.ObjectId;
   pricing: IPricing;
   socialLinks?: ISocialLinks;
-  createdAt: Date;
-  updatedAt: Date;
-}
+};
+
+export interface IDjProfileDocument extends IDjProfileDocumentFields, Document {}
 
 const PricingSchema = new Schema<IPricing>(
   {
@@ -31,8 +31,9 @@ const PricingSchema = new Schema<IPricing>(
       required: [true, 'Maximum price is required'],
       min: [0, 'Maximum price cannot be negative'],
       validate: {
-        validator(this: IPricing, value: number): boolean {
-          return typeof this.min === 'number' ? value >= this.min : true;
+        validator(value: number): boolean {
+          const minValue = (this as { min?: unknown }).min;
+          return typeof minValue === 'number' ? value >= minValue : true;
         },
         message: 'Maximum price must be greater than or equal to minimum price',
       },

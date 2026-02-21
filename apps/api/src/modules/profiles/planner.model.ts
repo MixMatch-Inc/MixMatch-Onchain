@@ -1,11 +1,11 @@
 import mongoose, { Document, Schema } from 'mongoose';
 import { EventType, IPlannerProfile } from '@mixmatch/types';
 
-export interface IPlannerProfileDocument extends Omit<IPlannerProfile, 'id' | 'createdAt' | 'updatedAt'>, Document {
+type IPlannerProfileDocumentFields = Omit<IPlannerProfile, 'id' | 'user' | 'createdAt' | 'updatedAt'> & {
   user: mongoose.Types.ObjectId;
-  createdAt: Date;
-  updatedAt: Date;
-}
+};
+
+export interface IPlannerProfileDocument extends IPlannerProfileDocumentFields, Document {}
 
 const PlannerProfileSchema = new Schema<IPlannerProfileDocument>(
   {

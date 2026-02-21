@@ -27,6 +27,15 @@ export enum AvailabilityStatus {
   UNAVAILABLE = 'UNAVAILABLE',
 }
 
+export enum EventType {
+  CLUB = 'CLUB',
+  CONCERT = 'CONCERT',
+  CORPORATE = 'CORPORATE',
+  FESTIVAL = 'FESTIVAL',
+  PRIVATE_PARTY = 'PRIVATE_PARTY',
+  WEDDING = 'WEDDING',
+}
+
 export interface IUser {
   id: string;
   name: string;
@@ -66,6 +75,26 @@ export interface IDjProfile {
   location?: string | GeoPoint;
   availabilityStatus: AvailabilityStatus;
   socialLinks?: ISocialLinks;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface IPlannerProfile {
+  id: string;
+  user: string;
+  organizationName: string;
+  typicalEventTypes: EventType[];
+  website?: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface ILoverProfile {
+  id: string;
+  user: string;
+  favoriteGenres: DjGenre[];
+  preferredVibes: string[];
+  followedDjs: string[];
   createdAt: Date;
   updatedAt: Date;
 }

@@ -41,6 +41,9 @@ importers:
       mongoose:
         specifier: ^9.1.5
         version: 9.1.5
+      zod:
+        specifier: ^4.3.6
+        version: 4.3.6
     devDependencies:
       '@mixmatch/config':
         specifier: workspace:*

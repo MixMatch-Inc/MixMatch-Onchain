@@ -12,7 +12,8 @@
   "dependencies": {
     "next": "16.1.4",
     "react": "19.2.3",
-    "react-dom": "19.2.3"
+    "react-dom": "19.2.3",
+    "zustand": "^5.0.8"
   },
   "devDependencies": {
     "@mixmatch/config": "workspace:^",

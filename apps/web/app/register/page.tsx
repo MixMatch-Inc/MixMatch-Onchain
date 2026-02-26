@@ -100,6 +100,7 @@ export default function RegisterPage() {
         user: payload.user,
         token: payload.token,
       });
+      document.cookie = `mixmatch_auth_token=${encodeURIComponent(payload.token)}; Path=/; SameSite=Lax`;
 
       router.push('/onboarding');
     } catch {

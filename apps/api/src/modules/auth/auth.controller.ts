@@ -2,7 +2,7 @@ import { Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
 import User from '../users/user.model';
 import { generateToken } from '../../services/jwt.service';
-import { registerSchema } from './auth.validation';
+import { loginSchema, registerSchema } from './auth.validation';
 
 const SALT_ROUNDS = 10;
 
@@ -65,6 +65,54 @@ export const register = async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
+    res.status(500).json({ message: 'Internal server error' });
+  }
+};
+
+export const login = async (req: Request, res: Response): Promise<void> => {
+  const parsedPayload = loginSchema.safeParse(req.body);
+
+  if (!parsedPayload.success) {
+    res.status(400).json({
+      message: 'Validation failed',
+      errors: parsedPayload.error.flatten(),
+    });
+    return;
+  }
+
+  const { email, password } = parsedPayload.data;
+
+  try {
+    const normalizedEmail = email.toLowerCase();
+    const existingUser = await User.findOne({ email: normalizedEmail });
+
+    if (!existingUser) {
+      res.status(401).json({ message: 'Invalid email or password' });
+      return;
+    }
+
+    const passwordMatches = await bcrypt.compare(password, existingUser.passwordHash);
+
+    if (!passwordMatches) {
+      res.status(401).json({ message: 'Invalid email or password' });
+      return;
+    }
+
+    const token = generateToken(existingUser.id, existingUser.role);
+
+    res.status(200).json({
+      token,
+      user: {
+        id: existingUser.id,
+        name: existingUser.name,
+        email: existingUser.email,
+        role: existingUser.role,
+        onboardingCompleted: existingUser.onboardingCompleted,
+        createdAt: existingUser.createdAt,
+        updatedAt: existingUser.updatedAt,
+      },
+    });
+  } catch (error) {
     res.status(500).json({ message: 'Internal server error' });
   }
 };

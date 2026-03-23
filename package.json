@@ -6,7 +6,7 @@
     "dev": "turbo run dev",
     "lint": "turbo run lint",
     "typecheck": "turbo run typecheck",
-    "test": "turbo run test",
+    "test": "pnpm -r --if-present run test",
     "clean": "turbo run clean"
   },
   "devDependencies": {

@@ -93,7 +93,7 @@ Run these from the **root** folder:
 | `pnpm dev`   | Starts all apps in development mode.         |
 | `pnpm build` | Builds all apps and packages for production. |
 | `pnpm lint`  | Runs ESLint across the entire monorepo.      |
-| `pnpm test`  | Runs tests for all packages (when added).    |
+| `pnpm test`  | Runs package tests when a workspace exposes them. |
 | `pnpm clean` | (Optional) Clears Turbo cache and artifacts. |
 
 ---
@@ -163,4 +163,3 @@ git commit -m "fix: clear cached node_modules"
 1. Always run `pnpm lint` before pushing.
 2. Keep shared logic (types, configs) in `packages/`.
 3. Do not edit `apps/*/node_modules` manually.
-

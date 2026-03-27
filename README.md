@@ -164,3 +164,7 @@ git commit -m "fix: clear cached node_modules"
 2. Keep shared logic (types, configs) in `packages/`.
 3. Do not edit `apps/*/node_modules` manually.
 
+## Phase 1 References
+
+- Architecture: `docs/phase-1-architecture.md`
+- Demo script: `docs/phase-1-demo.md`

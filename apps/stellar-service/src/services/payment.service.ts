@@ -1,4 +1,4 @@
-import { Operation } from '@stellar/stellar-sdk';
+import { Asset, Operation } from '@stellar/stellar-sdk';
 import { buildAndSubmitTx } from './transaction.service';
 import { checkAccount } from './account.service';
 import { PLATFORM_FEE, TREASURY_KEY } from '../config/stellar';
@@ -31,7 +31,7 @@ export const sendPayment = async (
   operations.push(
     Operation.payment({
       destination: destination,
-      asset: undefined as any,
+      asset: Asset.native(),
       amount: payoutString,
     }),
   );
@@ -40,7 +40,7 @@ export const sendPayment = async (
     operations.push(
       Operation.payment({
         destination: TREASURY_KEY,
-        asset: undefined as any,
+        asset: Asset.native(),
         amount: feeString,
       }),
     );

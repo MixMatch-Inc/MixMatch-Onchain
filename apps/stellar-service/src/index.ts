@@ -1,7 +1,5 @@
 import express from 'express';
-import { Keypair, Operation } from '@stellar/stellar-sdk';
 import { getNetworkConfig, serverKeypair } from './config/stellar';
-import { buildAndSubmitTx } from './services/transaction.service';
 import { ensureFunded } from './services/friendbot';
 import { sendPayment } from './services/payment.service';
 import { checkAccount } from './services/account.service';
@@ -11,6 +9,8 @@ import { claimFunds } from './services/claim.service';
 
 const app = express();
 const port = process.env.PORT || 3002;
+
+app.use(express.json());
 
 app.get('/', (req: express.Request, res: express.Response) => {
   res.json({
@@ -24,8 +24,13 @@ app.post('/payment', async (req, res) => {
   try {
     const { destination, amount, memo } = req.body;
 
-    if (!destination || !amount) {
-      res.status(400).json({ error: 'Missing destination or amount' });
+    if (!destination || typeof destination !== 'string') {
+      res.status(400).json({ error: 'Missing or invalid destination' });
+      return;
+    }
+
+    if (!amount || typeof amount !== 'string' || Number.isNaN(Number(amount))) {
+      res.status(400).json({ error: 'Missing or invalid amount' });
       return;
     }
 
@@ -88,24 +93,6 @@ app.post('/escrow', async (req, res) => {
       success: false,
       error: error.message || 'Escrow Creation Failed',
     });
-  }
-});
-
-app.post('/payment', async (req, res) => {
-  try {
-    const { destination, amount, memo } = req.body;
-    if (!destination || !amount) {
-      res.status(400).json({ error: 'Missing destination or amount' });
-      return;
-    }
-    const result = await sendPayment(destination, amount, memo);
-    res.json({
-      success: true,
-      hash: result.hash,
-      message: `Sent ${amount} XLM`,
-    });
-  } catch (e: any) {
-    res.status(500).json({ error: e.message });
   }
 });
 

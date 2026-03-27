@@ -6,7 +6,8 @@
     "dev": "ts-node-dev --respawn --transpile-only src/index.ts",
     "build": "tsc",
     "lint": "eslint src/",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "seed:demo": "ts-node-dev --transpile-only --exit-child scripts/seed.ts"
   },
   "dependencies": {
     "@mixmatch/types": "workspace:*",

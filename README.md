@@ -96,6 +96,18 @@ Run these from the **root** folder:
 | `pnpm test`  | Runs tests for all packages (when added).    |
 | `pnpm clean` | (Optional) Clears Turbo cache and artifacts. |
 
+Demo data:
+
+```bash
+pnpm --filter api seed:demo
+```
+
+Seeded credentials:
+
+- `dj.demo@mixmatch.io` / `mixmatch123`
+- `planner.demo@mixmatch.io` / `mixmatch123`
+- `fan.demo@mixmatch.io` / `mixmatch123`
+
 ---
 
 ## 🧩 Adding Dependencies
@@ -163,4 +175,3 @@ git commit -m "fix: clear cached node_modules"
 1. Always run `pnpm lint` before pushing.
 2. Keep shared logic (types, configs) in `packages/`.
 3. Do not edit `apps/*/node_modules` manually.
-

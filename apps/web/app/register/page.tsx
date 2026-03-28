@@ -1,23 +1,14 @@
 'use client';
 
-import { FormEvent, useMemo, useState } from 'react';
+import { FormEvent, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { UserRole } from '@mixmatch/types';
 import { useAuthStore } from '@/store/auth.store';
+import { ApiClientError } from '@/lib/api/client';
+import { registerUser } from '@/lib/api/auth';
 import { webEnv } from '@/lib/env';
 
 type SelectableRole = UserRole.DJ | UserRole.PLANNER | UserRole.MUSIC_LOVER;
-
-interface RegisterResponse {
-  token: string;
-  user: {
-    id: string;
-    name: string;
-    email: string;
-    role: UserRole;
-    onboardingCompleted: boolean;
-  };
-}
 
 const roleOptions: Array<{
   role: SelectableRole;
@@ -75,24 +66,11 @@ export default function RegisterPage() {
     setIsSubmitting(true);
 
     try {
-      const response = await fetch(`${apiBaseUrl}/auth/register`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          email: email.trim().toLowerCase(),
-          password,
-          role: selectedRole,
-        }),
+      const payload = await registerUser({
+        email: email.trim().toLowerCase(),
+        password,
+        role: selectedRole,
       });
-
-      const payload = (await response.json()) as Partial<RegisterResponse> & { message?: string };
-
-      if (!response.ok || !payload.user || !payload.token) {
-        setErrorMessage(payload.message ?? 'Registration failed. Please try again.');
-        return;
-      }
 
       login({
         user: payload.user,
@@ -101,8 +79,12 @@ export default function RegisterPage() {
       document.cookie = `mixmatch_auth_token=${encodeURIComponent(payload.token)}; Path=/; SameSite=Lax`;
 
       router.push('/onboarding');
-    } catch {
-      setErrorMessage('Network error. Please try again.');
+    } catch (error) {
+      if (error instanceof ApiClientError) {
+        setErrorMessage(error.message);
+      } else {
+        setErrorMessage('Network error. Please try again.');
+      }
     } finally {
       setIsSubmitting(false);
     }

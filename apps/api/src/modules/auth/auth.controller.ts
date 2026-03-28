@@ -3,6 +3,7 @@ import bcrypt from 'bcryptjs';
 import User from '../users/user.model';
 import { generateToken } from '../../services/jwt.service';
 import { loginSchema, registerSchema } from './auth.validation';
+import { sendError, sendSuccess, zodDetails } from '../../utils/api-response';
 
 const SALT_ROUNDS = 10;
 
@@ -15,10 +16,7 @@ export const register = async (req: Request, res: Response): Promise<void> => {
   const parsedPayload = registerSchema.safeParse(req.body);
 
   if (!parsedPayload.success) {
-    res.status(400).json({
-      message: 'Validation failed',
-      errors: parsedPayload.error.flatten(),
-    });
+    sendError(res, 400, 'Validation failed', zodDetails(parsedPayload.error));
     return;
   }
 
@@ -29,7 +27,7 @@ export const register = async (req: Request, res: Response): Promise<void> => {
     const existingUser = await User.findOne({ email: normalizedEmail }).lean();
 
     if (existingUser) {
-      res.status(409).json({ message: 'Email is already registered' });
+      sendError(res, 409, 'Email is already registered');
       return;
     }
 
@@ -45,7 +43,7 @@ export const register = async (req: Request, res: Response): Promise<void> => {
 
     const token = generateToken(createdUser.id, createdUser.role);
 
-    res.status(201).json({
+    sendSuccess(res, 201, {
       token,
       user: {
         id: createdUser.id,
@@ -61,11 +59,11 @@ export const register = async (req: Request, res: Response): Promise<void> => {
     const maybeMongoError = error as { code?: number };
 
     if (maybeMongoError.code === 11000) {
-      res.status(409).json({ message: 'Email is already registered' });
+      sendError(res, 409, 'Email is already registered');
       return;
     }
 
-    res.status(500).json({ message: 'Internal server error' });
+    sendError(res, 500, 'Internal server error');
   }
 };
 
@@ -73,10 +71,7 @@ export const login = async (req: Request, res: Response): Promise<void> => {
   const parsedPayload = loginSchema.safeParse(req.body);
 
   if (!parsedPayload.success) {
-    res.status(400).json({
-      message: 'Validation failed',
-      errors: parsedPayload.error.flatten(),
-    });
+    sendError(res, 400, 'Validation failed', zodDetails(parsedPayload.error));
     return;
   }
 
@@ -87,20 +82,20 @@ export const login = async (req: Request, res: Response): Promise<void> => {
     const existingUser = await User.findOne({ email: normalizedEmail });
 
     if (!existingUser) {
-      res.status(401).json({ message: 'Invalid email or password' });
+      sendError(res, 401, 'Invalid email or password');
       return;
     }
 
     const passwordMatches = await bcrypt.compare(password, existingUser.passwordHash);
 
     if (!passwordMatches) {
-      res.status(401).json({ message: 'Invalid email or password' });
+      sendError(res, 401, 'Invalid email or password');
       return;
     }
 
     const token = generateToken(existingUser.id, existingUser.role);
 
-    res.status(200).json({
+    sendSuccess(res, 200, {
       token,
       user: {
         id: existingUser.id,
@@ -112,7 +107,7 @@ export const login = async (req: Request, res: Response): Promise<void> => {
         updatedAt: existingUser.updatedAt,
       },
     });
-  } catch (error) {
-    res.status(500).json({ message: 'Internal server error' });
+  } catch {
+    sendError(res, 500, 'Internal server error');
   }
 };

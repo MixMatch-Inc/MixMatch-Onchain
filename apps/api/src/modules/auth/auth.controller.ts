@@ -3,6 +3,7 @@ import bcrypt from 'bcryptjs';
 import User from '../users/user.model';
 import { generateToken } from '../../services/jwt.service';
 import { loginSchema, registerSchema } from './auth.validation';
+import { AuthenticatedRequestUser } from '../../middleware/auth.middleware';
 import { sendError, sendSuccess, zodDetails } from '../../utils/api-response';
 
 const SALT_ROUNDS = 10;
@@ -109,5 +110,44 @@ export const login = async (req: Request, res: Response): Promise<void> => {
     });
   } catch {
     sendError(res, 500, 'Internal server error');
+  }
+};
+
+export const updateOnboardingStatus = async (
+  req: Request & { user?: AuthenticatedRequestUser },
+  res: Response,
+): Promise<void> => {
+  if (!req.user?.userId) {
+    res.status(401).json({ message: 'Unauthorized: missing or invalid token' });
+    return;
+  }
+
+  const completed = Boolean(req.body?.onboardingCompleted);
+
+  try {
+    const user = await User.findByIdAndUpdate(
+      req.user.userId,
+      { onboardingCompleted: completed },
+      { new: true },
+    );
+
+    if (!user) {
+      res.status(404).json({ message: 'User not found' });
+      return;
+    }
+
+    res.status(200).json({
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        onboardingCompleted: user.onboardingCompleted,
+        createdAt: user.createdAt,
+        updatedAt: user.updatedAt,
+      },
+    });
+  } catch {
+    res.status(500).json({ message: 'Internal server error' });
   }
 };

@@ -4,6 +4,7 @@ import { FormEvent, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { UserRole } from '@mixmatch/types';
 import { useAuthStore } from '@/store/auth.store';
+import { webEnv } from '@/lib/env';
 
 type SelectableRole = UserRole.DJ | UserRole.PLANNER | UserRole.MUSIC_LOVER;
 
@@ -51,10 +52,7 @@ export default function RegisterPage() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const apiBaseUrl = useMemo(() => {
-    const envBase = process.env.NEXT_PUBLIC_API_URL?.trim();
-    return envBase && envBase.length > 0 ? envBase : 'http://localhost:3001';
-  }, []);
+  const apiBaseUrl = useMemo(() => webEnv.apiUrl, []);
 
   const validateForm = (): string | null => {
     if (!email.trim()) return 'Email is required.';

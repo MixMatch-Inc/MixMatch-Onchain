@@ -47,6 +47,32 @@ pnpm install
 
 ```
 
+### 1.5 Configure Environment Variables
+
+Copy each checked-in example file before starting the services:
+
+```bash
+cp .env.example .env
+cp apps/api/.env.example apps/api/.env
+cp apps/web/.env.example apps/web/.env.local
+cp apps/stellar-service/.env.example apps/stellar-service/.env
+```
+
+Required values:
+
+- `apps/api/.env`
+  - `MONGO_URI`
+  - `JWT_SECRET`
+- `apps/web/.env.local`
+  - `NEXT_PUBLIC_API_URL`
+- `apps/stellar-service/.env`
+  - `STELLAR_SEC_KEY`
+  - `STELLAR_NETWORK`
+  - `STELLAR_HORIZON_URL`
+
+The API and Stellar service now fail fast during startup when required
+environment variables are missing.
+
 ### 2. Run Development Server
 
 This command starts **all** applications (Web, API, and Stellar Service) in parallel.
@@ -163,4 +189,3 @@ git commit -m "fix: clear cached node_modules"
 1. Always run `pnpm lint` before pushing.
 2. Keep shared logic (types, configs) in `packages/`.
 3. Do not edit `apps/*/node_modules` manually.
-

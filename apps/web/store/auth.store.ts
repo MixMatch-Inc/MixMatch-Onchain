@@ -3,6 +3,7 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import { UserRole } from '@mixmatch/types';
+import { clearAuthCookie } from '@/lib/auth-cookie';
 
 export interface AuthUser {
   id: string;
@@ -42,6 +43,8 @@ export const useAuthStore = create<AuthStore>()(
         });
       },
       logout: () => {
+        clearAuthCookie();
+
         set({
           user: null,
           role: null,

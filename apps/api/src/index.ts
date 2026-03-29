@@ -1,5 +1,3 @@
-import express from 'express';
-import cors from 'cors';
 import connectDB from './config/db';
 import { apiEnv } from './config/env';
 import authRouter from './modules/auth/auth.routes';

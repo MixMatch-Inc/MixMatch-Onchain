@@ -1,32 +1,24 @@
 import { Horizon, Networks, Keypair } from '@stellar/stellar-sdk';
-import dotenv from 'dotenv';
+import { stellarEnv } from './env';
 
-dotenv.config();
-
-const isTestnet = process.env.STELLAR_NETWORK === 'TESTNET';
+const isTestnet = stellarEnv.network === 'TESTNET';
 
 export const NETWORK_PASSPHRASE = isTestnet
   ? Networks.TESTNET
   : Networks.PUBLIC;
 
 export const server = new Horizon.Server(
-  process.env.STELLAR_HORIZON_URL || 'https://horizon-testnet.stellar.org',
+  stellarEnv.horizonUrl,
 );
 
-const secretKey = process.env.STELLAR_SEC_KEY;
-
-if (!secretKey) {
-  throw new Error('❌ FATAL: STELLAR_SEC_KEY is missing from .env');
-}
-
-export const serverKeypair = Keypair.fromSecret(secretKey);
+export const serverKeypair = Keypair.fromSecret(stellarEnv.secretKey);
 
 export const getNetworkConfig = () => ({
-  network: process.env.STELLAR_NETWORK,
-  horizonUrl: process.env.STELLAR_HORIZON_URL,
+  network: stellarEnv.network,
+  horizonUrl: stellarEnv.horizonUrl,
   publicKey: serverKeypair.publicKey(),
 });
 
-export const PLATFORM_FEE = Number(process.env.PLATFORM_FEE_PERCENT || 0.1);
+export const PLATFORM_FEE = stellarEnv.platformFeePercent;
 export const TREASURY_KEY =
-  process.env.TREASURY_PUB_KEY || serverKeypair.publicKey();
+  stellarEnv.treasuryPublicKey || serverKeypair.publicKey();

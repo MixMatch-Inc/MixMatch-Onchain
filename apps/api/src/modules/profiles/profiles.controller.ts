@@ -1,8 +1,22 @@
 import { Request, Response } from 'express';
+import mongoose from 'mongoose';
 import { UserRole } from '@mixmatch/types';
 import DjProfile from './dj.model';
 import LoverProfile from './lover.model';
 import PlannerProfile from './planner.model';
+import User from '../users/user.model';
+import { createProfileSchema } from './profiles.validation';
+
+const serializeDocument = <T extends { _id?: unknown; id?: string }>(
+  document: T,
+) => {
+  return {
+    ...document,
+    id: document.id,
+  };
+};
+
+export const createProfile = async (req: Request, res: Response): Promise<void> => {
 import { updateProfileSchema } from './profiles.validation';
 
 export const getCurrentProfile = async (req: Request, res: Response): Promise<void> => {

@@ -1,4 +1,10 @@
 import { z } from 'zod';
+import {
+  AvailabilityStatus,
+  DjGenre,
+  EventType,
+  UserRole,
+} from '@mixmatch/types';
 import { AvailabilityStatus, DjGenre, EventType, UserRole } from '@mixmatch/types';
 
 const pricingSchema = z.object({

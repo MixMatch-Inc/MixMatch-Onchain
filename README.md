@@ -77,6 +77,16 @@ environment variables are missing.
 
 This command starts **all** applications (Web, API, and Stellar Service) in parallel.
 
+If you need MongoDB locally, start it first:
+
+```bash
+docker compose up -d mongo
+docker compose ps
+```
+
+The API will use `mongodb://127.0.0.1:27017/mixmatch` by default when `MONGO_URI`
+is not set, which matches the local Docker Compose service.
+
 ```bash
 pnpm dev
 
@@ -168,6 +178,17 @@ rm -rf node_modules
 pnpm install
 
 ```
+
+**Local MongoDB is not ready**
+
+```bash
+docker compose up -d mongo
+docker compose logs mongo
+docker compose down
+```
+
+The MongoDB container includes a healthcheck so `docker compose ps` shows when it
+is actually ready to accept connections.
 
 **Git is ignoring files I want to commit**
 We strictly ignore `node_modules` and build artifacts (`.next`, `dist`).

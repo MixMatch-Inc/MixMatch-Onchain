@@ -98,3 +98,133 @@ export interface ILoverProfile {
   createdAt: Date;
   updatedAt: Date;
 }
+
+export interface AuthResponseDto {
+  token: string;
+  user: IUser;
+}
+
+export interface CurrentUserResponseDto {
+  user: IUser;
+}
+
+export interface RegisterRequestDto {
+  email: string;
+  password: string;
+  role: UserRole;
+}
+
+export interface LoginRequestDto {
+  email: string;
+  password: string;
+}
+
+export interface CreateDjProfileDto {
+  stageName: string;
+  bio?: string;
+  genres: DjGenre[];
+  vibeTags: string[];
+  pricing: IPricingRange;
+  location?: string | GeoPoint;
+  availabilityStatus?: AvailabilityStatus;
+  socialLinks?: ISocialLinks;
+}
+
+export type UpdateDjProfileDto = Partial<CreateDjProfileDto>;
+
+export interface CreatePlannerProfileDto {
+  organizationName: string;
+  typicalEventTypes: EventType[];
+  website?: string;
+}
+
+export type UpdatePlannerProfileDto = Partial<CreatePlannerProfileDto>;
+
+export interface CreateLoverProfileDto {
+  favoriteGenres: DjGenre[];
+  preferredVibes: string[];
+}
+
+export type UpdateLoverProfileDto = Partial<CreateLoverProfileDto>;
+
+export type ProfileDto = IDjProfile | IPlannerProfile | ILoverProfile;
+
+export interface ProfileResponseDto<TProfile = ProfileDto> {
+  profile: TProfile;
+}
+
+export interface DjDiscoveryItemDto {
+  id: string;
+  stageName: string;
+  bio?: string;
+  genres: DjGenre[];
+  vibeTags: string[];
+  pricing: IPricingRange;
+  location?: string | GeoPoint;
+  availabilityStatus: AvailabilityStatus;
+  socialLinks?: ISocialLinks;
+}
+
+export interface DjDiscoveryQueryDto {
+  q?: string;
+  genre?: DjGenre;
+  availabilityStatus?: AvailabilityStatus;
+  minPrice?: number;
+  maxPrice?: number;
+  page?: number;
+  pageSize?: number;
+}
+
+export interface PaginatedResponseDto<TItem> {
+  items: TItem[];
+  page: number;
+  pageSize: number;
+  total: number;
+}
+
+export enum BookingStatus {
+  PENDING = 'PENDING',
+  ACCEPTED = 'ACCEPTED',
+  DECLINED = 'DECLINED',
+  CANCELLED = 'CANCELLED',
+}
+
+export enum PaymentStatus {
+  NOT_STARTED = 'NOT_STARTED',
+  PENDING = 'PENDING',
+  PAID = 'PAID',
+  FAILED = 'FAILED',
+}
+
+export interface BookingSummaryDto {
+  id: string;
+  plannerId: string;
+  djId: string;
+  eventType: EventType;
+  eventDate: string;
+  budget: number;
+  notes?: string;
+  status: BookingStatus;
+  paymentStatus: PaymentStatus;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateBookingDto {
+  djId: string;
+  eventType: EventType;
+  eventDate: string;
+  budget: number;
+  notes?: string;
+}
+
+export interface UpdateBookingStatusDto {
+  status: BookingStatus.ACCEPTED | BookingStatus.DECLINED;
+  responseNote?: string;
+}
+
+export interface PaymentIntentDto {
+  bookingId: string;
+  amount: number;
+  memo?: string;
+}

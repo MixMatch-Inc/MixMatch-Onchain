@@ -7,9 +7,10 @@ export function middleware(request: NextRequest) {
   const token = request.cookies.get(AUTH_COOKIE_NAME)?.value;
 
   const isDashboardRoute = pathname.startsWith('/dashboard');
+  const isOnboardingRoute = pathname.startsWith('/onboarding');
   const isLoginRoute = pathname === '/login';
 
-  if (isDashboardRoute && !token) {
+  if ((isDashboardRoute || isOnboardingRoute) && !token) {
     const redirectUrl = request.nextUrl.clone();
     redirectUrl.pathname = '/login';
     redirectUrl.search = `next=${encodeURIComponent(`${pathname}${search}`)}`;
@@ -27,5 +28,5 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/dashboard/:path*', '/login'],
+  matcher: ['/dashboard/:path*', '/onboarding/:path*', '/login'],
 };

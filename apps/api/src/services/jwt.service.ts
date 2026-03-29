@@ -1,8 +1,6 @@
-import dotenv from 'dotenv';
 import jwt, { JsonWebTokenError, TokenExpiredError } from 'jsonwebtoken';
 import { UserRole } from '@mixmatch/types';
-
-dotenv.config();
+import { apiEnv } from '../config/env';
 
 const TOKEN_EXPIRATION = '24h';
 
@@ -12,13 +10,7 @@ export interface AuthTokenPayload {
 }
 
 const getJwtSecret = (): string => {
-  const secret = process.env.JWT_SECRET;
-
-  if (!secret || secret.trim().length === 0) {
-    throw new Error('JWT_SECRET must be defined in environment variables');
-  }
-
-  return secret;
+  return apiEnv.jwtSecret;
 };
 
 export const generateToken = (userId: string, role: UserRole): string => {

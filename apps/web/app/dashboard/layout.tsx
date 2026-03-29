@@ -1,3 +1,4 @@
+import Link from 'next/link';
 'use client';
 
 import Link from 'next/link';
@@ -67,6 +68,20 @@ export default function DashboardLayout({
       <header className="border-b border-zinc-200 bg-white">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
           <div>
+            <h1 className="text-lg font-semibold text-zinc-900">MixMatch dashboard</h1>
+            <p className="text-sm text-zinc-500">Discovery workspace</p>
+          </div>
+          <nav className="flex items-center gap-3 text-sm text-zinc-700">
+            <Link href="/dashboard" className="hover:text-zinc-900">
+              Overview
+            </Link>
+            <Link href="/dashboard/discover" className="hover:text-zinc-900">
+              Discover
+            </Link>
+          </nav>
+        </div>
+      </header>
+      {children}
             <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500">
               {user.role}
             </p>

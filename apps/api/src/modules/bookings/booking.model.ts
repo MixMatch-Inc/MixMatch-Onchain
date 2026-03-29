@@ -31,16 +31,40 @@ export interface IBookingDocument extends Document {
 
 const BookingSchema = new Schema<IBookingDocument>(
   {
-    planner: { type: Schema.Types.ObjectId, ref: 'User', required: true, index: true },
-    dj: { type: Schema.Types.ObjectId, ref: 'User', required: true, index: true },
+    planner: {
+      type: Schema.Types.ObjectId,
+      ref: 'User',
+      required: true,
+      index: true,
+      immutable: true,
+    },
+    dj: {
+      type: Schema.Types.ObjectId,
+      ref: 'User',
+      required: true,
+      index: true,
+      immutable: true,
+    },
     eventType: {
       type: String,
       enum: Object.values(EventType),
       required: true,
     },
-    eventDate: { type: Date, required: true },
-    budget: { type: Number, required: true, min: 0 },
-    notes: { type: String, trim: true, maxlength: 2000 },
+    eventDate: {
+      type: Date,
+      required: true,
+      index: true,
+    },
+    budget: {
+      type: Number,
+      required: true,
+      min: [0, 'Budget cannot be negative'],
+    },
+    notes: {
+      type: String,
+      trim: true,
+      maxlength: [2000, 'Notes cannot exceed 2000 characters'],
+    },
     status: {
       type: String,
       enum: Object.values(BookingStatus),
@@ -56,11 +80,17 @@ const BookingSchema = new Schema<IBookingDocument>(
     responseNote: {
       type: String,
       trim: true,
-      maxlength: 1000,
+      maxlength: [1000, 'Response note cannot exceed 1000 characters'],
     },
   },
-  { timestamps: true },
+  {
+    timestamps: true,
+  },
 );
+
+BookingSchema.index({ planner: 1, status: 1, createdAt: -1 });
+BookingSchema.index({ dj: 1, status: 1, createdAt: -1 });
+BookingSchema.index({ planner: 1, dj: 1, eventDate: 1 });
 
 const Booking = mongoose.model<IBookingDocument>('Booking', BookingSchema);
 

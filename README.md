@@ -132,6 +132,18 @@ Run these from the **root** folder:
 | `pnpm test`  | Runs package tests when a workspace exposes them. |
 | `pnpm clean` | (Optional) Clears Turbo cache and artifacts. |
 
+Demo data:
+
+```bash
+pnpm --filter api seed:demo
+```
+
+Seeded credentials:
+
+- `dj.demo@mixmatch.io` / `mixmatch123`
+- `planner.demo@mixmatch.io` / `mixmatch123`
+- `fan.demo@mixmatch.io` / `mixmatch123`
+
 ---
 
 ## 🧩 Adding Dependencies

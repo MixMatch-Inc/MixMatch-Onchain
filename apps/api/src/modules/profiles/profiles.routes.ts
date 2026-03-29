@@ -1,9 +1,13 @@
 import { Router } from 'express';
-import { createProfile } from './profiles.controller';
 import { requireAuth } from '../../middleware/auth.middleware';
+import {
+  getCurrentProfile,
+  updateCurrentProfile,
+} from './profiles.controller';
 
 const profilesRouter = Router();
 
-profilesRouter.post('/', requireAuth, createProfile);
+profilesRouter.get('/me', requireAuth, getCurrentProfile);
+profilesRouter.patch('/me', requireAuth, updateCurrentProfile);
 
 export default profilesRouter;

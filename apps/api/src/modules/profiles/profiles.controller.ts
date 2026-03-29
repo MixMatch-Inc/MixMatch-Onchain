@@ -17,12 +17,46 @@ const serializeDocument = <T extends { _id?: unknown; id?: string }>(
 };
 
 export const createProfile = async (req: Request, res: Response): Promise<void> => {
+import { updateProfileSchema } from './profiles.validation';
+
+export const getCurrentProfile = async (req: Request, res: Response): Promise<void> => {
   if (!req.user) {
     res.status(401).json({ message: 'Unauthorized: missing or invalid token' });
     return;
   }
 
-  const parsedPayload = createProfileSchema.safeParse(req.body);
+  let profile;
+
+  switch (req.user.role) {
+    case UserRole.DJ:
+      profile = await DjProfile.findOne({ user: req.user.userId }).lean();
+      break;
+    case UserRole.PLANNER:
+      profile = await PlannerProfile.findOne({ user: req.user.userId }).lean();
+      break;
+    case UserRole.MUSIC_LOVER:
+      profile = await LoverProfile.findOne({ user: req.user.userId }).lean();
+      break;
+    default:
+      res.status(403).json({ message: 'Forbidden: unsupported role for profile access' });
+      return;
+  }
+
+  if (!profile) {
+    res.status(404).json({ message: 'Profile not found' });
+    return;
+  }
+
+  res.status(200).json({ profile });
+};
+
+export const updateCurrentProfile = async (req: Request, res: Response): Promise<void> => {
+  if (!req.user) {
+    res.status(401).json({ message: 'Unauthorized: missing or invalid token' });
+    return;
+  }
+
+  const parsedPayload = updateProfileSchema.safeParse(req.body);
 
   if (!parsedPayload.success) {
     res.status(400).json({
@@ -37,79 +71,39 @@ export const createProfile = async (req: Request, res: Response): Promise<void> 
     return;
   }
 
-  const userId = new mongoose.Types.ObjectId(req.user.userId);
+  let profile;
 
-  try {
-    const user = await User.findById(req.user.userId);
-
-    if (!user) {
-      res.status(404).json({ message: 'User not found' });
+  switch (req.user.role) {
+    case UserRole.DJ:
+      profile = await DjProfile.findOneAndUpdate(
+        { user: req.user.userId },
+        { $set: parsedPayload.data.profile },
+        { new: true, runValidators: true },
+      );
+      break;
+    case UserRole.PLANNER:
+      profile = await PlannerProfile.findOneAndUpdate(
+        { user: req.user.userId },
+        { $set: parsedPayload.data.profile },
+        { new: true, runValidators: true },
+      );
+      break;
+    case UserRole.MUSIC_LOVER:
+      profile = await LoverProfile.findOneAndUpdate(
+        { user: req.user.userId },
+        { $set: parsedPayload.data.profile },
+        { new: true, runValidators: true },
+      );
+      break;
+    default:
+      res.status(403).json({ message: 'Forbidden: unsupported role for profile updates' });
       return;
-    }
-
-    let createdProfile;
-
-    switch (parsedPayload.data.role) {
-      case UserRole.DJ: {
-        const existingProfile = await DjProfile.findOne({ user: userId }).lean();
-        if (existingProfile) {
-          res.status(409).json({ message: 'DJ profile already exists for this user' });
-          return;
-        }
-
-        createdProfile = await DjProfile.create({
-          user: userId,
-          ...parsedPayload.data.profile,
-          availabilityStatus:
-            parsedPayload.data.profile.availabilityStatus ?? undefined,
-        });
-        break;
-      }
-      case UserRole.PLANNER: {
-        const existingProfile = await PlannerProfile.findOne({ user: userId }).lean();
-        if (existingProfile) {
-          res.status(409).json({ message: 'Planner profile already exists for this user' });
-          return;
-        }
-
-        createdProfile = await PlannerProfile.create({
-          user: userId,
-          ...parsedPayload.data.profile,
-        });
-        break;
-      }
-      case UserRole.MUSIC_LOVER: {
-        const existingProfile = await LoverProfile.findOne({ user: userId }).lean();
-        if (existingProfile) {
-          res.status(409).json({ message: 'Music lover profile already exists for this user' });
-          return;
-        }
-
-        createdProfile = await LoverProfile.create({
-          user: userId,
-          ...parsedPayload.data.profile,
-        });
-        break;
-      }
-      default:
-        res.status(403).json({ message: 'Forbidden: unsupported role for profile creation' });
-        return;
-    }
-
-    user.onboardingCompleted = true;
-    await user.save();
-
-    res.status(201).json({
-      profile: serializeDocument(createdProfile.toObject()),
-    });
-  } catch (error) {
-    const maybeMongoError = error as { code?: number };
-
-    if (maybeMongoError.code === 11000) {
-      res.status(409).json({ message: 'Profile already exists for this user' });
-      return;
-    }
-
-    res.status(500).json({ message: 'Internal server error' });
   }
+
+  if (!profile) {
+    res.status(404).json({ message: 'Profile not found' });
+    return;
+  }
+
+  res.status(200).json({ profile: profile.toObject() });
 };

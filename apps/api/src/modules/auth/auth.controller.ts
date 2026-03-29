@@ -13,6 +13,26 @@ const deriveNameFromEmail = (email: string): string => {
   return localPart.trim() || 'mixmatch-user';
 };
 
+const serializeUser = (
+  user: {
+    id: string;
+    name: string;
+    email: string;
+    role: string;
+    onboardingCompleted: boolean;
+    createdAt?: Date;
+    updatedAt?: Date;
+  },
+) => ({
+  id: user.id,
+  name: user.name,
+  email: user.email,
+  role: user.role,
+  onboardingCompleted: user.onboardingCompleted,
+  createdAt: user.createdAt,
+  updatedAt: user.updatedAt,
+});
+
 export const register = async (req: Request, res: Response): Promise<void> => {
   const parsedPayload = registerSchema.safeParse(req.body);
 
@@ -46,15 +66,7 @@ export const register = async (req: Request, res: Response): Promise<void> => {
 
     sendSuccess(res, 201, {
       token,
-      user: {
-        id: createdUser.id,
-        name: createdUser.name,
-        email: createdUser.email,
-        role: createdUser.role,
-        onboardingCompleted: createdUser.onboardingCompleted,
-        createdAt: createdUser.createdAt,
-        updatedAt: createdUser.updatedAt,
-      },
+      user: serializeUser(createdUser),
     });
   } catch (error) {
     const maybeMongoError = error as { code?: number };
@@ -98,15 +110,7 @@ export const login = async (req: Request, res: Response): Promise<void> => {
 
     sendSuccess(res, 200, {
       token,
-      user: {
-        id: existingUser.id,
-        name: existingUser.name,
-        email: existingUser.email,
-        role: existingUser.role,
-        onboardingCompleted: existingUser.onboardingCompleted,
-        createdAt: existingUser.createdAt,
-        updatedAt: existingUser.updatedAt,
-      },
+      user: serializeUser(existingUser),
     });
   } catch {
     sendError(res, 500, 'Internal server error');
@@ -146,6 +150,31 @@ export const updateOnboardingStatus = async (
         createdAt: user.createdAt,
         updatedAt: user.updatedAt,
       },
+    });
+  } catch {
+    res.status(500).json({ message: 'Internal server error' });
+  }
+};
+
+export const me = async (
+  req: Request & { user?: AuthenticatedRequestUser },
+  res: Response,
+): Promise<void> => {
+  if (!req.user?.userId) {
+    res.status(401).json({ message: 'Unauthorized: missing or invalid token' });
+    return;
+  }
+
+  try {
+    const user = await User.findById(req.user.userId);
+
+    if (!user) {
+      res.status(404).json({ message: 'User not found' });
+      return;
+    }
+
+    res.status(200).json({
+      user: serializeUser(user),
     });
   } catch {
     res.status(500).json({ message: 'Internal server error' });

@@ -1,3 +1,8 @@
+'use client';
+
+import { FormEvent, useEffect, useState } from 'react';
+import { useAuthStore } from '@/store/auth.store';
+
 interface DjProfileResponse {
   profile?: {
     id: string;

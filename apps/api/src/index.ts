@@ -1,6 +1,7 @@
 import connectDB from './config/db';
 import { apiEnv } from './config/env';
 import authRouter from './modules/auth/auth.routes';
+import paymentsRouter from './modules/payments/payments.routes';
 import bookingsRouter from './modules/bookings/bookings.routes';
 import apiV1Router from './routes/api-v1.router';
 import { notFoundHandler } from './middleware/not-found.middleware';
@@ -14,6 +15,7 @@ const port = apiEnv.port;
 app.use(cors({ origin: apiEnv.corsOrigin }));
 app.use(express.json());
 app.use('/auth', authRouter);
+app.use('/payments', paymentsRouter);
 app.use('/discover', discoveryRouter);
 app.use('/profiles', profilesRouter);
 

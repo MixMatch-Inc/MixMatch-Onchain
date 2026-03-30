@@ -2,7 +2,7 @@ import {
   TransactionBuilder,
   BASE_FEE,
   Operation,
-  TimeoutInfinite,
+  Memo,
 } from '@stellar/stellar-sdk';
 import { server, serverKeypair, NETWORK_PASSPHRASE } from '../config/stellar';
 
@@ -21,6 +21,10 @@ export const buildAndSubmitTx = async (
     });
 
     operations.forEach((op) => builder.addOperation(op));
+
+    if (memoText && memoText.trim().length > 0) {
+      builder.addMemo(Memo.text(memoText.trim().slice(0, 28)));
+    }
 
     builder.setTimeout(30);
 

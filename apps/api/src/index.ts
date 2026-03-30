@@ -1,6 +1,7 @@
 import connectDB from './config/db';
 import { apiEnv } from './config/env';
 import authRouter from './modules/auth/auth.routes';
+import bookingsRouter from './modules/bookings/bookings.routes';
 import apiV1Router from './routes/api-v1.router';
 import { notFoundHandler } from './middleware/not-found.middleware';
 import { errorHandler } from './middleware/error.middleware';

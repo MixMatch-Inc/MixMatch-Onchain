@@ -1,5 +1,6 @@
 import express from 'express';
 import { getNetworkConfig, serverKeypair } from './config/stellar';
+import { stellarEnv } from './config/env';
 import { ensureFunded } from './services/friendbot';
 import { sendPayment } from './services/payment.service';
 import { checkAccount } from './services/account.service';
@@ -8,7 +9,9 @@ import { createEscrow } from './services/escrow.service';
 import { claimFunds } from './services/claim.service';
 
 const app = express();
-const port = process.env.PORT || 3002;
+const port = stellarEnv.port;
+
+app.use(express.json());
 
 app.use(express.json());
 

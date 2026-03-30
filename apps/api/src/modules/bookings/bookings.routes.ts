@@ -1,9 +1,9 @@
 import { Router } from 'express';
 import { requireAuth } from '../../middleware/auth.middleware';
-import { updateBookingStatus } from './bookings.controller';
+import { listCurrentUserBookings } from './bookings.controller';
 
 const bookingsRouter = Router();
 
-bookingsRouter.patch('/:id/status', requireAuth, updateBookingStatus);
+bookingsRouter.get('/me', requireAuth, listCurrentUserBookings);
 
 export default bookingsRouter;

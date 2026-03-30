@@ -47,9 +47,45 @@ pnpm install
 
 ```
 
+### 1.5 Configure Environment Variables
+
+Copy each checked-in example file before starting the services:
+
+```bash
+cp .env.example .env
+cp apps/api/.env.example apps/api/.env
+cp apps/web/.env.example apps/web/.env.local
+cp apps/stellar-service/.env.example apps/stellar-service/.env
+```
+
+Required values:
+
+- `apps/api/.env`
+  - `MONGO_URI`
+  - `JWT_SECRET`
+- `apps/web/.env.local`
+  - `NEXT_PUBLIC_API_URL`
+- `apps/stellar-service/.env`
+  - `STELLAR_SEC_KEY`
+  - `STELLAR_NETWORK`
+  - `STELLAR_HORIZON_URL`
+
+The API and Stellar service now fail fast during startup when required
+environment variables are missing.
+
 ### 2. Run Development Server
 
 This command starts **all** applications (Web, API, and Stellar Service) in parallel.
+
+If you need MongoDB locally, start it first:
+
+```bash
+docker compose up -d mongo
+docker compose ps
+```
+
+The API will use `mongodb://127.0.0.1:27017/mixmatch` by default when `MONGO_URI`
+is not set, which matches the local Docker Compose service.
 
 ```bash
 pnpm dev
@@ -93,8 +129,20 @@ Run these from the **root** folder:
 | `pnpm dev`   | Starts all apps in development mode.         |
 | `pnpm build` | Builds all apps and packages for production. |
 | `pnpm lint`  | Runs ESLint across the entire monorepo.      |
-| `pnpm test`  | Runs tests for all packages (when added).    |
+| `pnpm test`  | Runs package tests when a workspace exposes them. |
 | `pnpm clean` | (Optional) Clears Turbo cache and artifacts. |
+
+Demo data:
+
+```bash
+pnpm --filter api seed:demo
+```
+
+Seeded credentials:
+
+- `dj.demo@mixmatch.io` / `mixmatch123`
+- `planner.demo@mixmatch.io` / `mixmatch123`
+- `fan.demo@mixmatch.io` / `mixmatch123`
 
 ---
 
@@ -143,6 +191,17 @@ pnpm install
 
 ```
 
+**Local MongoDB is not ready**
+
+```bash
+docker compose up -d mongo
+docker compose logs mongo
+docker compose down
+```
+
+The MongoDB container includes a healthcheck so `docker compose ps` shows when it
+is actually ready to accept connections.
+
 **Git is ignoring files I want to commit**
 We strictly ignore `node_modules` and build artifacts (`.next`, `dist`).
 
@@ -164,3 +223,7 @@ git commit -m "fix: clear cached node_modules"
 2. Keep shared logic (types, configs) in `packages/`.
 3. Do not edit `apps/*/node_modules` manually.
 
+## Phase 1 References
+
+- Architecture: `docs/phase-1-architecture.md`
+- Demo script: `docs/phase-1-demo.md`

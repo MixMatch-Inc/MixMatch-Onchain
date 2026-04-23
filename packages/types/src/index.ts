@@ -1,8 +1,8 @@
 export enum UserRole {
-  DJ = 'DJ',
-  PLANNER = 'PLANNER',
-  MUSIC_LOVER = 'MUSIC_LOVER',
-  ADMIN = 'ADMIN',
+  DJ = "DJ",
+  PLANNER = "PLANNER",
+  MUSIC_LOVER = "MUSIC_LOVER",
+  ADMIN = "ADMIN",
 }
 
 export enum AccountStatus {
@@ -26,34 +26,34 @@ export enum VisibilityPreference {
 }
 
 export enum DjGenre {
-  AFROBEATS = 'AFROBEATS',
-  AMAPIANO = 'AMAPIANO',
-  DANCEHALL = 'DANCEHALL',
-  DEEP_HOUSE = 'DEEP_HOUSE',
-  DRUM_AND_BASS = 'DRUM_AND_BASS',
-  EDM = 'EDM',
-  HIP_HOP = 'HIP_HOP',
-  HOUSE = 'HOUSE',
-  LATIN = 'LATIN',
-  POP = 'POP',
-  RNB = 'RNB',
-  TECHNO = 'TECHNO',
-  TRAP = 'TRAP',
+  AFROBEATS = "AFROBEATS",
+  AMAPIANO = "AMAPIANO",
+  DANCEHALL = "DANCEHALL",
+  DEEP_HOUSE = "DEEP_HOUSE",
+  DRUM_AND_BASS = "DRUM_AND_BASS",
+  EDM = "EDM",
+  HIP_HOP = "HIP_HOP",
+  HOUSE = "HOUSE",
+  LATIN = "LATIN",
+  POP = "POP",
+  RNB = "RNB",
+  TECHNO = "TECHNO",
+  TRAP = "TRAP",
 }
 
 export enum AvailabilityStatus {
-  AVAILABLE = 'AVAILABLE',
-  LIMITED = 'LIMITED',
-  UNAVAILABLE = 'UNAVAILABLE',
+  AVAILABLE = "AVAILABLE",
+  LIMITED = "LIMITED",
+  UNAVAILABLE = "UNAVAILABLE",
 }
 
 export enum EventType {
-  CLUB = 'CLUB',
-  CONCERT = 'CONCERT',
-  CORPORATE = 'CORPORATE',
-  FESTIVAL = 'FESTIVAL',
-  PRIVATE_PARTY = 'PRIVATE_PARTY',
-  WEDDING = 'WEDDING',
+  CLUB = "CLUB",
+  CONCERT = "CONCERT",
+  CORPORATE = "CORPORATE",
+  FESTIVAL = "FESTIVAL",
+  PRIVATE_PARTY = "PRIVATE_PARTY",
+  WEDDING = "WEDDING",
 }
 
 export interface IUser {
@@ -100,7 +100,7 @@ export interface IPricingRange {
 }
 
 export type GeoPoint = {
-  type: 'Point';
+  type: "Point";
   coordinates: [number, number];
 };
 
@@ -254,17 +254,17 @@ export interface PaginatedResponseDto<TItem> {
 }
 
 export enum BookingStatus {
-  PENDING = 'PENDING',
-  ACCEPTED = 'ACCEPTED',
-  DECLINED = 'DECLINED',
-  CANCELLED = 'CANCELLED',
+  PENDING = "PENDING",
+  ACCEPTED = "ACCEPTED",
+  DECLINED = "DECLINED",
+  CANCELLED = "CANCELLED",
 }
 
 export enum PaymentStatus {
-  NOT_STARTED = 'NOT_STARTED',
-  PENDING = 'PENDING',
-  PAID = 'PAID',
-  FAILED = 'FAILED',
+  NOT_STARTED = "NOT_STARTED",
+  PENDING = "PENDING",
+  PAID = "PAID",
+  FAILED = "FAILED",
 }
 
 export interface BookingSummaryDto {
@@ -299,3 +299,7 @@ export interface PaymentIntentDto {
   amount: number;
   memo?: string;
 }
+
+// Export all error types
+export * from "./errors";
+export * from "./client-errors";

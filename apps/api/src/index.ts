@@ -8,12 +8,14 @@ import { discoveryRouter } from './domains/discovery';
 import { paymentsRouter } from './domains/payments';
 import { notFoundHandler } from './middleware/not-found.middleware';
 import { errorHandler } from './middleware/error.middleware';
+import { contextMiddleware } from './middleware/context.middleware';
 
 const app = express();
 const port = apiEnv.port;
 
 app.use(cors({ origin: apiEnv.corsOrigin }));
 app.use(express.json());
+app.use(contextMiddleware);
 app.use('/auth', identityRouter);
 app.use('/bookings', journeysRouter);
 app.use('/discover', discoveryRouter);

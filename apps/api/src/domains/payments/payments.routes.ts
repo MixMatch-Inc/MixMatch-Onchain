@@ -5,12 +5,14 @@ import {
   createStellarPayment,
   StellarGatewayError,
 } from './stellar-gateway';
+import { getPropagationHeaders } from '../../utils/context';
 
 const paymentsRouter = Router();
 
 paymentsRouter.get('/stellar/account/:publicKey', requireAuth, async (req, res) => {
   try {
-    const result = await checkStellarAccount(req.params.publicKey);
+    const headers = getPropagationHeaders(req.context);
+    const result = await checkStellarAccount(req.params.publicKey, headers);
     res.status(200).json(result);
   } catch (error) {
     if (error instanceof StellarGatewayError) {
@@ -24,7 +26,8 @@ paymentsRouter.get('/stellar/account/:publicKey', requireAuth, async (req, res) 
 
 paymentsRouter.post('/stellar/payment', requireAuth, async (req, res) => {
   try {
-    const result = await createStellarPayment(req.body);
+    const headers = getPropagationHeaders(req.context);
+    const result = await createStellarPayment(req.body, headers);
     res.status(200).json(result);
   } catch (error) {
     if (error instanceof StellarGatewayError) {

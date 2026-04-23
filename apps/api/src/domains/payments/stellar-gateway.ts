@@ -80,11 +80,14 @@ export interface StellarPaymentResponse {
   message: string;
 }
 
-export const checkStellarAccount = (publicKey: string) =>
-  stellarGatewayRequest<StellarAccountResponse>(`/account/${publicKey}`);
+export const checkStellarAccount = (publicKey: string, headers?: Record<string, string>) =>
+  stellarGatewayRequest<StellarAccountResponse>(`/account/${publicKey}`, {
+    headers,
+  });
 
-export const createStellarPayment = (input: StellarPaymentRequest) =>
+export const createStellarPayment = (input: StellarPaymentRequest, headers?: Record<string, string>) =>
   stellarGatewayRequest<StellarPaymentResponse>('/payment', {
     method: 'POST',
     body: JSON.stringify(input),
+    headers,
   });

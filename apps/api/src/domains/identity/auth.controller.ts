@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import bcrypt from "bcryptjs";
-import User from "../users/user.model";
+import { UserRole } from "@mixmatch/types";
+import { container } from "../../config/di";
 import { generateToken } from "../../services/jwt.service";
 import { loginSchema, registerSchema } from "./auth.validation";
 import { AuthenticatedRequestUser } from "../../middleware/auth.middleware";
@@ -43,7 +44,7 @@ export const register = async (req: Request, res: Response): Promise<void> => {
 
   try {
     const normalizedEmail = email.toLowerCase();
-    const existingUser = await User.findOne({ email: normalizedEmail }).lean();
+    const existingUser = await container.userRepository.existsByEmail(normalizedEmail);
 
     if (existingUser) {
       throw AuthError.emailAlreadyExists(normalizedEmail);
@@ -51,7 +52,7 @@ export const register = async (req: Request, res: Response): Promise<void> => {
 
     const passwordHash = await bcrypt.hash(password, SALT_ROUNDS);
 
-    const createdUser = await User.create({
+    const createdUser = await container.userRepository.create({
       name: deriveNameFromEmail(normalizedEmail),
       email: normalizedEmail,
       passwordHash,
@@ -59,7 +60,7 @@ export const register = async (req: Request, res: Response): Promise<void> => {
       onboardingCompleted: false,
     });
 
-    const token = generateToken(createdUser.id, createdUser.role);
+    const token = generateToken(createdUser.id, createdUser.role as UserRole);
 
     sendSuccess(res, 201, {
       token,
@@ -93,7 +94,7 @@ export const login = async (req: Request, res: Response): Promise<void> => {
 
   try {
     const normalizedEmail = email.toLowerCase();
-    const existingUser = await User.findOne({ email: normalizedEmail });
+    const existingUser = await container.userRepository.findByEmail(normalizedEmail);
 
     if (!existingUser) {
       throw AuthError.invalidCredentials();
@@ -108,7 +109,7 @@ export const login = async (req: Request, res: Response): Promise<void> => {
       throw AuthError.invalidCredentials();
     }
 
-    const token = generateToken(existingUser.id, existingUser.role);
+    const token = generateToken(existingUser.id, existingUser.role as UserRole);
 
     sendSuccess(res, 200, {
       token,
@@ -137,11 +138,9 @@ export const updateOnboardingStatus = async (
   const completed = Boolean(req.body?.onboardingCompleted);
 
   try {
-    const user = await User.findByIdAndUpdate(
-      req.user.userId,
-      { onboardingCompleted: completed },
-      { new: true },
-    );
+    const user = await container.userRepository.update(req.user.userId, {
+      onboardingCompleted: completed,
+    });
 
     if (!user) {
       res.status(404).json({ message: "User not found" });
@@ -174,7 +173,7 @@ export const me = async (
   }
 
   try {
-    const user = await User.findById(req.user.userId);
+    const user = await container.userRepository.findById(req.user.userId);
 
     if (!user) {
       res.status(404).json({ message: "User not found" });

@@ -1,6 +1,16 @@
 import dotenv from 'dotenv';
+import { stellarManifest, validateServiceEnv, formatValidationErrors } from '@mixmatch/env-manifest';
 
 dotenv.config();
+
+// Validate environment variables on startup
+const validationResult = validateServiceEnv(stellarManifest, process.env);
+
+if (!validationResult.valid) {
+  const errorMessage = formatValidationErrors(stellarManifest, validationResult);
+  console.error(errorMessage);
+  process.exit(1);
+}
 
 const requireEnv = (name: string): string => {
   const value = process.env[name]?.trim();

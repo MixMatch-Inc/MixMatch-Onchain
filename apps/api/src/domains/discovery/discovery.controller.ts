@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
-import { IDjProfileDocument } from '../profiles/dj.model';
-import DjProfile from '../profiles/dj.model';
-import User from '../users/user.model';
+import { IDjProfileDocument } from './dj.model';
+import DjProfile from './dj.model';
+import User from '../identity/user.model';
 import {
   PaginationOptions,
   PaginatedResponse,
@@ -11,7 +11,7 @@ import {
   SortDirection,
   PaginationError,
 } from '../../utils/pagination';
-import { RevealService } from '../profiles/reveal.service';
+import { RevealService } from './reveal.service';
 
 const serializeDj = (
   profile: Pick<

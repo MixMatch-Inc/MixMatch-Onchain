@@ -1,5 +1,5 @@
 {
-  "extends": "@mixmatch/config/tsconfig.node.json",
+  "extends": "@mixmatch/config/base.json",
   "compilerOptions": {
     "outDir": "dist",
     "rootDir": "src"

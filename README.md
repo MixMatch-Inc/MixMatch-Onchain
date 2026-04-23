@@ -58,6 +58,20 @@ cp apps/web/.env.example apps/web/.env.local
 cp apps/stellar-service/.env.example apps/stellar-service/.env
 ```
 
+To see all required environment variables for a service:
+
+```bash
+pnpm --filter @mixmatch/env-manifest env:list api
+pnpm --filter @mixmatch/env-manifest env:list web
+pnpm --filter @mixmatch/env-manifest env:list stellar-service
+```
+
+To validate environment variables for all services:
+
+```bash
+pnpm --filter @mixmatch/env-manifest env:check
+```
+
 Required values:
 
 - `apps/api/.env`
@@ -71,7 +85,8 @@ Required values:
   - `STELLAR_HORIZON_URL`
 
 The API and Stellar service now fail fast during startup when required
-environment variables are missing.
+environment variables are missing. The validation uses a shared manifest
+that defines required, optional, and secret variables for each service.
 
 ### 2. Run Development Server
 

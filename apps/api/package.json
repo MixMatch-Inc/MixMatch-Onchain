@@ -10,6 +10,7 @@
     "test": "node --import tsx --test tests/**/*.test.ts"
   },
   "dependencies": {
+    "@mixmatch/env-manifest": "workspace:*",
     "@mixmatch/types": "workspace:*",
     "bcryptjs": "^3.0.3",
     "cors": "^2.8.6",

@@ -1,29 +1,29 @@
-import { Request, Response } from 'express';
-import bcrypt from 'bcryptjs';
-import { container } from '../../config/di';
-import { generateToken } from '../../services/jwt.service';
-import { loginSchema, registerSchema } from './auth.validation';
-import { AuthenticatedRequestUser } from '../../middleware/auth.middleware';
-import { sendError, sendSuccess, zodDetails } from '../../utils/api-response';
+import { Request, Response } from "express";
+import bcrypt from "bcryptjs";
+import { UserRole } from "@mixmatch/types";
+import { container } from "../../config/di";
+import { generateToken } from "../../services/jwt.service";
+import { loginSchema, registerSchema } from "./auth.validation";
+import { AuthenticatedRequestUser } from "../../middleware/auth.middleware";
+import { sendSuccess } from "../../utils/api-response";
+import { AuthError, ValidationError } from "../../utils/errors";
 
 const SALT_ROUNDS = 10;
 
 const deriveNameFromEmail = (email: string): string => {
-  const localPart = email.split('@')[0] || 'mixmatch-user';
-  return localPart.trim() || 'mixmatch-user';
+  const localPart = email.split("@")[0] || "mixmatch-user";
+  return localPart.trim() || "mixmatch-user";
 };
 
-const serializeUser = (
-  user: {
-    id: string;
-    name: string;
-    email: string;
-    role: string;
-    onboardingCompleted: boolean;
-    createdAt?: Date;
-    updatedAt?: Date;
-  },
-) => ({
+const serializeUser = (user: {
+  id: string;
+  name: string;
+  email: string;
+  role: string;
+  onboardingCompleted: boolean;
+  createdAt?: Date;
+  updatedAt?: Date;
+}) => ({
   id: user.id,
   name: user.name,
   email: user.email,
@@ -37,8 +37,7 @@ export const register = async (req: Request, res: Response): Promise<void> => {
   const parsedPayload = registerSchema.safeParse(req.body);
 
   if (!parsedPayload.success) {
-    sendError(res, 400, 'Validation failed', zodDetails(parsedPayload.error));
-    return;
+    throw ValidationError.invalidInput("body", req.body, "Validation failed");
   }
 
   const { email, password, role } = parsedPayload.data;
@@ -48,8 +47,7 @@ export const register = async (req: Request, res: Response): Promise<void> => {
     const existingUser = await container.userRepository.existsByEmail(normalizedEmail);
 
     if (existingUser) {
-      sendError(res, 409, 'Email is already registered');
-      return;
+      throw AuthError.emailAlreadyExists(normalizedEmail);
     }
 
     const passwordHash = await bcrypt.hash(password, SALT_ROUNDS);
@@ -62,21 +60,26 @@ export const register = async (req: Request, res: Response): Promise<void> => {
       onboardingCompleted: false,
     });
 
-    const token = generateToken(createdUser.id, createdUser.role);
+    const token = generateToken(createdUser.id, createdUser.role as UserRole);
 
     sendSuccess(res, 201, {
       token,
       user: serializeUser(createdUser),
     });
   } catch (error) {
-    const maybeMongoError = error as { code?: number };
-
-    if (maybeMongoError.code === 11000) {
-      sendError(res, 409, 'Email is already registered');
-      return;
+    // Re-throw MixMatch errors to be handled by middleware
+    if (error instanceof Error && "code" in error) {
+      throw error;
     }
 
-    sendError(res, 500, 'Internal server error');
+    // Handle MongoDB duplicate key error
+    const maybeMongoError = error as { code?: number };
+    if (maybeMongoError.code === 11000) {
+      throw AuthError.emailAlreadyExists(email);
+    }
+
+    // Unknown errors will be handled by the error middleware
+    throw error;
   }
 };
 
@@ -84,8 +87,7 @@ export const login = async (req: Request, res: Response): Promise<void> => {
   const parsedPayload = loginSchema.safeParse(req.body);
 
   if (!parsedPayload.success) {
-    sendError(res, 400, 'Validation failed', zodDetails(parsedPayload.error));
-    return;
+    throw ValidationError.invalidInput("body", req.body, "Validation failed");
   }
 
   const { email, password } = parsedPayload.data;
@@ -95,25 +97,32 @@ export const login = async (req: Request, res: Response): Promise<void> => {
     const existingUser = await container.userRepository.findByEmail(normalizedEmail);
 
     if (!existingUser) {
-      sendError(res, 401, 'Invalid email or password');
-      return;
+      throw AuthError.invalidCredentials();
     }
 
-    const passwordMatches = await bcrypt.compare(password, existingUser.passwordHash);
+    const passwordMatches = await bcrypt.compare(
+      password,
+      existingUser.passwordHash,
+    );
 
     if (!passwordMatches) {
-      sendError(res, 401, 'Invalid email or password');
-      return;
+      throw AuthError.invalidCredentials();
     }
 
-    const token = generateToken(existingUser.id, existingUser.role);
+    const token = generateToken(existingUser.id, existingUser.role as UserRole);
 
     sendSuccess(res, 200, {
       token,
       user: serializeUser(existingUser),
     });
-  } catch {
-    sendError(res, 500, 'Internal server error');
+  } catch (error) {
+    // Re-throw MixMatch errors to be handled by middleware
+    if (error instanceof Error && "code" in error) {
+      throw error;
+    }
+
+    // Unknown errors will be handled by the error middleware
+    throw error;
   }
 };
 
@@ -122,7 +131,7 @@ export const updateOnboardingStatus = async (
   res: Response,
 ): Promise<void> => {
   if (!req.user?.userId) {
-    res.status(401).json({ message: 'Unauthorized: missing or invalid token' });
+    res.status(401).json({ message: "Unauthorized: missing or invalid token" });
     return;
   }
 
@@ -134,7 +143,7 @@ export const updateOnboardingStatus = async (
     });
 
     if (!user) {
-      res.status(404).json({ message: 'User not found' });
+      res.status(404).json({ message: "User not found" });
       return;
     }
 
@@ -150,7 +159,7 @@ export const updateOnboardingStatus = async (
       },
     });
   } catch {
-    res.status(500).json({ message: 'Internal server error' });
+    res.status(500).json({ message: "Internal server error" });
   }
 };
 
@@ -159,7 +168,7 @@ export const me = async (
   res: Response,
 ): Promise<void> => {
   if (!req.user?.userId) {
-    res.status(401).json({ message: 'Unauthorized: missing or invalid token' });
+    res.status(401).json({ message: "Unauthorized: missing or invalid token" });
     return;
   }
 
@@ -167,7 +176,7 @@ export const me = async (
     const user = await container.userRepository.findById(req.user.userId);
 
     if (!user) {
-      res.status(404).json({ message: 'User not found' });
+      res.status(404).json({ message: "User not found" });
       return;
     }
 
@@ -175,6 +184,6 @@ export const me = async (
       user: serializeUser(user),
     });
   } catch {
-    res.status(500).json({ message: 'Internal server error' });
+    res.status(500).json({ message: "Internal server error" });
   }
 };

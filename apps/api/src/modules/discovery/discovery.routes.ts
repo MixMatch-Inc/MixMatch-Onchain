@@ -1,13 +1,10 @@
 import { Router } from 'express';
-import { listDjs } from './discovery.controller';
+import { requireAuth } from '../../middleware/auth.middleware';
+import { listDjs, getDjProfile } from './discovery.controller';
 
 const discoveryRouter = Router();
 
-discoveryRouter.get('/djs', listDjs);
-import { getDjProfile } from './discovery.controller';
-
-const discoveryRouter = Router();
-
-discoveryRouter.get('/djs/:id', getDjProfile);
+discoveryRouter.get('/djs', requireAuth, listDjs);
+discoveryRouter.get('/djs/:id', requireAuth, getDjProfile);
 
 export default discoveryRouter;

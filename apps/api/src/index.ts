@@ -6,6 +6,7 @@ import bookingsRouter from './modules/bookings/bookings.routes';
 import apiV1Router from './routes/api-v1.router';
 import { notFoundHandler } from './middleware/not-found.middleware';
 import { errorHandler } from './middleware/error.middleware';
+import { contextMiddleware } from './middleware/context.middleware';
 import discoveryRouter from './modules/discovery/discovery.routes';
 import profilesRouter from './modules/profiles/profiles.routes';
 
@@ -14,6 +15,7 @@ const port = apiEnv.port;
 
 app.use(cors({ origin: apiEnv.corsOrigin }));
 app.use(express.json());
+app.use(contextMiddleware);
 app.use('/auth', authRouter);
 app.use('/payments', paymentsRouter);
 app.use('/discover', discoveryRouter);

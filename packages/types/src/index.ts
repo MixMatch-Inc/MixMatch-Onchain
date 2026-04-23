@@ -5,6 +5,26 @@ export enum UserRole {
   ADMIN = 'ADMIN',
 }
 
+export enum AccountStatus {
+  ACTIVE = 'ACTIVE',
+  SUSPENDED = 'SUSPENDED',
+  BANNED = 'BANNED',
+  PENDING_VERIFICATION = 'PENDING_VERIFICATION',
+}
+
+export enum ModerationState {
+  CLEAR = 'CLEAR',
+  UNDER_REVIEW = 'UNDER_REVIEW',
+  RESTRICTED = 'RESTRICTED',
+  BANNED = 'BANNED',
+}
+
+export enum VisibilityPreference {
+  PUBLIC = 'PUBLIC',
+  PRIVATE = 'PRIVATE',
+  FRIENDS_ONLY = 'FRIENDS_ONLY',
+}
+
 export enum DjGenre {
   AFROBEATS = 'AFROBEATS',
   AMAPIANO = 'AMAPIANO',
@@ -44,6 +64,26 @@ export interface IUser {
   onboardingCompleted: boolean;
   createdAt: Date;
   updatedAt: Date;
+}
+
+export interface IPrivacySettings {
+  blindListeningEligible: boolean;
+  profileRevealAllowed: boolean;
+  showOnlineStatus: boolean;
+  allowDirectMessages: boolean;
+  visibilityPreference: VisibilityPreference;
+}
+
+export interface IUserAggregate extends IUser {
+  accountStatus: AccountStatus;
+  timezone: string;
+  locale: string;
+  visibilityPreference: VisibilityPreference;
+  ageGatePassed: boolean;
+  ageGatePassedAt?: Date;
+  moderationState: ModerationState;
+  privacySettings: IPrivacySettings;
+  lastActiveAt: Date;
 }
 
 export interface ISocialLinks {
@@ -95,6 +135,37 @@ export interface ILoverProfile {
   favoriteGenres: DjGenre[];
   preferredVibes: string[];
   followedDjs: string[];
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export enum RevealPhase {
+  BLIND = 'BLIND',
+  ANONYMOUS = 'ANONYMOUS',
+  BASIC = 'BASIC',
+  FULL = 'FULL',
+  BLOCKED = 'BLOCKED',
+}
+
+export enum RevealTrigger {
+  MUTUAL_FOLLOW = 'MUTUAL_FOLLOW',
+  MESSAGE_SENT = 'MESSAGE_SENT',
+  BOOKING_REQUEST = 'BOOKING_REQUEST',
+  ADMIN_OVERRIDE = 'ADMIN_OVERRIDE',
+  TIME_BASED = 'TIME_BASED',
+}
+
+export interface IRevealState {
+  id: string;
+  viewerId: string;
+  targetProfileId: string;
+  targetProfileType: 'dj' | 'planner' | 'lover';
+  currentPhase: RevealPhase;
+  revealTriggers: RevealTrigger[];
+  revealTimestamps: Record<RevealPhase, Date | null>;
+  blockedReason?: string;
+  blockedBy?: string;
+  blockedAt?: Date;
   createdAt: Date;
   updatedAt: Date;
 }

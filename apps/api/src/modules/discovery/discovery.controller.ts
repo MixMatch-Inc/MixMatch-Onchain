@@ -11,6 +11,7 @@ import {
   SortDirection,
   PaginationError,
 } from '../../utils/pagination';
+import { RevealService } from '../profiles/reveal.service';
 
 const serializeDj = (
   profile: Pick<
@@ -24,6 +25,7 @@ const serializeDj = (
     | 'location'
     | 'availabilityStatus'
     | 'socialLinks'
+    | 'createdAt'
   >,
 ) => ({
   id: String(profile._id),
@@ -35,6 +37,7 @@ const serializeDj = (
   location: profile.location,
   availabilityStatus: profile.availabilityStatus,
   socialLinks: profile.socialLinks,
+  createdAt: profile.createdAt,
 });
 
 export const getDjProfile = async (req: Request, res: Response): Promise<void> => {
@@ -83,12 +86,27 @@ export const listDjs = async (req: Request, res: Response): Promise<void> => {
       (profile.user as any)?.onboardingCompleted
     );
 
+    // Get reveal states for each profile
+    const viewerId = req.user!.userId;
+    const revealStates = await Promise.all(
+      filteredProfiles.map(profile =>
+        RevealService.getRevealState(viewerId, profile._id.toString())
+      )
+    );
+
+    // Redact profiles based on reveal state
+    const redactedProfiles = filteredProfiles.map((profile, index) => {
+      const revealState = revealStates[index];
+      const phase = revealState?.currentPhase || 'BLIND';
+      return RevealService.redactProfile(serializeDj(profile), phase);
+    });
+
     const paginatedResponse = createPaginatedResponse(
-      filteredProfiles.map(serializeDj),
+      redactedProfiles,
       options,
       (profile) => ({
         field: 'createdAt',
-        value: (profile as any).createdAt,
+        value: profile.createdAt,
         direction,
         id: profile.id,
       })

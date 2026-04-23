@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
-import User from './user.model';
+import { container } from '../../config/di';
 import { generateToken } from '../../services/jwt.service';
 import { loginSchema, registerSchema } from './auth.validation';
 import { AuthenticatedRequestUser } from '../../middleware/auth.middleware';
@@ -45,7 +45,7 @@ export const register = async (req: Request, res: Response): Promise<void> => {
 
   try {
     const normalizedEmail = email.toLowerCase();
-    const existingUser = await User.findOne({ email: normalizedEmail }).lean();
+    const existingUser = await container.userRepository.existsByEmail(normalizedEmail);
 
     if (existingUser) {
       sendError(res, 409, 'Email is already registered');
@@ -54,7 +54,7 @@ export const register = async (req: Request, res: Response): Promise<void> => {
 
     const passwordHash = await bcrypt.hash(password, SALT_ROUNDS);
 
-    const createdUser = await User.create({
+    const createdUser = await container.userRepository.create({
       name: deriveNameFromEmail(normalizedEmail),
       email: normalizedEmail,
       passwordHash,
@@ -92,7 +92,7 @@ export const login = async (req: Request, res: Response): Promise<void> => {
 
   try {
     const normalizedEmail = email.toLowerCase();
-    const existingUser = await User.findOne({ email: normalizedEmail });
+    const existingUser = await container.userRepository.findByEmail(normalizedEmail);
 
     if (!existingUser) {
       sendError(res, 401, 'Invalid email or password');
@@ -129,11 +129,9 @@ export const updateOnboardingStatus = async (
   const completed = Boolean(req.body?.onboardingCompleted);
 
   try {
-    const user = await User.findByIdAndUpdate(
-      req.user.userId,
-      { onboardingCompleted: completed },
-      { new: true },
-    );
+    const user = await container.userRepository.update(req.user.userId, {
+      onboardingCompleted: completed,
+    });
 
     if (!user) {
       res.status(404).json({ message: 'User not found' });
@@ -166,7 +164,7 @@ export const me = async (
   }
 
   try {
-    const user = await User.findById(req.user.userId);
+    const user = await container.userRepository.findById(req.user.userId);
 
     if (!user) {
       res.status(404).json({ message: 'User not found' });

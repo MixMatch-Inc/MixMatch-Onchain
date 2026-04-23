@@ -237,6 +237,20 @@ git commit -m "fix: clear cached node_modules"
 1. Always run `pnpm lint` before pushing.
 2. Keep shared logic (types, configs) in `packages/`.
 3. Do not edit `apps/*/node_modules` manually.
+4. For significant architectural changes, follow the [RFC workflow](docs/rfcs/README.md).
+5. Architecture decisions are documented in [ADRs](docs/adr/README.md).
+
+### Architectural Changes
+
+For larger proposals that affect multiple domains or introduce significant complexity:
+
+1. Read the [RFC contribution guide](docs/rfcs/README.md)
+2. Create an RFC following the template
+3. Submit for team review
+4. Once accepted, create ADR(s) to document key decisions
+5. Implement according to the approved RFC
+
+See [docs/adr/README.md](docs/adr/README.md) for the ADR process.
 
 ## Phase 1 References
 

@@ -7,6 +7,7 @@ import { journeysRouter, journeyRouter } from './domains/journeys';
 import { discoveryRouter } from './domains/discovery';
 import { paymentsRouter } from './domains/payments';
 import { resonanceRouter } from './domains/resonance';
+import { tracksRouter } from './domains/tracks';
 import { notFoundHandler } from './middleware/not-found.middleware';
 import { errorHandler } from './middleware/error.middleware';
 import { contextMiddleware } from './middleware/context.middleware';
@@ -23,6 +24,7 @@ app.use('/journeys', journeyRouter);
 app.use('/discover', discoveryRouter);
 app.use('/payments', paymentsRouter);
 app.use('/resonance', resonanceRouter);
+app.use('/tracks', tracksRouter);
 
 connectDB();
 

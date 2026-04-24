@@ -294,10 +294,44 @@ export interface UpdateBookingStatusDto {
   responseNote?: string;
 }
 
-export interface PaymentIntentDto {
-  bookingId: string;
-  amount: number;
-  memo?: string;
+export enum JourneyStatus {
+  DRAFT = 'DRAFT',
+  PUBLISHED = 'PUBLISHED',
+}
+
+export interface JourneySlot {
+  order: number;
+  trackId: string; // provider track reference
+  caption?: string; // authored caption
+}
+
+export interface IVibeJourney {
+  id: string;
+  authorId: string;
+  title: string;
+  description?: string;
+  status: JourneyStatus;
+  version: number;
+  publishedAt?: Date;
+  slots: JourneySlot[];
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface CreateJourneyDto {
+  title: string;
+  description?: string;
+  slots?: JourneySlot[];
+}
+
+export interface UpdateJourneyDto {
+  title?: string;
+  description?: string;
+  slots?: JourneySlot[];
+}
+
+export interface PublishJourneyDto {
+  // perhaps no fields, just publish the draft
 }
 
 // Export all error types

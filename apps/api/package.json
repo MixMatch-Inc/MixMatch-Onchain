@@ -7,7 +7,8 @@
     "build": "tsc",
     "lint": "eslint src/",
     "typecheck": "tsc --noEmit",
-    "test": "node --import tsx --test tests/**/*.test.ts"
+    "test": "node --import tsx --test tests/**/*.test.ts",
+    "migrate:wallets": "tsx scripts/migrate-wallets.ts"
   },
   "dependencies": {
     "@mixmatch/env-manifest": "workspace:*",

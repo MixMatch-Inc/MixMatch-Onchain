@@ -5,6 +5,7 @@ import { apiEnv } from './config/env';
 import { identityRouter } from './domains/identity';
 import { journeysRouter, journeyRouter } from './domains/journeys';
 import { discoveryRouter } from './domains/discovery';
+import { resonanceRouter } from './domains/resonance';
 import { paymentsRouter } from './domains/payments';
 import { tasteSignalsRouter } from './domains/taste-signals';
 import { notFoundHandler } from './middleware/not-found.middleware';
@@ -22,6 +23,7 @@ app.use('/bookings', journeysRouter);
 app.use('/journeys', journeyRouter);
 app.use('/taste-signals', tasteSignalsRouter);
 app.use('/discover', discoveryRouter);
+app.use('/resonance', resonanceRouter);
 app.use('/payments', paymentsRouter);
 
 connectDB();

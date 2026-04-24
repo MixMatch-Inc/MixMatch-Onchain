@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import { AuthBootstrap } from "@/components/auth-bootstrap";
 import { AuthSessionSync } from "@/components/auth-session-sync";
+import { SessionBootstrap } from "@/components/session-bootstrap";
 
 export const metadata: Metadata = {
   title: "Create Next App",
@@ -18,6 +19,7 @@ export default function RootLayout({
       <body className="antialiased">
         <AuthBootstrap />
         <AuthSessionSync />
+        <SessionBootstrap />
         {children}
       </body>
     </html>

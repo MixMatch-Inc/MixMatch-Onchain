@@ -1,8 +1,2 @@
-// Resonance domain - Taste signals, reactions, matching algorithms
-// TODO: Implement in future sprint
-
-import { Router } from 'express';
-
-const resonanceRouter = Router();
-
-export default resonanceRouter;
+// Resonance domain - mutual matches, reveal status, first-song exchange
+export { default as resonanceRouter } from './resonance.routes';

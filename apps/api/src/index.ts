@@ -3,9 +3,10 @@ import cors from 'cors';
 import connectDB from './config/db';
 import { apiEnv } from './config/env';
 import { identityRouter } from './domains/identity';
-import { journeysRouter, vibeJourneyRouter, trackReferenceRouter } from './domains/journeys';
+import { journeysRouter, journeyRouter } from './domains/journeys';
 import { discoveryRouter } from './domains/discovery';
 import { paymentsRouter } from './domains/payments';
+import { resonanceRouter } from './domains/resonance';
 import { notFoundHandler } from './middleware/not-found.middleware';
 import { errorHandler } from './middleware/error.middleware';
 import { contextMiddleware } from './middleware/context.middleware';
@@ -18,10 +19,10 @@ app.use(express.json());
 app.use(contextMiddleware);
 app.use('/auth', identityRouter);
 app.use('/bookings', journeysRouter);
-app.use('/journeys', vibeJourneyRouter);
-app.use('/tracks', trackReferenceRouter);
+app.use('/journeys', journeyRouter);
 app.use('/discover', discoveryRouter);
 app.use('/payments', paymentsRouter);
+app.use('/resonance', resonanceRouter);
 
 connectDB();
 

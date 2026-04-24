@@ -3,7 +3,7 @@ import cors from 'cors';
 import connectDB from './config/db';
 import { apiEnv } from './config/env';
 import { identityRouter } from './domains/identity';
-import { journeysRouter } from './domains/journeys';
+import { journeysRouter, journeyRouter } from './domains/journeys';
 import { discoveryRouter } from './domains/discovery';
 import { paymentsRouter } from './domains/payments';
 import { notFoundHandler } from './middleware/not-found.middleware';
@@ -18,6 +18,7 @@ app.use(express.json());
 app.use(contextMiddleware);
 app.use('/auth', identityRouter);
 app.use('/bookings', journeysRouter);
+app.use('/journeys', journeyRouter);
 app.use('/discover', discoveryRouter);
 app.use('/payments', paymentsRouter);
 

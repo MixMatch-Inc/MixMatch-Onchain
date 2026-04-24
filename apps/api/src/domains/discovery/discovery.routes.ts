@@ -5,6 +5,7 @@ import { ingestImpressions } from './impressions.controller';
 
 const discoveryRouter = Router();
 
+discoveryRouter.get('/feed', requireAuth, getDiscoveryFeed);
 discoveryRouter.get('/djs', requireAuth, listDjs);
 discoveryRouter.get('/djs/:id', requireAuth, getDjProfile);
 discoveryRouter.post('/impressions', requireAuth, ingestImpressions);

@@ -1,5 +1,7 @@
 import { IJourneySlot, JourneyStatus } from './vibe-journey.model';
 import * as repo from './journey.repository';
+import { getEventBus, getOutboxDispatcher } from '../events';
+import { JourneyPublishedPayload } from '../events/domain-events';
 
 export class JourneyConflictError extends Error {
   constructor(message: string) {
@@ -98,6 +100,30 @@ export const publishJourney = async (journeyId: string, requestingUserId: string
   const existingSnapshot = await repo.findSnapshotByJourneyVersion(journeyId, journey.version);
   if (existingSnapshot) {
     const published = await repo.publishJourney(journeyId, existingSnapshot._id as any);
+    
+    // Emit domain event for journey publish
+    const eventBus = getEventBus();
+    const outboxDispatcher = getOutboxDispatcher();
+    
+    const payload: JourneyPublishedPayload = {
+      journeyId: published._id as string,
+      userId: requestingUserId,
+      title: journey.title,
+      snapshotId: existingSnapshot._id as string,
+    };
+    
+    const event = eventBus.createEvent(
+      'JOURNEY_PUBLISHED' as any,
+      payload,
+      { userId: requestingUserId }
+    );
+    
+    // Save to outbox for reliable dispatch
+    await outboxDispatcher.saveToOutbox(event);
+    
+    // Publish to in-process event bus
+    await eventBus.publish(event);
+    
     return { journey: published, snapshot: existingSnapshot, alreadyExists: true };
   }
 
@@ -111,6 +137,30 @@ export const publishJourney = async (journeyId: string, requestingUserId: string
   });
 
   const published = await repo.publishJourney(journeyId, snapshot._id as any);
+  
+  // Emit domain event for journey publish
+  const eventBus = getEventBus();
+  const outboxDispatcher = getOutboxDispatcher();
+  
+  const payload: JourneyPublishedPayload = {
+    journeyId: published._id as string,
+    userId: requestingUserId,
+    title: journey.title,
+    snapshotId: snapshot._id as string,
+  };
+  
+  const event = eventBus.createEvent(
+    'JOURNEY_PUBLISHED' as any,
+    payload,
+    { userId: requestingUserId }
+  );
+  
+  // Save to outbox for reliable dispatch
+  await outboxDispatcher.saveToOutbox(event);
+  
+  // Publish to in-process event bus
+  await eventBus.publish(event);
+  
   return { journey: published, snapshot, alreadyExists: false };
 };
 

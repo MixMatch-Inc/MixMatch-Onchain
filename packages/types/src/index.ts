@@ -292,12 +292,100 @@ export interface CreateBookingDto {
 export interface UpdateBookingStatusDto {
   status: BookingStatus.ACCEPTED | BookingStatus.DECLINED;
   responseNote?: string;
+export enum ProviderType {
+  SPOTIFY = 'SPOTIFY',
+  APPLE_MUSIC = 'APPLE_MUSIC',
+  YOUTUBE = 'YOUTUBE',
+  SOUNDCLOUD = 'SOUNDCLOUD',
 }
 
-export interface PaymentIntentDto {
-  bookingId: string;
-  amount: number;
-  memo?: string;
+export interface Artist {
+  name: string;
+  providerId?: string;
+}
+
+export interface Album {
+  name: string;
+  providerId?: string;
+  releaseDate?: Date;
+}
+
+export interface Artwork {
+  url: string;
+  width?: number;
+  height?: number;
+}
+
+export interface ITrackReference {
+  id: string;
+  provider: ProviderType;
+  providerTrackId: string;
+  title: string;
+  artists: Artist[];
+  album?: Album;
+  durationMs: number;
+  previewUrl?: string;
+  artwork: Artwork[];
+  explicit: boolean;
+  audioFeaturesCacheKey?: string;
+  rawPayload: Record<string, any>; // bounded subdocument for debugging
+  ingestedAt: Date;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface CreateTrackReferenceDto {
+  provider: ProviderType;
+  providerTrackId: string;
+  title: string;
+  artists: Artist[];
+  album?: Album;
+  durationMs: number;
+  previewUrl?: string;
+  artwork: Artwork[];
+  explicit: boolean;
+  audioFeaturesCacheKey?: string;
+  rawPayload: Record<string, any>;
+}
+
+export enum JourneyStatus {
+  DRAFT = 'DRAFT',
+  PUBLISHED = 'PUBLISHED',
+}
+
+export interface JourneySlot {
+  order: number;
+  trackId: string; // provider track reference
+  caption?: string; // authored caption
+}
+
+export interface IVibeJourney {
+  id: string;
+  authorId: string;
+  title: string;
+  description?: string;
+  status: JourneyStatus;
+  version: number;
+  publishedAt?: Date;
+  slots: JourneySlot[];
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface CreateJourneyDto {
+  title: string;
+  description?: string;
+  slots?: JourneySlot[];
+}
+
+export interface UpdateJourneyDto {
+  title?: string;
+  description?: string;
+  slots?: JourneySlot[];
+}
+
+export interface PublishJourneyDto {
+  // perhaps no fields, just publish the draft
 }
 
 // Export all error types

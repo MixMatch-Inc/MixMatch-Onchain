@@ -186,6 +186,16 @@ importers:
         specifier: ^5
         version: 5.9.3
 
+  packages/api-client:
+    dependencies:
+      '@mixmatch/types':
+        specifier: workspace:*
+        version: link:../types
+    devDependencies:
+      typescript:
+        specifier: ^5.3.0
+        version: 5.9.3
+
   packages/config: {}
 
   packages/env-manifest:
@@ -199,6 +209,16 @@ importers:
       vitest:
         specifier: ^1.2.1
         version: 1.6.1
+
+  packages/feature-flags:
+    dependencies:
+      '@mixmatch/types':
+        specifier: workspace:*
+        version: link:../types
+    devDependencies:
+      typescript:
+        specifier: ^5.3.0
+        version: 5.9.3
 
   packages/types: {}
 

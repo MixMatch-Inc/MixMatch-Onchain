@@ -58,6 +58,20 @@ cp apps/web/.env.example apps/web/.env.local
 cp apps/stellar-service/.env.example apps/stellar-service/.env
 ```
 
+To see all required environment variables for a service:
+
+```bash
+pnpm --filter @mixmatch/env-manifest env:list api
+pnpm --filter @mixmatch/env-manifest env:list web
+pnpm --filter @mixmatch/env-manifest env:list stellar-service
+```
+
+To validate environment variables for all services:
+
+```bash
+pnpm --filter @mixmatch/env-manifest env:check
+```
+
 Required values:
 
 - `apps/api/.env`
@@ -71,7 +85,8 @@ Required values:
   - `STELLAR_HORIZON_URL`
 
 The API and Stellar service now fail fast during startup when required
-environment variables are missing.
+environment variables are missing. The validation uses a shared manifest
+that defines required, optional, and secret variables for each service.
 
 ### 2. Run Development Server
 
@@ -222,6 +237,20 @@ git commit -m "fix: clear cached node_modules"
 1. Always run `pnpm lint` before pushing.
 2. Keep shared logic (types, configs) in `packages/`.
 3. Do not edit `apps/*/node_modules` manually.
+4. For significant architectural changes, follow the [RFC workflow](docs/rfcs/README.md).
+5. Architecture decisions are documented in [ADRs](docs/adr/README.md).
+
+### Architectural Changes
+
+For larger proposals that affect multiple domains or introduce significant complexity:
+
+1. Read the [RFC contribution guide](docs/rfcs/README.md)
+2. Create an RFC following the template
+3. Submit for team review
+4. Once accepted, create ADR(s) to document key decisions
+5. Implement according to the approved RFC
+
+See [docs/adr/README.md](docs/adr/README.md) for the ADR process.
 
 ## Phase 1 References
 

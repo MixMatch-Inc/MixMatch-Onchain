@@ -1,0 +1,23 @@
+{
+  "name": "@mixmatch/env-manifest",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Shared environment manifest validation for MixMatch workspace services",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "bin": {
+    "env-check": "dist/cli.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest run",
+    "lint": "eslint ."
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "@mixmatch/config": "workspace:*",
+    "typescript": "^5.3.3",
+    "vitest": "^1.2.1"
+  },
+  "files": ["dist"]
+}

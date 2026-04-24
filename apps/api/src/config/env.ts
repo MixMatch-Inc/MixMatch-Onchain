@@ -1,6 +1,16 @@
 import dotenv from 'dotenv';
+import { apiManifest, validateServiceEnv, formatValidationErrors } from '@mixmatch/env-manifest';
 
 dotenv.config();
+
+// Validate environment variables on startup
+const validationResult = validateServiceEnv(apiManifest, process.env);
+
+if (!validationResult.valid) {
+  const errorMessage = formatValidationErrors(apiManifest, validationResult);
+  console.error(errorMessage);
+  process.exit(1);
+}
 
 const requireEnv = (name: string): string => {
   const value = process.env[name]?.trim();

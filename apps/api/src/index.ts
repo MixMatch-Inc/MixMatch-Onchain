@@ -5,6 +5,7 @@ import { apiEnv } from './config/env';
 import { identityRouter } from './domains/identity';
 import { journeysRouter } from './domains/journeys';
 import { discoveryRouter } from './domains/discovery';
+import { resonanceRouter } from './domains/resonance';
 import { paymentsRouter } from './domains/payments';
 import { notFoundHandler } from './middleware/not-found.middleware';
 import { errorHandler } from './middleware/error.middleware';
@@ -19,6 +20,7 @@ app.use(contextMiddleware);
 app.use('/auth', identityRouter);
 app.use('/bookings', journeysRouter);
 app.use('/discover', discoveryRouter);
+app.use('/resonance', resonanceRouter);
 app.use('/payments', paymentsRouter);
 
 connectDB();

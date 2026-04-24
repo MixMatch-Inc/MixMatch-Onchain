@@ -292,6 +292,60 @@ export interface CreateBookingDto {
 export interface UpdateBookingStatusDto {
   status: BookingStatus.ACCEPTED | BookingStatus.DECLINED;
   responseNote?: string;
+export enum ProviderType {
+  SPOTIFY = 'SPOTIFY',
+  APPLE_MUSIC = 'APPLE_MUSIC',
+  YOUTUBE = 'YOUTUBE',
+  SOUNDCLOUD = 'SOUNDCLOUD',
+}
+
+export interface Artist {
+  name: string;
+  providerId?: string;
+}
+
+export interface Album {
+  name: string;
+  providerId?: string;
+  releaseDate?: Date;
+}
+
+export interface Artwork {
+  url: string;
+  width?: number;
+  height?: number;
+}
+
+export interface ITrackReference {
+  id: string;
+  provider: ProviderType;
+  providerTrackId: string;
+  title: string;
+  artists: Artist[];
+  album?: Album;
+  durationMs: number;
+  previewUrl?: string;
+  artwork: Artwork[];
+  explicit: boolean;
+  audioFeaturesCacheKey?: string;
+  rawPayload: Record<string, any>; // bounded subdocument for debugging
+  ingestedAt: Date;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface CreateTrackReferenceDto {
+  provider: ProviderType;
+  providerTrackId: string;
+  title: string;
+  artists: Artist[];
+  album?: Album;
+  durationMs: number;
+  previewUrl?: string;
+  artwork: Artwork[];
+  explicit: boolean;
+  audioFeaturesCacheKey?: string;
+  rawPayload: Record<string, any>;
 }
 
 export enum JourneyStatus {

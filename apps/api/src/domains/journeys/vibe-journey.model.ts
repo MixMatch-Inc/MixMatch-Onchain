@@ -56,7 +56,7 @@ const VibeJourneySchema = new Schema<IVibeJourneyDocument>(
     },
     status: {
       type: String,
-      enum: Object.values(JourneyStatus),
+      enum: Object.values(JourneyStatus) as string[],
       default: JourneyStatus.DRAFT,
       index: true,
     },

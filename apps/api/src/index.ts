@@ -6,6 +6,7 @@ import { identityRouter } from './domains/identity';
 import { journeysRouter } from './domains/journeys';
 import { discoveryRouter } from './domains/discovery';
 import { paymentsRouter } from './domains/payments';
+import { resonanceRouter } from './domains/resonance';
 import { notFoundHandler } from './middleware/not-found.middleware';
 import { errorHandler } from './middleware/error.middleware';
 import { contextMiddleware } from './middleware/context.middleware';
@@ -20,6 +21,7 @@ app.use('/auth', identityRouter);
 app.use('/bookings', journeysRouter);
 app.use('/discover', discoveryRouter);
 app.use('/payments', paymentsRouter);
+app.use('/resonance', resonanceRouter);
 
 connectDB();
 

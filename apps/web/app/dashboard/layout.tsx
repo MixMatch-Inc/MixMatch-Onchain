@@ -18,11 +18,13 @@ const navByRole: Record<UserRole, Array<{ href: string; label: string }>> = {
   [UserRole.PLANNER]: [
     { href: '/dashboard', label: 'Overview' },
     { href: '/dashboard/discover', label: 'Discover' },
+    { href: '/dashboard/resonance', label: 'Resonance' },
     { href: '/dashboard/bookings', label: 'Bookings' },
   ],
   [UserRole.MUSIC_LOVER]: [
     { href: '/dashboard', label: 'Overview' },
     { href: '/dashboard/discover', label: 'Discover' },
+    { href: '/dashboard/resonance', label: 'Resonance' },
     { href: '/dashboard/following', label: 'Following' },
   ],
   [UserRole.ADMIN]: [

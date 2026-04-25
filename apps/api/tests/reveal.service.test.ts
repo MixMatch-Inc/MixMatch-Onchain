@@ -3,8 +3,8 @@ import assert from 'node:assert/strict';
 import mongoose from 'mongoose';
 import { MongoMemoryServer } from 'mongodb-memory-server';
 import { RevealPhase, RevealTrigger } from '@mixmatch/types';
-import { RevealService } from '../src/modules/profiles/reveal.service';
-import RevealState from '../src/modules/profiles/reveal-state.model';
+import { RevealService } from '../src/domains/discovery/reveal.service';
+import RevealState from '../src/domains/discovery/reveal-state.model';
 
 let mongoServer: MongoMemoryServer;
 

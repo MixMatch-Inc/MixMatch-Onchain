@@ -1,7 +1,7 @@
 import { Router } from 'express';
-import authRouter from '../modules/auth/auth.routes';
+import authRouter from '../domains/identity/auth.routes';
 
-const rootRouter = Router();
+const rootRouter: Router = Router();
 
 rootRouter.use('/auth', authRouter);
 

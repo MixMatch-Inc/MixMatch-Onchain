@@ -1,4 +1,6 @@
 import { stellarServiceConfig } from '../../config/stellar-service';
+import { apiLogger } from '../../config/logger';
+import { recordProviderCall } from '../../config/observability';
 
 export class StellarGatewayError extends Error {
   status: number;
@@ -36,22 +38,35 @@ export const stellarGatewayRequest = async <T>(
   path: string,
   init: RequestInit = {},
 ): Promise<T> => {
-  const response = await withTimeout(
-    fetch(`${stellarServiceConfig.baseUrl}${path}`, {
-      ...init,
-      headers: {
-        ...buildHeaders(),
-        ...(init.headers || {}),
-      },
-    }),
-    stellarServiceConfig.timeoutMs,
-  );
+  const method = init.method || 'GET';
+  const logger = apiLogger.child({
+    provider: 'stellar-service',
+    operation: `${method} ${path}`,
+  });
+
+  const response = await recordProviderCall('stellar-service', `${method} ${path}`, async () => {
+    logger.info('provider.request.started');
+    return withTimeout(
+      fetch(`${stellarServiceConfig.baseUrl}${path}`, {
+        ...init,
+        headers: {
+          ...buildHeaders(),
+          ...(init.headers || {}),
+        },
+      }),
+      stellarServiceConfig.timeoutMs,
+    );
+  });
 
   const payload = (await response.json().catch(() => null)) as
     | { error?: string; message?: string }
     | null;
 
   if (!response.ok) {
+    logger.warn('provider.request.failed', {
+      status: response.status,
+      payload,
+    });
     throw new StellarGatewayError(
       payload?.error || payload?.message || 'Stellar service request failed',
       response.status,
@@ -59,6 +74,9 @@ export const stellarGatewayRequest = async <T>(
     );
   }
 
+  logger.info('provider.request.completed', {
+    status: response.status,
+  });
   return payload as T;
 };
 

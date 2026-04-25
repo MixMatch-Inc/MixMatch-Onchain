@@ -1,28 +1,36 @@
 import { server, serverKeypair } from '../config/stellar';
+import { stellarLogger } from '../config/logger';
+import { recordProviderCall } from '../config/observability';
 
 export const ensureFunded = async () => {
   const publicKey = serverKeypair.publicKey();
   const network = process.env.STELLAR_NETWORK;
 
   if (network !== 'TESTNET') {
-    console.log('ℹ️  Skipping Friendbot (Not on Testnet)');
+    stellarLogger.info('Skipping friendbot bootstrap outside testnet');
     return;
   }
 
-  console.log(`🔍 Checking wallet balance for ${publicKey.slice(0, 8)}...`);
+  stellarLogger.info('Checking wallet balance', {
+    publicKey: publicKey.slice(0, 8),
+  });
 
   try {
     // 1. Try to load the account from the network
-    const account = await server.loadAccount(publicKey);
+    const account = await recordProviderCall('stellar-horizon', 'load-account', () =>
+      server.loadAccount(publicKey),
+    );
 
     // 2. Account exists -> Check Balance
     const xlmBalance = account.balances.find((b) => b.asset_type === 'native');
     const currentBalance = Number(xlmBalance?.balance || 0);
 
-    console.log(`💰 Current Balance: ${currentBalance} XLM`);
+    stellarLogger.info('Loaded current balance', {
+      currentBalance,
+    });
 
     if (currentBalance > 100) {
-      console.log('✅ Wallet is sufficient.');
+      stellarLogger.info('Wallet already sufficiently funded');
       return;
     }
 
@@ -37,29 +45,35 @@ export const ensureFunded = async () => {
       error.name === 'NotFoundError';
 
     if (isNotFound) {
-      console.log('🆕 Account not found on ledger. Creating via Friendbot...');
+      stellarLogger.info('Account missing on ledger, calling friendbot');
       await callFriendbot(publicKey);
     } else {
-      console.error('⚠️ Error checking wallet:', error);
+      stellarLogger.error('Wallet balance check failed', {
+        error,
+      });
     }
   }
 };
 
 // Helper function to keep code clean
 const callFriendbot = async (publicKey: string) => {
-  console.log('📉 Calling Friendbot...');
+  stellarLogger.info('Calling friendbot');
   try {
-    const response = await fetch(
-      `https://friendbot.stellar.org?addr=${publicKey}`,
+    const response = await recordProviderCall('stellar-friendbot', 'fund-account', () =>
+      fetch(`https://friendbot.stellar.org?addr=${publicKey}`),
     );
     const data = await response.json();
 
     if (response.ok) {
-      console.log('🎉 Funded successfully by Friendbot!');
+      stellarLogger.info('Friendbot funded account successfully');
     } else {
-      console.error('❌ Friendbot failed:', data);
+      stellarLogger.error('Friendbot funding failed', {
+        data,
+      });
     }
   } catch (err) {
-    console.error('❌ Network error calling Friendbot:', err);
+    stellarLogger.error('Friendbot network call failed', {
+      error: err,
+    });
   }
 };

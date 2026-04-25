@@ -2,14 +2,18 @@ import { Operation, Claimant, Asset } from '@stellar/stellar-sdk';
 import { buildAndSubmitTx } from './transaction.service';
 import { checkAccount } from './account.service';
 import { TREASURY_KEY } from '../config/stellar';
+import { stellarLogger } from '../config/logger';
 
 export const createEscrow = async (
   destination: string,
   amount: string,
   unlockDate: string
 ) => {
-  console.log(`🔒 Creating Escrow: ${amount} XLM for ${destination}`);
-  console.log(`   Unlock Date: ${unlockDate}`);
+  stellarLogger.info('Creating escrow', {
+    destination,
+    amount,
+    unlockDate,
+  });
 
   const recipient = await checkAccount(destination);
   if (!recipient.exists) {

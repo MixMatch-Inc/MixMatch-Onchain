@@ -3,19 +3,22 @@ import {
   TransactionBuilder,
   BASE_FEE,
   Operation,
-  TimeoutInfinite,
 } from '@stellar/stellar-sdk';
 import { server, NETWORK_PASSPHRASE } from '../config/stellar';
+import { stellarLogger } from '../config/logger';
+import { recordProviderCall } from '../config/observability';
 
 export const claimFunds = async (secretKey: string) => {
   const signerKeypair = Keypair.fromSecret(secretKey);
   const publicKey = signerKeypair.publicKey();
 
-  console.log(
-    `🕵️‍♀️ Looking for claimable balances for: ${publicKey.slice(0, 8)}...`,
-  );
+  stellarLogger.info('Checking claimable balances', {
+    publicKey: publicKey.slice(0, 8),
+  });
 
-  const balances = await server.claimableBalances().claimant(publicKey).call();
+  const balances = await recordProviderCall('stellar-horizon', 'claimable-balances', () =>
+    server.claimableBalances().claimant(publicKey).call(),
+  );
 
   const record = balances.records[0];
 
@@ -23,10 +26,15 @@ export const claimFunds = async (secretKey: string) => {
     throw new Error('❌ No claimable balances found for this account.');
   }
 
-  console.log(`   Found Balance ID: ${record.id}`);
-  console.log(`   Amount: ${record.amount} ${record.asset.split(':')[0]}`);
+  stellarLogger.info('Found claimable balance', {
+    balanceId: record.id,
+    amount: record.amount,
+    asset: record.asset.split(':')[0],
+  });
 
-  const sourceAccount = await server.loadAccount(publicKey);
+  const sourceAccount = await recordProviderCall('stellar-horizon', 'load-account', () =>
+    server.loadAccount(publicKey),
+  );
 
   const builder = new TransactionBuilder(sourceAccount, {
     fee: BASE_FEE,
@@ -44,8 +52,10 @@ export const claimFunds = async (secretKey: string) => {
   const transaction = builder.build();
   transaction.sign(signerKeypair);
 
-  console.log('🚀 Submitting Claim Transaction...');
-  const response = await server.submitTransaction(transaction);
+  stellarLogger.info('Submitting claim transaction');
+  const response = await recordProviderCall('stellar-horizon', 'submit-claim-transaction', () =>
+    server.submitTransaction(transaction),
+  );
 
   return {
     hash: response.hash,

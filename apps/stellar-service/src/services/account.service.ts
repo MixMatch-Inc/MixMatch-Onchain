@@ -1,8 +1,11 @@
 import { server } from '../config/stellar';
+import { recordProviderCall } from '../config/observability';
 
 export const checkAccount = async (publicKey: string) => {
   try {
-    const account = await server.loadAccount(publicKey);
+    const account = await recordProviderCall('stellar-horizon', 'load-account', () =>
+      server.loadAccount(publicKey),
+    );
 
     const balances = account.balances.map((b) => {
       if (b.asset_type === 'native') {

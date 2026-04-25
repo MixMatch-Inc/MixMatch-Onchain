@@ -40,6 +40,12 @@ export const requireAuth = (req: Request, res: Response, next: NextFunction): vo
       userId: payload.userId,
       role: payload.role,
     };
+    if (req.context) {
+      req.context.actor = {
+        userId: payload.userId,
+        role: payload.role,
+      };
+    }
 
     next();
   } catch (error) {

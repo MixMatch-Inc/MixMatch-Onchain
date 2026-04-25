@@ -6,3 +6,4 @@ export { OutboxEntryModel, domainEventToOutboxEntry, outboxEntryToDomainEvent, I
 export { OutboxDispatcher, getOutboxDispatcher, resetOutboxDispatcher, OutboxDispatcherConfig } from './outbox-dispatcher';
 export { WebSocketGateway, WSAuthPayload, ConnectionInfo, EventEnvelope } from './websocket-gateway';
 export { PresenceManager, PresenceStatus, UserPresence } from './presence-manager';
+export { setupEventHandlers } from './event-handlers';

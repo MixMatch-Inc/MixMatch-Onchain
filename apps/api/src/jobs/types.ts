@@ -18,7 +18,7 @@ export interface Job<TPayload = unknown> extends JobMeta {
 
 // Placeholder job types
 export type ProviderSyncRefreshPayload = { userId: string; provider: string };
-export type JourneyFeatureExtractionPayload = { journeyId: string };
+export type JourneyFeatureExtractionPayload = { journeyId: string; snapshotId: string; userId: string };
 export type OutboxDispatchPayload = { outboxId: string };
 
 export type KnownJobType =

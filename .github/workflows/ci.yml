@@ -9,21 +9,17 @@ on:
       - main
 
 jobs:
-  ci:
-    name: Lint, Typecheck, and Build
+  setup:
+    name: Install & Cache
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v3
+      - uses: pnpm/action-setup@v3
         with:
           version: 8.15.0
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: '20.x'
           cache: 'pnpm'
@@ -31,13 +27,40 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Cache Turbo
-        uses: actions/cache@v4
+      - uses: actions/cache@v4
         with:
           path: .turbo
           key: ${{ runner.os }}-turbo-${{ github.sha }}
-          restore-keys: |
-            ${{ runner.os }}-turbo-
+          restore-keys: ${{ runner.os }}-turbo-
+
+  lint-typecheck:
+    name: Lint & Typecheck (${{ matrix.workspace }})
+    needs: setup
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        workspace: [api, web, stellar-service]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v3
+        with:
+          version: 8.15.0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - uses: actions/cache@v4
+        with:
+          path: .turbo
+          key: ${{ runner.os }}-turbo-${{ github.sha }}
+          restore-keys: ${{ runner.os }}-turbo-
 
       - name: Generate OpenAPI
         run: pnpm --filter api openapi:generate
@@ -46,14 +69,67 @@ jobs:
         run: git diff --exit-code -- docs/openapi/v1.json
 
       - name: Lint
-        run: pnpm lint
+        run: pnpm --filter ${{ matrix.workspace }} lint
 
       - name: Typecheck
-        run: pnpm typecheck
+        run: pnpm --filter ${{ matrix.workspace }} typecheck
+
+  test:
+    name: Test (${{ matrix.workspace }})
+    needs: setup
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        workspace: [api, '@mixmatch/types']
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v3
+        with:
+          version: 8.15.0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - uses: actions/cache@v4
+        with:
+          path: .turbo
+          key: ${{ runner.os }}-turbo-${{ github.sha }}
+          restore-keys: ${{ runner.os }}-turbo-
+
+      - name: Test
+        run: pnpm --filter ${{ matrix.workspace }} test
+
+  build:
+    name: Build
+    needs: [lint-typecheck, test]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v3
+        with:
+          version: 8.15.0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - uses: actions/cache@v4
+        with:
+          path: .turbo
+          key: ${{ runner.os }}-turbo-${{ github.sha }}
+          restore-keys: ${{ runner.os }}-turbo-
 
       - name: Build
         run: pnpm build
-
-      - name: Test
-        run: pnpm test
-        continue-on-error: true

@@ -19,6 +19,14 @@ export enum ModerationState {
   BANNED = 'BANNED',
 }
 
+export interface IModerationMeta {
+  moderationState: ModerationState;
+  moderationReason?: string;
+  moderationReviewedAt?: Date;
+}
+
+export type Redacted<T> = { [K in keyof T]: T[K] extends string ? T[K] | null : T[K] };
+
 export enum VisibilityPreference {
   PUBLIC = 'PUBLIC',
   PRIVATE = 'PRIVATE',
@@ -294,10 +302,197 @@ export interface UpdateBookingStatusDto {
   responseNote?: string;
 }
 
-export interface PaymentIntentDto {
-  bookingId: string;
-  amount: number;
-  memo?: string;
+export enum ProviderType {
+  SPOTIFY = 'SPOTIFY',
+  APPLE_MUSIC = 'APPLE_MUSIC',
+  YOUTUBE = 'YOUTUBE',
+  SOUNDCLOUD = 'SOUNDCLOUD',
+}
+
+export interface Artist {
+  name: string;
+  providerId?: string;
+}
+
+export interface Album {
+  name: string;
+  providerId?: string;
+  releaseDate?: Date;
+}
+
+export interface Artwork {
+  url: string;
+  width?: number;
+  height?: number;
+}
+
+export interface ITrackReference {
+  id: string;
+  provider: ProviderType;
+  providerTrackId: string;
+  title: string;
+  artists: Artist[];
+  album?: Album;
+  durationMs: number;
+  previewUrl?: string;
+  artwork: Artwork[];
+  explicit: boolean;
+  audioFeaturesCacheKey?: string;
+  rawPayload: Record<string, any>; // bounded subdocument for debugging
+  ingestedAt: Date;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface CreateTrackReferenceDto {
+  provider: ProviderType;
+  providerTrackId: string;
+  title: string;
+  artists: Artist[];
+  album?: Album;
+  durationMs: number;
+  previewUrl?: string;
+  artwork: Artwork[];
+  explicit: boolean;
+  audioFeaturesCacheKey?: string;
+  rawPayload: Record<string, any>;
+}
+
+export enum JourneyStatus {
+  DRAFT = 'DRAFT',
+  PUBLISHED = 'PUBLISHED',
+}
+
+export interface JourneySlot {
+  order: number;
+  trackId: string; // provider track reference
+  caption?: string; // authored caption
+}
+
+export interface IVibeJourney {
+  id: string;
+  authorId: string;
+  title: string;
+  description?: string;
+  status: JourneyStatus;
+  version: number;
+  publishedAt?: Date;
+  slots: JourneySlot[];
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface CreateJourneyDto {
+  title: string;
+  description?: string;
+  slots?: JourneySlot[];
+}
+
+export interface UpdateJourneyDto {
+  title?: string;
+  description?: string;
+  slots?: JourneySlot[];
+}
+
+export interface PublishJourneyDto {
+  // perhaps no fields, just publish the draft
+}
+
+// Stellar Wallet Linkage Types
+export enum StellarNetwork {
+  PUBLIC = 'PUBLIC',
+  TESTNET = 'TESTNET',
+  FUTURENET = 'FUTURENET',
+  STANDALONE = 'STANDALONE',
+}
+
+export enum WalletLinkageStatus {
+  PENDING_VERIFICATION = 'PENDING_VERIFICATION',
+  ACTIVE = 'ACTIVE',
+  DISABLED = 'DISABLED',
+  DISCONNECTED = 'DISCONNECTED',
+}
+
+export enum KeyProvenance {
+  USER_GENERATED = 'USER_GENERATED',
+  DERIVED_FROM_SEED = 'DERIVED_FROM_SEED',
+  HARDWARE_WALLET = 'HARDWARE_WALLET',
+  SOCIAL_RECOVERY = 'SOCIAL_RECOVERY',
+  EXCHANGE_WALLET = 'EXCHANGE_WALLET',
+}
+
+export enum FeatureEligibility {
+  MICRO_ACTIONS = 'MICRO_ACTIONS',
+  PAYMENTS = 'PAYMENTS',
+  GOVERNANCE = 'GOVERNANCE',
+  STAKING = 'STAKING',
+  NFT_MINTING = 'NFT_MINTING',
+}
+
+export interface IWalletLinkage {
+  id: string;
+  userId: string;
+  stellarAccountId: string;
+  network: StellarNetwork;
+  status: WalletLinkageStatus;
+  keyProvenance: KeyProvenance;
+  featureEligibility: FeatureEligibility[];
+  verificationSignature?: string;
+  verifiedAt?: Date;
+  lastUsedAt?: Date;
+  disconnectReason?: string;
+  disconnectedAt?: Date;
+  metadata: Record<string, any>;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface IWalletLinkageHistory {
+  id: string;
+  walletLinkageId: string;
+  userId: string;
+  action: 'LINKED' | 'VERIFIED' | 'DISABLED' | 'DISCONNECTED' | 'RELINKED';
+  previousState?: Partial<IWalletLinkage>;
+  newState?: Partial<IWalletLinkage>;
+  reason?: string;
+  ipAddress?: string;
+  userAgent?: string;
+  createdAt: Date;
+}
+
+export interface CreateWalletLinkageDto {
+  stellarAccountId: string;
+  network: StellarNetwork;
+  keyProvenance: KeyProvenance;
+  verificationSignature?: string;
+  metadata?: Record<string, any>;
+}
+
+export interface UpdateWalletLinkageDto {
+  status?: WalletLinkageStatus;
+  featureEligibility?: FeatureEligibility[];
+  metadata?: Record<string, any>;
+}
+
+export interface VerifyWalletLinkageDto {
+  verificationSignature: string;
+}
+
+export interface WalletLinkageResponseDto {
+  id: string;
+  userId: string;
+  stellarAccountId: string;
+  network: StellarNetwork;
+  status: WalletLinkageStatus;
+  keyProvenance: KeyProvenance;
+  featureEligibility: FeatureEligibility[];
+  verifiedAt?: Date;
+  lastUsedAt?: Date;
+  disconnectReason?: string;
+  disconnectedAt?: Date;
+  metadata: Record<string, any>;
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 // Export all error types

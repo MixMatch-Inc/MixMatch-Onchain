@@ -35,6 +35,17 @@ app.get('/internal/metrics', (req, res) => {
   }
 
   metricsHandler(req, res);
+app.get('/health', (_req: express.Request, res: express.Response) => {
+  res.json({ status: 'ok' });
+});
+
+app.get('/ready', (_req: express.Request, res: express.Response) => {
+  try {
+    serverKeypair.publicKey(); // throws if key is invalid
+    res.json({ status: 'ready', stellar: 'configured' });
+  } catch {
+    res.status(503).json({ status: 'not ready', stellar: 'misconfigured' });
+  }
 });
 
 app.post('/payment', async (req, res) => {

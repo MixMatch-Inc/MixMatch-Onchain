@@ -17,6 +17,8 @@ import { errorHandler } from './middleware/error.middleware';
 import { notFoundHandler } from './middleware/not-found.middleware';
 import { requestObservabilityMiddleware } from './middleware/request-observability.middleware';
 import { openApiDocument } from './openapi/document';
+import authRouter from './domains/identity/auth.routes';
+import { createWalletRoutes } from './domains/wallets';
 
 export const createApp = () => {
   const app = express();
@@ -26,6 +28,8 @@ export const createApp = () => {
   app.use(contextMiddleware);
   app.use(apiRateLimitMiddleware);
   app.use(requestObservabilityMiddleware);
+  app.use('/auth', authRouter);
+  app.use('/api/wallets', createWalletRoutes());
 
   app.get('/', (_req, res) => {
     res.json({ message: 'MixMatch API Running', status: 'OK' });

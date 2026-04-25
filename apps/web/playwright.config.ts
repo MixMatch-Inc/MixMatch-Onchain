@@ -7,6 +7,22 @@ export default defineConfig({
     baseURL: 'http://127.0.0.1:3100',
     trace: 'on-first-retry',
   },
+  projects: [
+    {
+      name: 'setup',
+      testMatch: '**/auth.setup.ts',
+    },
+    {
+      name: 'authenticated',
+      testMatch: ['**/auth-shell.spec.ts', '**/discovery-card-snapshots.spec.ts'],
+      dependencies: ['setup'],
+      use: { storageState: 'tests/.auth/session.json' },
+    },
+    {
+      name: 'unauthenticated',
+      testMatch: '**/smoke.spec.ts',
+    },
+  ],
   webServer: {
     command: 'pnpm dev --hostname 127.0.0.1 --port 3100',
     cwd: __dirname,

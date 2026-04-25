@@ -1,3 +1,10 @@
+/**
+ * @deprecated This booking controller is part of the legacy booking system.
+ * It will be replaced by the new event management system in Sprint 2.
+ * @see https://github.com/MixMatch-Inc/MixMatch-Onchain/issues/267
+ * @migrationGuide See docs/migration/booking-migration.md
+ * @replacement Use domains/events/ and domains/payments/ for new implementation
+ */
 import { Request, Response } from 'express';
 import { UserRole } from '@mixmatch/types';
 import Booking from './booking.model';
@@ -33,6 +40,10 @@ const buildFilter = (
   return filter;
 };
 
+/**
+ * @deprecated Use new EventService.getEvents() instead
+ * @see domains/events/event.service.ts
+ */
 export const listCurrentUserBookings = async (
   req: Request,
   res: Response,

@@ -1,3 +1,10 @@
+/**
+ * @deprecated This discovery controller is part of the legacy discovery system.
+ * It will be replaced by the new recommendation engine in Sprint 2.
+ * @see https://github.com/MixMatch-Inc/MixMatch-Onchain/issues/267
+ * @migrationGuide See docs/migration/discovery-migration.md
+ * @replacement Use domains/recommendations/ for new implementation
+ */
 import { Request, Response } from 'express';
 import { IDjProfileDocument } from './dj.model';
 import DjProfile from './dj.model';
@@ -39,6 +46,10 @@ const serializeDj = (
   createdAt: profile.createdAt,
 });
 
+/**
+ * @deprecated Use ProfileService.getProfile() instead
+ * @see domains/identity/profile.service.ts
+ */
 export const getDjProfile = async (req: Request, res: Response): Promise<void> => {
   try {
     const profile = await DjProfile.findById(req.params.id).lean();
@@ -63,6 +74,10 @@ export const getDjProfile = async (req: Request, res: Response): Promise<void> =
   }
 };
 
+/**
+ * @deprecated Use RecommendationService.getRecommendations() instead
+ * @see domains/recommendations/recommendation.service.ts
+ */
 export const listDjs = async (req: Request, res: Response): Promise<void> => {
   try {
     const limit = Math.min(parseInt(req.query.limit as string) || 20, 100);

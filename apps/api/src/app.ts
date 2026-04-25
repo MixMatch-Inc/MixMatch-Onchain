@@ -1,6 +1,6 @@
 import express from 'express';
 import cors from 'cors';
-import authRouter from './modules/auth/auth.routes';
+import authRouter from './domains/identity/auth.routes';
 import { createWalletRoutes } from './domains/wallets';
 
 export const createApp = () => {

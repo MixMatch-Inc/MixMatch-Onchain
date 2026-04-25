@@ -26,7 +26,7 @@ export class WalletService {
       userId: new Types.ObjectId(userId),
       stellarAccountId: createDto.stellarAccountId,
       network: createDto.network,
-    });
+    } as any);
 
     if (existingLinkage) {
       throw new Error('Wallet is already linked to this account');

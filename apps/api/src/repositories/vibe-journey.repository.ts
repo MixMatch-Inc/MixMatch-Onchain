@@ -1,6 +1,9 @@
 import { IRepository } from './types';
 import { IVibeJourney, JourneyStatus } from '@mixmatch/types';
 
+export type { IVibeJourney };
+export { JourneyStatus };
+
 export interface IVibeJourneyRepository extends IRepository<IVibeJourney, string> {
   findByAuthor(authorId: string, status?: JourneyStatus): Promise<IVibeJourney[]>;
   findPublishedByAuthor(authorId: string): Promise<IVibeJourney[]>;

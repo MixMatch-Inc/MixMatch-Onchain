@@ -46,6 +46,27 @@ export const apiManifest: ServiceManifest = {
       description: 'Allowed CORS origin',
       default: 'http://localhost:3000',
     },
+    {
+      name: 'LOG_LEVEL',
+      type: 'string',
+      required: false,
+      description: 'Structured logger level for API output',
+      default: 'info',
+    },
+    {
+      name: 'INTERNAL_SERVICE_SECRET',
+      type: 'secret',
+      required: false,
+      description: 'Shared secret for trusted internal service calls',
+      secret: true,
+    },
+    {
+      name: 'METRICS_AUTH_TOKEN',
+      type: 'secret',
+      required: false,
+      description: 'Bearer token for the protected metrics endpoint',
+      secret: true,
+    },
   ],
 };
 
@@ -106,6 +127,27 @@ export const stellarManifest: ServiceManifest = {
       required: false,
       description: 'Platform fee percentage',
       default: '0.1',
+    },
+    {
+      name: 'LOG_LEVEL',
+      type: 'string',
+      required: false,
+      description: 'Structured logger level for Stellar service output',
+      default: 'info',
+    },
+    {
+      name: 'INTERNAL_SERVICE_SECRET',
+      type: 'secret',
+      required: false,
+      description: 'Shared secret for trusted internal service calls',
+      secret: true,
+    },
+    {
+      name: 'METRICS_AUTH_TOKEN',
+      type: 'secret',
+      required: false,
+      description: 'Bearer token for the protected metrics endpoint',
+      secret: true,
     },
   ],
 };

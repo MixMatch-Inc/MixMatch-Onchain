@@ -13,7 +13,7 @@ import {
 export function useErrorHandler() {
   const errorParser = createErrorParser();
 
-  const handleError = (errorResponse: any) => {
+  const handleError = (errorResponse: unknown) => {
     errorParser.parseError(errorResponse);
   };
 
@@ -194,7 +194,7 @@ export async function handleApiResponse<T>(
   try {
     const data = await response.json();
     onSuccess(data);
-  } catch (error) {
+  } catch {
     const parsedError = parseApiError({
       success: false,
       error: {
@@ -210,7 +210,10 @@ export async function handleApiResponse<T>(
 }
 
 // Error logging utility for client side
-export function logClientError(error: ParsedError | null, context?: Record<string, any>): void {
+export function logClientError(
+  error: ParsedError | null,
+  context?: Record<string, unknown>,
+): void {
   if (!error) return;
 
   const logData = {

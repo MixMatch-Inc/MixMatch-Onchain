@@ -2,13 +2,17 @@ import { Asset, Operation } from '@stellar/stellar-sdk';
 import { buildAndSubmitTx } from './transaction.service';
 import { checkAccount } from './account.service';
 import { PLATFORM_FEE, TREASURY_KEY } from '../config/stellar';
+import { stellarLogger } from '../config/logger';
 
 export const sendPayment = async (
   destination: string,
   amountStr: string,
   memo?: string,
 ) => {
-  console.log(`💸 Processing Payment: ${amountStr} XLM -> ${destination}`);
+  stellarLogger.info('Processing payment', {
+    amount: amountStr,
+    destination,
+  });
 
   const recipient = await checkAccount(destination);
   if (!recipient.exists) {
@@ -22,9 +26,10 @@ export const sendPayment = async (
   const feeString = feeAmount.toFixed(7);
   const payoutString = payoutAmount.toFixed(7);
 
-  console.log(
-    `   🧾 Split: DJ gets ${payoutString} | Platform gets ${feeString}`,
-  );
+  stellarLogger.info('Calculated payment split', {
+    payoutAmount: payoutString,
+    feeAmount: feeString,
+  });
 
   const operations = [];
 

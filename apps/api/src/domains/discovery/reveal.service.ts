@@ -1,4 +1,5 @@
 import { RevealPhase, RevealTrigger } from '@mixmatch/types';
+import mongoose from 'mongoose';
 import RevealState, { IRevealStateDocument } from './reveal-state.model';
 
 export class RevealService {
@@ -60,7 +61,7 @@ export class RevealService {
 
     state.currentPhase = RevealPhase.BLOCKED;
     state.blockedReason = reason;
-    state.blockedBy = blockedBy;
+    state.blockedBy = new mongoose.Types.ObjectId(blockedBy);
     state.blockedAt = new Date();
 
     await state.save();

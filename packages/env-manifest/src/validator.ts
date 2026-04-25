@@ -1,3 +1,4 @@
+import { URL } from 'node:url';
 import { ServiceManifest, EnvVarDefinition } from './manifest';
 
 export interface EnvValidationError {
@@ -39,7 +40,7 @@ const validateType = (name: string, value: string, type: EnvVarDefinition['type'
 
 export const validateServiceEnv = (
   manifest: ServiceManifest,
-  env: NodeJS.ProcessEnv,
+  env: Record<string, string | undefined>,
 ): EnvValidationResult => {
   const errors: EnvValidationError[] = [];
   const missing: string[] = [];
@@ -120,7 +121,7 @@ export const formatValidationErrors = (
 
 export const validateAllServices = (
   manifests: ServiceManifest[],
-  env: NodeJS.ProcessEnv,
+  env: Record<string, string | undefined>,
 ): Map<string, EnvValidationResult> => {
   const results = new Map<string, EnvValidationResult>();
 

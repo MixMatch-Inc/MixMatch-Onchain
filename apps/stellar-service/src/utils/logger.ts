@@ -1,13 +1,14 @@
 import { Request } from 'express';
+import { getStellarRequestLogger } from '../config/logger';
 
 export const createLogger = (req: Request) => ({
-  info: (message: string, extra?: any) => {
-    console.log(`[${req.stellarContext.correlationId}] ${message}`, extra ? JSON.stringify(extra) : '');
+  info: (message: string, extra?: Record<string, unknown>) => {
+    getStellarRequestLogger(req).info(message, extra);
   },
-  error: (message: string, error?: any) => {
-    console.error(`[${req.stellarContext.correlationId}] ERROR: ${message}`, error ? JSON.stringify(error) : '');
+  error: (message: string, error?: unknown) => {
+    getStellarRequestLogger(req).error(message, { error });
   },
-  warn: (message: string, extra?: any) => {
-    console.warn(`[${req.stellarContext.correlationId}] WARN: ${message}`, extra ? JSON.stringify(extra) : '');
+  warn: (message: string, extra?: Record<string, unknown>) => {
+    getStellarRequestLogger(req).warn(message, extra);
   },
 });

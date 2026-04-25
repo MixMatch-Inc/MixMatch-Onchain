@@ -6,6 +6,7 @@ import {
   createErrorFromUnknown,
   ValidationError,
 } from "../utils/errors";
+import { getApiRequestLogger } from "../config/logger";
 
 // HTTP status code mapping for error domains
 const getStatusForError = (domain: ErrorDomain, code: ErrorCode): number => {
@@ -140,6 +141,14 @@ const getRequestId = (req: Request): string => {
     : `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 };
 
+const serializeMixMatchError = (
+  error: ReturnType<typeof createErrorFromUnknown>,
+  requestId: string,
+) => ({
+  ...error.toJSON(),
+  requestId: error.requestId ?? requestId,
+});
+
 // Convert ZodError to ValidationError
 const convertZodError = (
   zodError: ZodError,
@@ -212,7 +221,7 @@ export const errorHandler = (
 
     res.status(status).json({
       success: false,
-      error: error.toJSON(),
+      error: serializeMixMatchError(error, requestId),
     });
     return;
   }
@@ -222,7 +231,7 @@ export const errorHandler = (
   const status = getStatusForError(mixMatchError.domain, mixMatchError.code);
 
   // Log the original error for debugging
-  console.error("Unhandled error:", {
+  getApiRequestLogger(req).error("request.failed", {
     originalError: error,
     convertedError: mixMatchError.toJSON(),
     requestId,
@@ -232,6 +241,6 @@ export const errorHandler = (
 
   res.status(status).json({
     success: false,
-    error: mixMatchError.toJSON(),
+    error: serializeMixMatchError(mixMatchError, requestId),
   });
 };

@@ -1,4 +1,5 @@
 import { NextFunction, Request, Response } from 'express';
+import { randomUUID } from 'node:crypto';
 
 export interface StellarRequestContext {
   correlationId: string;
@@ -17,7 +18,7 @@ declare global {
 }
 
 export const stellarContextMiddleware = (req: Request, res: Response, next: NextFunction): void => {
-  const correlationId = req.header('x-correlation-id') || 'unknown';
+  const correlationId = req.header('x-correlation-id') || randomUUID();
   const actorId = req.header('x-actor-id') || undefined;
   const actorRole = req.header('x-actor-role') || undefined;
   const blindMode = req.header('x-blind-mode') === 'true';
@@ -30,6 +31,8 @@ export const stellarContextMiddleware = (req: Request, res: Response, next: Next
     blindMode,
     clientPlatform,
   };
+
+  res.setHeader('x-correlation-id', correlationId);
 
   next();
 };

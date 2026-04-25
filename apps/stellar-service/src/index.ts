@@ -9,14 +9,18 @@ import { createEscrow } from './services/escrow.service';
 import { claimFunds } from './services/claim.service';
 import { stellarContextMiddleware } from './middleware/context.middleware';
 import { createLogger } from './utils/logger';
+import { requestObservabilityMiddleware } from './middleware/request-observability.middleware';
+import { isMetricsAuthorized, metricsHandler } from './config/observability';
+import { stellarLogger } from './config/logger';
 
 const app = express();
 const port = stellarEnv.port;
 
 app.use(express.json());
 app.use(stellarContextMiddleware);
+app.use(requestObservabilityMiddleware);
 
-app.get('/', (req: express.Request, res: express.Response) => {
+app.get('/', (_req: express.Request, res: express.Response) => {
   res.json({
     service: 'MixMatch Stellar Service',
     status: 'Active',
@@ -24,6 +28,13 @@ app.get('/', (req: express.Request, res: express.Response) => {
   });
 });
 
+app.get('/internal/metrics', (req, res) => {
+  if (!isMetricsAuthorized(req)) {
+    res.status(403).json({ message: 'Forbidden' });
+    return;
+  }
+
+  metricsHandler(req, res);
 app.get('/health', (_req: express.Request, res: express.Response) => {
   res.json({ status: 'ok' });
 });
@@ -161,8 +172,10 @@ app.post('/claim', async (req, res) => {
 });
 
 app.listen(port, async () => {
-  console.log(`✨ Stellar Service running on port ${port}`);
-  console.log(`   Public Key: ${serverKeypair.publicKey()}`);
+  stellarLogger.info('Stellar service listening', {
+    port,
+    publicKey: serverKeypair.publicKey(),
+  });
 
   await ensureFunded();
 

@@ -1,17 +1,35 @@
 import mongoose from 'mongoose';
 import { apiEnv } from './env';
+import { apiLogger } from './logger';
+
+let connectionPromise: Promise<typeof mongoose> | null = null;
 
 const connectDB = async () => {
-  try {
-    const conn = await mongoose.connect(
-      process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/mixmatch',
-    );
-    const conn = await mongoose.connect(apiEnv.mongoUri);
-    console.log(`✅ MongoDB Connected: ${conn.connection.host}`);
-  } catch (error) {
-    console.error(`❌ Error: ${(error as Error).message}`);
-    process.exit(1);
+  if (mongoose.connection.readyState === 1) {
+    return mongoose;
   }
+
+  if (connectionPromise) {
+    return connectionPromise;
+  }
+
+  connectionPromise = mongoose
+    .connect(apiEnv.mongoUri)
+    .then((connection) => {
+      apiLogger.info('MongoDB connected', {
+        host: connection.connection.host,
+      });
+      return connection;
+    })
+    .catch((error: Error) => {
+      connectionPromise = null;
+      apiLogger.error('MongoDB connection failed', {
+        error,
+      });
+      throw error;
+    });
+
+  return connectionPromise;
 };
 
 export default connectDB;

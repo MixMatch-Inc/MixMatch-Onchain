@@ -28,9 +28,12 @@ const optionalEnv = (name: string, fallback: string): string => {
 };
 
 export const apiEnv = {
+  nodeEnv: optionalEnv('NODE_ENV', 'development'),
   port: Number(optionalEnv('PORT', '3001')),
   mongoUri: requireEnv('MONGO_URI'),
   jwtSecret: requireEnv('JWT_SECRET'),
   corsOrigin: optionalEnv('CORS_ORIGIN', 'http://localhost:3000'),
+  logLevel: optionalEnv('LOG_LEVEL', 'info'),
+  internalServiceSecret: optionalEnv('INTERNAL_SERVICE_SECRET', ''),
+  metricsAuthToken: optionalEnv('METRICS_AUTH_TOKEN', ''),
 };
-

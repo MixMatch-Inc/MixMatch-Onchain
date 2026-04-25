@@ -11,6 +11,7 @@
     "migrate:wallets": "tsx scripts/migrate-wallets.ts"
   },
   "dependencies": {
+    "@mixmatch/analytics": "workspace:*",
     "@mixmatch/env-manifest": "workspace:*",
     "@mixmatch/types": "workspace:*",
     "bcryptjs": "^3.0.3",

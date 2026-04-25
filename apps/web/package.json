@@ -12,6 +12,7 @@
     "test:e2e": "playwright test"
   },
   "dependencies": {
+    "@mixmatch/analytics": "workspace:*",
     "@mixmatch/env-manifest": "workspace:*",
     "next": "16.1.4",
     "react": "19.2.3",

@@ -20,6 +20,9 @@ importers:
 
   apps/api:
     dependencies:
+      '@mixmatch/analytics':
+        specifier: workspace:*
+        version: link:../../packages/analytics
       '@mixmatch/env-manifest':
         specifier: workspace:*
         version: link:../../packages/env-manifest
@@ -148,6 +151,9 @@ importers:
 
   apps/web:
     dependencies:
+      '@mixmatch/analytics':
+        specifier: workspace:*
+        version: link:../../packages/analytics
       '@mixmatch/env-manifest':
         specifier: workspace:*
         version: link:../../packages/env-manifest
@@ -199,6 +205,15 @@ importers:
         version: 4.21.0
       typescript:
         specifier: ^5
+        version: 5.9.3
+
+  packages/analytics:
+    devDependencies:
+      tsx:
+        specifier: ^4.21.0
+        version: 4.21.0
+      typescript:
+        specifier: ^5.3.0
         version: 5.9.3
 
   packages/api-client:

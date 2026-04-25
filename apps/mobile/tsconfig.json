@@ -1,4 +1,26 @@
 {
+<<<<<<< HEAD
+  "extends": "@mixmatch/config/tsconfig.base.json",
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2022", "DOM"],
+    "jsx": "react-native",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "allowSyntheticDefaultImports": true,
+    "esModuleInterop": true,
+    "strict": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "noEmit": true,
+    "types": ["expo"]
+  },
+  "include": ["src/**/*", "tests/**/*"],
+  "exclude": ["node_modules"]
+}
+=======
   "extends": "@mixmatch/config/base.json",
   "compilerOptions": {
     "target": "ES2020",
@@ -15,3 +37,4 @@
   "include": ["src", "app.tsx"],
   "exclude": ["node_modules"]
 }
+>>>>>>> cfb38abd24b6ac994893a7ab8c5fab1ff09d8f94

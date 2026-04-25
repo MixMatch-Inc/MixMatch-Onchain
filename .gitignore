@@ -22,7 +22,8 @@ out
 
 
 .turbo
-
+package-lock.json
+yarn.lock
 
 .DS_Store
 .vscode
@@ -31,6 +32,10 @@ out
 npm-debug.log*
 yarn-debug.log*
 pnpm-debug.log*
+
+
+
+
 
 
 coverage

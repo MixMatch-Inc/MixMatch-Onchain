@@ -1,12 +1,10 @@
-import Link from 'next/link';
-import { LogoutButton } from '@/components/logout-button';
-import Link from 'next/link';
 'use client';
 
 import Link from 'next/link';
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { UserRole } from '@mixmatch/types';
+import { LogoutButton } from '@/components/logout-button';
 import { useAuthStore } from '@/store/auth.store';
 
 const navByRole: Record<UserRole, Array<{ href: string; label: string }>> = {
@@ -40,7 +38,6 @@ export default function DashboardLayout({
   const router = useRouter();
   const user = useAuthStore((state) => state.user);
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
-  const logout = useAuthStore((state) => state.logout);
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -70,32 +67,12 @@ export default function DashboardLayout({
       <header className="border-b border-zinc-200 bg-white">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
           <div>
-            <h1 className="text-lg font-semibold text-zinc-900">MixMatch dashboard</h1>
-            <p className="text-sm text-zinc-500">Discovery workspace</p>
-          </div>
-          <nav className="flex items-center gap-3 text-sm text-zinc-700">
-            <Link href="/dashboard" className="hover:text-zinc-900">
-              Overview
-            </Link>
-            <Link href="/dashboard/discover" className="hover:text-zinc-900">
-              Discover
-            </Link>
-          </nav>
-        </div>
-      </header>
-      {children}
             <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500">
               {user.role}
             </p>
             <h1 className="text-lg font-semibold text-zinc-900">MixMatch dashboard</h1>
           </div>
-          <button
-            type="button"
-            onClick={logout}
-            className="rounded-md border border-zinc-300 px-3 py-2 text-sm font-medium text-zinc-800"
-          >
-            Logout
-          </button>
+          <LogoutButton />
         </div>
       </header>
 
@@ -113,6 +90,7 @@ export default function DashboardLayout({
             ))}
           </nav>
         </aside>
+
         <div className="min-w-0 flex-1">{children}</div>
       </div>
     </div>

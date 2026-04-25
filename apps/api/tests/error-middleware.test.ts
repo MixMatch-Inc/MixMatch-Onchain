@@ -1,13 +1,30 @@
-// Simple test file for error middleware without external dependencies
-import { errorHandler } from "../src/middleware/error.middleware";
-import { AuthError, ValidationError } from "../src/utils/errors";
-import { ErrorCode, ErrorDomain } from "@mixmatch/types";
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { ErrorCode, ErrorDomain } from '@mixmatch/types';
+import { before } from 'node:test';
 
-// Mock Express types
+let errorHandler: typeof import('../src/middleware/error.middleware').errorHandler;
+let AuthError: typeof import('../src/utils/errors').AuthError;
+let ValidationError: typeof import('../src/utils/errors').ValidationError;
+
+before(async () => {
+  process.env.NODE_ENV = 'test';
+  process.env.MONGO_URI = 'mongodb://127.0.0.1:27017/mixmatch-test';
+  process.env.JWT_SECRET = 'test-secret';
+
+  ({ errorHandler } = await import('../src/middleware/error.middleware'));
+  ({ AuthError, ValidationError } = await import('../src/utils/errors'));
+});
+
 interface MockRequest {
   headers: Record<string, string>;
   path: string;
   method: string;
+  context?: {
+    correlationId: string;
+    blindMode: boolean;
+    clientPlatform: string;
+  };
 }
 
 interface MockResponse {
@@ -17,182 +34,97 @@ interface MockResponse {
   json(data: any): MockResponse;
 }
 
-// Simple test runner
-function runTests() {
-  let testsPassed = 0;
-  let testsTotal = 0;
+const createMockRequest = (): MockRequest => ({
+  headers: {},
+  path: '/test',
+  method: 'GET',
+  context: {
+    correlationId: 'corr-test',
+    blindMode: false,
+    clientPlatform: 'test',
+  },
+});
 
-  function test(name: string, fn: () => void) {
-    testsTotal++;
-    try {
-      fn();
-      console.log(`✓ ${name}`);
-      testsPassed++;
-    } catch (error) {
-      console.log(`✗ ${name}`);
-      console.log(`  Error: ${(error as Error).message}`);
-    }
-  }
+const createMockResponse = (): MockResponse => ({
+  statusCode: 0,
+  body: null,
+  status(code: number) {
+    this.statusCode = code;
+    return this;
+  },
+  json(data: any) {
+    this.body = data;
+    return this;
+  },
+});
 
-  function expect(actual: any) {
-    return {
-      toEqual(expected: any) {
-        if (JSON.stringify(actual) !== JSON.stringify(expected)) {
-          throw new Error(
-            `Expected ${JSON.stringify(expected)}, got ${JSON.stringify(actual)}`,
-          );
-        }
-      },
-      toBe(expected: any) {
-        if (actual !== expected) {
-          throw new Error(`Expected ${expected}, got ${actual}`);
-        }
-      },
-      toContain(expected: any) {
-        if (!actual.includes(expected)) {
-          throw new Error(`Expected ${actual} to contain ${expected}`);
-        }
-      },
-      toHaveProperty(property: string, expectedValue?: any) {
-        if (!(property in actual)) {
-          throw new Error(`Expected object to have property ${property}`);
-        }
-        if (expectedValue !== undefined && actual[property] !== expectedValue) {
-          throw new Error(
-            `Expected property ${property} to be ${expectedValue}, got ${actual[property]}`,
-          );
-        }
-      },
-    };
-  }
+test('handles AuthError with the mapped HTTP status', () => {
+  const mockRequest = createMockRequest();
+  const mockResponse = createMockResponse();
+  const authError = AuthError.invalidCredentials('test-123');
 
-  // Mock request and response
-  function createMockRequest(): MockRequest {
-    return {
-      headers: {},
-      path: "/test",
-      method: "GET",
-    };
-  }
+  errorHandler(authError, mockRequest as any, mockResponse as any, () => {});
 
-  function createMockResponse(): MockResponse {
-    const response: MockResponse = {
-      statusCode: 0,
-      body: null,
-      status(code: number) {
-        this.statusCode = code;
-        return this;
-      },
-      json(data: any) {
-        this.body = data;
-        return this;
-      },
-    };
-    return response;
-  }
+  assert.equal(mockResponse.statusCode, 401);
+  assert.equal(mockResponse.body.success, false);
+  assert.equal(mockResponse.body.error.code, ErrorCode.AUTH_INVALID_CREDENTIALS);
+  assert.equal(mockResponse.body.error.domain, ErrorDomain.AUTH);
+  assert.equal(mockResponse.body.error.requestId, 'test-123');
+});
 
-  // Test 1: AuthError handling
-  test("should handle AuthError with correct status code and format", () => {
-    const mockRequest = createMockRequest();
-    const mockResponse = createMockResponse();
-    const authError = AuthError.invalidCredentials("test-123");
+test('handles ValidationError with a 400 response', () => {
+  const mockRequest = createMockRequest();
+  const mockResponse = createMockResponse();
+  const validationError = ValidationError.requiredFieldMissing(
+    'email',
+    'test-456',
+  );
 
-    errorHandler(authError, mockRequest as any, mockResponse as any, () => {});
+  errorHandler(validationError, mockRequest as any, mockResponse as any, () => {});
 
-    expect(mockResponse.statusCode).toBe(401);
-    expect(mockResponse.body).toHaveProperty("success", false);
-    expect(mockResponse.body).toHaveProperty("error");
-    expect(mockResponse.body.error.code).toBe(
-      ErrorCode.AUTH_INVALID_CREDENTIALS,
-    );
-    expect(mockResponse.body.error.domain).toBe(ErrorDomain.AUTH);
-    expect(mockResponse.body.error.requestId).toBe("test-123");
-  });
+  assert.equal(mockResponse.statusCode, 400);
+  assert.equal(mockResponse.body.success, false);
+  assert.equal(
+    mockResponse.body.error.code,
+    ErrorCode.VALIDATION_REQUIRED_FIELD_MISSING,
+  );
+  assert.equal(mockResponse.body.error.domain, ErrorDomain.VALIDATION);
+  assert.equal(mockResponse.body.error.requestId, 'test-456');
+});
 
-  // Test 2: ValidationError handling
-  test("should handle ValidationError with 400 status", () => {
-    const mockRequest = createMockRequest();
-    const mockResponse = createMockResponse();
-    const validationError = ValidationError.requiredFieldMissing(
-      "email",
-      "test-456",
-    );
+test('converts unknown errors to infrastructure errors', () => {
+  const mockRequest = createMockRequest();
+  const mockResponse = createMockResponse();
+  const genericError = new Error('Database connection failed');
 
-    errorHandler(
-      validationError,
-      mockRequest as any,
-      mockResponse as any,
-      () => {},
-    );
+  errorHandler(genericError, mockRequest as any, mockResponse as any, () => {});
 
-    expect(mockResponse.statusCode).toBe(400);
-    expect(mockResponse.body).toHaveProperty("success", false);
-    expect(mockResponse.body.error.code).toBe(
-      ErrorCode.VALIDATION_REQUIRED_FIELD_MISSING,
-    );
-    expect(mockResponse.body.error.domain).toBe(ErrorDomain.VALIDATION);
-    expect(mockResponse.body.error.requestId).toBe("test-456");
-  });
+  assert.equal(mockResponse.statusCode, 500);
+  assert.equal(mockResponse.body.success, false);
+  assert.equal(
+    mockResponse.body.error.code,
+    ErrorCode.INFRASTRUCTURE_DATABASE_ERROR,
+  );
+  assert.equal(mockResponse.body.error.domain, ErrorDomain.INFRASTRUCTURE);
+});
 
-  // Test 3: Unknown error handling
-  test("should convert unknown errors to InfrastructureError", () => {
-    const mockRequest = createMockRequest();
-    const mockResponse = createMockResponse();
-    const genericError = new Error("Database connection failed");
+test('generates a request id if one is not present', () => {
+  const mockRequest = createMockRequest();
+  const mockResponse = createMockResponse();
+  const authError = AuthError.invalidCredentials();
 
-    errorHandler(
-      genericError,
-      mockRequest as any,
-      mockResponse as any,
-      () => {},
-    );
+  errorHandler(authError, mockRequest as any, mockResponse as any, () => {});
 
-    expect(mockResponse.statusCode).toBe(500);
-    expect(mockResponse.body).toHaveProperty("success", false);
-    expect(mockResponse.body.error.code).toBe(
-      ErrorCode.INFRASTRUCTURE_DATABASE_ERROR,
-    );
-    expect(mockResponse.body.error.domain).toBe(ErrorDomain.INFRASTRUCTURE);
-  });
+  assert.match(mockResponse.body.error.requestId, /^req_/);
+});
 
-  // Test 4: Request ID generation
-  test("should generate request ID if not present in headers", () => {
-    const mockRequest = createMockRequest();
-    const mockResponse = createMockResponse();
-    const authError = AuthError.invalidCredentials();
+test('uses an existing request id header when present', () => {
+  const mockRequest = createMockRequest();
+  mockRequest.headers['x-request-id'] = 'existing-id-123';
+  const mockResponse = createMockResponse();
+  const authError = AuthError.invalidCredentials();
 
-    errorHandler(authError, mockRequest as any, mockResponse as any, () => {});
+  errorHandler(authError, mockRequest as any, mockResponse as any, () => {});
 
-    expect(mockResponse.body.error.requestId).toContain("req_");
-    expect(typeof mockResponse.body.error.requestId).toBe("string");
-  });
-
-  // Test 5: Request ID from headers
-  test("should use existing request ID from headers", () => {
-    const mockRequest = createMockRequest();
-    mockRequest.headers["x-request-id"] = "existing-id-123";
-    const mockResponse = createMockResponse();
-    const authError = AuthError.invalidCredentials();
-
-    errorHandler(authError, mockRequest as any, mockResponse as any, () => {});
-
-    expect(mockResponse.body.error.requestId).toBe("existing-id-123");
-  });
-
-  // Test results
-  console.log(`\nTest Results: ${testsPassed}/${testsTotal} passed`);
-
-  if (testsPassed === testsTotal) {
-    console.log("🎉 All tests passed!");
-  } else {
-    console.log(`❌ ${testsTotal - testsPassed} tests failed`);
-    process.exit(1);
-  }
-}
-
-// Run tests if this file is executed directly
-if (require.main === module) {
-  runTests();
-}
-
-export { runTests };
+  assert.equal(mockResponse.body.error.requestId, 'existing-id-123');
+});

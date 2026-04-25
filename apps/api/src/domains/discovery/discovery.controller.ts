@@ -4,13 +4,12 @@ import DjProfile from './dj.model';
 import User from '../identity/user.model';
 import {
   PaginationOptions,
-  PaginatedResponse,
   buildPaginationQuery,
   createPaginatedResponse,
-  encodeCursor,
   SortDirection,
   PaginationError,
 } from '../../utils/pagination';
+import { RevealPhase } from '@mixmatch/types';
 import { RevealService } from './reveal.service';
 
 const serializeDj = (
@@ -97,7 +96,7 @@ export const listDjs = async (req: Request, res: Response): Promise<void> => {
     // Redact profiles based on reveal state
     const redactedProfiles = filteredProfiles.map((profile, index) => {
       const revealState = revealStates[index];
-      const phase = revealState?.currentPhase || 'BLIND';
+      const phase = revealState?.currentPhase || RevealPhase.BLIND;
       return RevealService.redactProfile(serializeDj(profile), phase);
     });
 

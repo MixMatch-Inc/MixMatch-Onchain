@@ -6,7 +6,6 @@ import { UserRole } from '@mixmatch/types';
 import { useAuthStore } from '@/store/auth.store';
 import { ApiClientError } from '@/lib/api/client';
 import { registerUser } from '@/lib/api/auth';
-import { webEnv } from '@/lib/env';
 
 type SelectableRole = UserRole.DJ | UserRole.PLANNER | UserRole.MUSIC_LOVER;
 
@@ -42,8 +41,6 @@ export default function RegisterPage() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-
-  const apiBaseUrl = useMemo(() => webEnv.apiUrl, []);
 
   const validateForm = (): string | null => {
     if (!email.trim()) return 'Email is required.';

@@ -1,9 +1,19 @@
 import mongoose, { Document, Schema } from 'mongoose';
-import { IRevealState, RevealPhase, RevealTrigger } from '@mixmatch/types';
+import { RevealPhase, RevealTrigger } from '@mixmatch/types';
 
-type IRevealStateDocumentFields = Omit<IRevealState, 'id' | 'createdAt' | 'updatedAt'>;
-
-export interface IRevealStateDocument extends IRevealStateDocumentFields, Document {}
+export interface IRevealStateDocument extends Document {
+  viewerId: mongoose.Types.ObjectId;
+  targetProfileId: mongoose.Types.ObjectId;
+  targetProfileType: 'dj' | 'planner' | 'lover';
+  currentPhase: RevealPhase;
+  revealTriggers: RevealTrigger[];
+  revealTimestamps: Map<RevealPhase, Date | null>;
+  blockedReason?: string;
+  blockedBy?: mongoose.Types.ObjectId;
+  blockedAt?: Date;
+  createdAt: Date;
+  updatedAt: Date;
+}
 
 const RevealStateSchema = new Schema<IRevealStateDocument>(
   {

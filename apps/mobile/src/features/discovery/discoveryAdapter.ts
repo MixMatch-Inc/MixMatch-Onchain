@@ -9,7 +9,7 @@ const PAGE_SIZE = 20;
 function decodeCursor(cursor: string | null): number {
   if (!cursor) return 1;
   try {
-    return parseInt(atob(cursor), 10) || 1;
+    return parseInt(cursor, 10) || 1;
   } catch {
     return 1;
   }
@@ -17,7 +17,7 @@ function decodeCursor(cursor: string | null): number {
 
 /** Encode a page number into an opaque cursor string. */
 function encodeCursor(page: number): string {
-  return btoa(String(page));
+  return String(page);
 }
 
 /**

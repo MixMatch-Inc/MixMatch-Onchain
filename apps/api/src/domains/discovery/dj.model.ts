@@ -18,6 +18,10 @@ type IDjProfileDocumentFields = Omit<IDjProfile, 'id' | 'user' | 'createdAt' | '
 };
 
 export interface IDjProfileDocument extends IDjProfileDocumentFields, Document {}
+export interface IDjProfileDocument extends IDjProfileDocumentFields, Document {
+  createdAt: Date;
+  updatedAt: Date;
+}
 
 const PricingSchema = new Schema<IPricing>(
   {

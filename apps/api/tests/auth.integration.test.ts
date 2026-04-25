@@ -3,16 +3,27 @@ import assert from 'node:assert/strict';
 import request from 'supertest';
 import mongoose from 'mongoose';
 import { MongoMemoryServer } from 'mongodb-memory-server';
-import { createApp } from '../src/app';
-import User from '../src/modules/users/user.model';
 
 let mongoServer: MongoMemoryServer;
+let createApp: typeof import('../src/app').createApp;
+let User: typeof import('../src/domains/identity/user.model').default;
 
 before(async () => {
-  mongoServer = await MongoMemoryServer.create();
+  mongoServer = await MongoMemoryServer.create({
+    instance: {
+      ip: '127.0.0.1',
+      port: 27081,
+    },
+  });
+  process.env.NODE_ENV = 'test';
   process.env.MONGO_URI = mongoServer.getUri();
   process.env.JWT_SECRET = 'test-secret';
-  await mongoose.connect(process.env.MONGO_URI);
+  process.env.CORS_ORIGIN = 'http://localhost:3000';
+
+  ({ createApp } = await import('../src/app'));
+  ({ default: User } = await import('../src/domains/identity/user.model'));
+
+  await mongoose.connect(process.env.MONGO_URI!);
 });
 
 beforeEach(async () => {
@@ -21,10 +32,12 @@ beforeEach(async () => {
 
 after(async () => {
   await mongoose.disconnect();
-  await mongoServer.stop();
+  if (mongoServer) {
+    await mongoServer.stop();
+  }
 });
 
-test('registers a user and returns a token', async () => {
+test('registers a user and returns a token', { concurrency: false }, async () => {
   const app = createApp();
 
   const response = await request(app)
@@ -36,11 +49,14 @@ test('registers a user and returns a token', async () => {
     });
 
   assert.equal(response.status, 201);
-  assert.equal(typeof response.body.token, 'string');
-  assert.equal(response.body.user.email, 'planner@example.com');
+  assert.equal(typeof response.body.data.token, 'string');
+  assert.equal(response.body.data.user.email, 'planner@example.com');
 });
 
-test('rejects duplicate registration for the same email', async () => {
+test(
+  'rejects duplicate registration for the same email',
+  { concurrency: false },
+  async () => {
   const app = createApp();
 
   await request(app).post('/auth/register').send({
@@ -56,9 +72,13 @@ test('rejects duplicate registration for the same email', async () => {
   });
 
   assert.equal(response.status, 409);
-});
+  },
+);
 
-test('logs in an existing user with valid credentials', async () => {
+test(
+  'logs in an existing user with valid credentials',
+  { concurrency: false },
+  async () => {
   const app = createApp();
 
   await request(app).post('/auth/register').send({
@@ -73,6 +93,7 @@ test('logs in an existing user with valid credentials', async () => {
   });
 
   assert.equal(response.status, 200);
-  assert.equal(typeof response.body.token, 'string');
-  assert.equal(response.body.user.role, 'MUSIC_LOVER');
-});
+  assert.equal(typeof response.body.data.token, 'string');
+  assert.equal(response.body.data.user.role, 'MUSIC_LOVER');
+  },
+);

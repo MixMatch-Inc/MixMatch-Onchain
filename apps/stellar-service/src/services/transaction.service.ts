@@ -5,15 +5,19 @@ import {
   Memo,
 } from '@stellar/stellar-sdk';
 import { server, serverKeypair, NETWORK_PASSPHRASE } from '../config/stellar';
+import { stellarLogger } from '../config/logger';
+import { recordProviderCall } from '../config/observability';
 
 export const buildAndSubmitTx = async (
   operations: Array<ReturnType<typeof Operation.payment>>,
   memoText?: string,
 ) => {
   try {
-    console.log('Building Transaction...');
+    stellarLogger.info('Building transaction');
 
-    const sourceAccount = await server.loadAccount(serverKeypair.publicKey());
+    const sourceAccount = await recordProviderCall('stellar-horizon', 'load-source-account', () =>
+      server.loadAccount(serverKeypair.publicKey()),
+    );
 
     let builder = new TransactionBuilder(sourceAccount, {
       fee: BASE_FEE,
@@ -32,16 +36,20 @@ export const buildAndSubmitTx = async (
 
     transaction.sign(serverKeypair);
 
-    console.log('Submitting to Stellar Network...');
-    const response = await server.submitTransaction(transaction);
+    stellarLogger.info('Submitting transaction to Stellar network');
+    const response = await recordProviderCall('stellar-horizon', 'submit-transaction', () =>
+      server.submitTransaction(transaction),
+    );
 
-    console.log(`Transaction Successful! Hash: ${response.hash}`);
+    stellarLogger.info('Transaction submitted successfully', {
+      hash: response.hash,
+    });
     return response;
   } catch (error: any) {
-    console.error(
-      'Transaction Failed:',
-      error.response?.data?.extras?.result_codes || error.message,
-    );
+    stellarLogger.error('Transaction submission failed', {
+      error:
+        error.response?.data?.extras?.result_codes || error.message || error,
+    });
     throw error;
   }
 };

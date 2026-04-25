@@ -1,6 +1,5 @@
 import { Request, Response } from 'express';
 import { z } from 'zod';
-import { RevealPhase } from '@mixmatch/types';
 import { DiscoveryCandidateService } from './candidate.service';
 import { RevealService } from './reveal.service';
 import { encodeCursor, decodeCursor, PaginationError, SortDirection } from '../../utils/pagination';

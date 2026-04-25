@@ -18,6 +18,7 @@ interface FeedState {
  * - AbortController cancellation on rapid filter changes
  */
 export function useDiscoveryFeed(filters: DiscoveryFilters) {
+  const filtersKey = JSON.stringify(filters);
   const [state, setState] = useState<FeedState>({
     items: [],
     isLoading: true,
@@ -69,8 +70,7 @@ export function useDiscoveryFeed(filters: DiscoveryFilters) {
         }));
       }
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [JSON.stringify(filters)],
+    [filters, filtersKey],
   );
 
   // Reset and reload whenever filters change

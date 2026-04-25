@@ -4,12 +4,16 @@
   "private": true,
   "scripts": {
     "dev": "ts-node-dev --respawn --transpile-only src/index.ts",
-    "build": "tsc",
+    "build": "pnpm run openapi:check && tsc",
     "lint": "eslint src/",
+    "openapi:check": "node --import tsx ./scripts/check-openapi.ts",
+    "openapi:generate": "node --import tsx ./scripts/generate-openapi.ts",
     "typecheck": "tsc --noEmit",
-    "test": "node --import tsx --test tests/**/*.test.ts"
+    "test": "node --import tsx --test --test-concurrency=1 tests/*.test.ts tests/**/*.test.ts"
   },
   "dependencies": {
+    "@mixmatch/logger": "workspace:*",
+    "@mixmatch/observability": "workspace:*",
     "@mixmatch/env-manifest": "workspace:*",
     "@mixmatch/types": "workspace:*",
     "bcryptjs": "^3.0.3",

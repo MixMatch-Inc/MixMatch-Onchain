@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { requireAuth } from '../../middleware/auth.middleware';
 import { listDjs, getDjProfile } from './discovery.controller';
+import { getDiscoveryFeed } from './feed.controller';
 import { ingestImpressions } from './impressions.controller';
 
 const discoveryRouter = Router();

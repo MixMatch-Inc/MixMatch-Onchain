@@ -1,3 +1,4 @@
+import type { NavigatorScreenParams } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 
@@ -25,9 +26,9 @@ export type MainTabParamList = {
 
 // ── Root stack (wraps everything) ─────────────────────────────────────────────
 export type RootStackParamList = {
-  Auth: undefined;
-  Onboarding: undefined;
-  Main: undefined;
+  Auth: NavigatorScreenParams<AuthStackParamList> | undefined;
+  Onboarding: NavigatorScreenParams<OnboardingStackParamList> | undefined;
+  Main: NavigatorScreenParams<MainTabParamList> | undefined;
   // Deep-link placeholders
   Notification: { notificationId: string };
   SharedTrack: { trackId: string };

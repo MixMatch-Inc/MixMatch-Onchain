@@ -91,16 +91,15 @@ const ConversationSchema = new Schema<IConversationDocument>(
 );
 
 // Guard: text messages are only allowed when phase is TEXT_UNLOCKED
-ConversationSchema.pre('save', function (next) {
+ConversationSchema.pre('save', function () {
   if (this.isModified('messages')) {
     const hasIllegalText = this.messages.some(
       (m) => m.type === MessageType.TEXT && this.phase === ThreadPhase.MUSIC_ONLY,
     );
     if (hasIllegalText) {
-      return next(new Error('Text messages are not allowed before text unlock'));
+      throw new Error('Text messages are not allowed before text unlock');
     }
   }
-  next();
 });
 
 ConversationSchema.index({ participants: 1, phase: 1 });

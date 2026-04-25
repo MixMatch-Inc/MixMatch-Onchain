@@ -1,5 +1,5 @@
 import React from 'react';
-import { NavigationContainer } from '@react-navigation/native';
+import { NavigationContainer, type LinkingOptions } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import * as Linking from 'expo-linking';
 import type { RootStackParamList } from './types';
@@ -14,7 +14,7 @@ const Stack = createNativeStackNavigator<RootStackParamList>();
 
 const prefix = Linking.createURL('/');
 
-const linking = {
+const linking: LinkingOptions<RootStackParamList> = {
   prefixes: [prefix, 'mixmatch://'],
   config: {
     screens: {

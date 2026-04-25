@@ -28,6 +28,7 @@ const optionalEnv = (name: string, fallback: string): string => {
 };
 
 export const stellarEnv = {
+  nodeEnv: optionalEnv('NODE_ENV', 'development'),
   port: Number(optionalEnv('PORT', '3002')),
   network: optionalEnv('STELLAR_NETWORK', 'TESTNET'),
   horizonUrl: optionalEnv(
@@ -37,5 +38,7 @@ export const stellarEnv = {
   secretKey: requireEnv('STELLAR_SEC_KEY'),
   treasuryPublicKey: process.env.TREASURY_PUB_KEY?.trim(),
   platformFeePercent: Number(optionalEnv('PLATFORM_FEE_PERCENT', '0.1')),
+  logLevel: optionalEnv('LOG_LEVEL', 'info'),
+  internalServiceSecret: optionalEnv('INTERNAL_SERVICE_SECRET', ''),
+  metricsAuthToken: optionalEnv('METRICS_AUTH_TOKEN', ''),
 };
-

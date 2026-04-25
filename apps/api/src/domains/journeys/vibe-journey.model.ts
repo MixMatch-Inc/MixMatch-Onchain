@@ -1,4 +1,5 @@
 import mongoose, { Document, Schema } from 'mongoose';
+import { ModerationState } from '@mixmatch/types';
 
 export enum JourneyStatus {
   DRAFT = 'DRAFT',
@@ -21,6 +22,9 @@ export interface IVibeJourneyDocument extends Document {
   slots: IJourneySlot[];
   version: number;
   latestPublishedSnapshotId?: mongoose.Types.ObjectId;
+  moderationState: ModerationState;
+  moderationReason?: string;
+  moderationReviewedAt?: Date;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -91,6 +95,14 @@ const VibeJourneySchema = new Schema<IVibeJourneyDocument>(
       type: Schema.Types.ObjectId,
       ref: 'JourneySnapshot',
     },
+    moderationState: {
+      type: String,
+      enum: Object.values(ModerationState),
+      default: ModerationState.CLEAR,
+      index: true,
+    },
+    moderationReason: { type: String },
+    moderationReviewedAt: { type: Date },
   },
   { timestamps: true },
 );

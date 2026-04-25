@@ -4,6 +4,7 @@ import {
   DjGenre,
   IDjProfile,
   ISocialLinks,
+  ModerationState,
 } from '@mixmatch/types';
 
 interface IPricing {
@@ -15,6 +16,9 @@ type IDjProfileDocumentFields = Omit<IDjProfile, 'id' | 'user' | 'createdAt' | '
   user: mongoose.Types.ObjectId;
   pricing: IPricing;
   socialLinks?: ISocialLinks;
+  moderationState: ModerationState;
+  moderationReason?: string;
+  moderationReviewedAt?: Date;
 };
 
 export interface IDjProfileDocument extends IDjProfileDocumentFields, Document {}
@@ -130,6 +134,14 @@ const DjProfileSchema = new Schema<IDjProfileDocument>(
       type: SocialLinksSchema,
       default: undefined,
     },
+    moderationState: {
+      type: String,
+      enum: Object.values(ModerationState),
+      default: ModerationState.CLEAR,
+      index: true,
+    },
+    moderationReason: { type: String },
+    moderationReviewedAt: { type: Date },
   },
   {
     timestamps: true,

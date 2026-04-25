@@ -11,6 +11,7 @@ import { tracksRouter } from './domains/tracks';
 import { notFoundHandler } from './middleware/not-found.middleware';
 import { errorHandler } from './middleware/error.middleware';
 import { contextMiddleware } from './middleware/context.middleware';
+import healthRouter from './routes/health.router';
 
 const app = express();
 const port = apiEnv.port;
@@ -18,6 +19,7 @@ const port = apiEnv.port;
 app.use(cors({ origin: apiEnv.corsOrigin }));
 app.use(express.json());
 app.use(contextMiddleware);
+app.use(healthRouter);
 app.use('/auth', identityRouter);
 app.use('/bookings', journeysRouter);
 app.use('/journeys', journeyRouter);

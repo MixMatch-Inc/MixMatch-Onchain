@@ -19,6 +19,14 @@ export enum ModerationState {
   BANNED = 'BANNED',
 }
 
+export interface IModerationMeta {
+  moderationState: ModerationState;
+  moderationReason?: string;
+  moderationReviewedAt?: Date;
+}
+
+export type Redacted<T> = { [K in keyof T]: T[K] extends string ? T[K] | null : T[K] };
+
 export enum VisibilityPreference {
   PUBLIC = 'PUBLIC',
   PRIVATE = 'PRIVATE',

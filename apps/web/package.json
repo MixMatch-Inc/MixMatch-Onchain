@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
-    "test": "playwright test"
+    "test": "node --import tsx --test tests/**/*.contract.test.ts",
+    "test:e2e": "playwright test"
   },
   "dependencies": {
     "@mixmatch/analytics": "workspace:*",
@@ -29,6 +30,7 @@
     "eslint": "^9",
     "eslint-config-next": "16.1.4",
     "tailwindcss": "^4",
-    "typescript": "^5"
+    "typescript": "^5",
+    "tsx": "^4.21.0"
   }
 }

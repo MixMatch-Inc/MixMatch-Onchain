@@ -6,13 +6,13 @@ export const createWalletLinkageSchema = z.object({
     .string()
     .regex(/^G[A-Z0-9]{55}$/, 'Invalid Stellar account ID format'),
   network: z.nativeEnum(StellarNetwork, {
-    errorMap: () => ({ message: 'Invalid Stellar network' }),
+    error: () => ({ message: 'Invalid Stellar network' }),
   }),
   keyProvenance: z.nativeEnum(KeyProvenance, {
-    errorMap: () => ({ message: 'Invalid key provenance' }),
+    error: () => ({ message: 'Invalid key provenance' }),
   }),
   verificationSignature: z.string().optional(),
-  metadata: z.record(z.any()).optional(),
+  metadata: z.record(z.string(), z.any()).optional(),
 });
 
 export const verifyWalletLinkageSchema = z.object({
@@ -24,7 +24,7 @@ export const verifyWalletLinkageSchema = z.object({
 export const updateWalletLinkageSchema = z.object({
   status: z.nativeEnum(WalletLinkageStatus).optional(),
   featureEligibility: z.array(z.nativeEnum(FeatureEligibility)).optional(),
-  metadata: z.record(z.any()).optional(),
+  metadata: z.record(z.string(), z.any()).optional(),
 });
 
 export const getWalletLinkagesQuerySchema = z.object({

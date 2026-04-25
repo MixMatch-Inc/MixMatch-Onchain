@@ -9,7 +9,7 @@ export const validateRequest = (schema: ZodSchema, target: 'body' | 'query' | 'p
       next();
     } catch (error) {
       if (error instanceof ZodError) {
-        const errorMessages = error.errors.map(err => ({
+        const errorMessages = error.issues.map((err: { path: (string | number)[]; message: string }) => ({
           field: err.path.join('.'),
           message: err.message,
         }));

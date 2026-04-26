@@ -495,37 +495,51 @@ export interface WalletLinkageResponseDto {
   updatedAt: Date;
 }
 
-// ─── Email Verification ───────────────────────────────────────────────────────
-
-export interface IEmailVerificationToken {
-  id: string;
-  userId: string;
-  /** SHA-256 of the raw token; never store the raw value */
-  tokenHash: string;
+export interface SessionMetadataDto {
+  sessionId: string;
+  issuedAt: Date;
   expiresAt: Date;
-  consumedAt?: Date;
-  supersededAt?: Date;
-  /** _id of the token that triggered this resend, if any */
-  resendLineage?: string;
-  resendCount: number;
+  ageSeconds: number;
   ipAddress?: string;
   userAgent?: string;
-  createdAt: Date;
 }
 
-export enum EmailVerificationEventType {
-  ISSUED    = 'EMAIL_VERIFICATION_ISSUED',
-  CONFIRMED = 'EMAIL_VERIFICATION_CONFIRMED',
-  SUPERSEDED = 'EMAIL_VERIFICATION_SUPERSEDED',
-  EXPIRED   = 'EMAIL_VERIFICATION_EXPIRED',
+export interface AccountStateFlagsDto {
+  status: AccountStatus;
+  moderation: ModerationState;
+  isVerified: boolean;
+  isRestricted: boolean;
+  isSuspended: boolean;
 }
 
-export interface EmailVerificationEvent {
-  type: EmailVerificationEventType;
-  userId: string;
-  tokenId: string;
-  occurredAt: string; // ISO-8601
-  metadata?: Record<string, unknown>;
+export interface OnboardingSummaryDto {
+  completed: boolean;
+  progressPercentage: number;
+  pendingSteps: string[];
+}
+
+export interface ProviderSummaryDto {
+  type: ProviderType | 'STELLAR';
+  linked: boolean;
+  linkedAt?: Date;
+  externalId?: string;
+}
+
+export interface UIFeatureFlagsDto {
+  canTransact: boolean;
+  canPost: boolean;
+  requiresOnboarding: boolean;
+  requiresRecoverySetup: boolean;
+  showBetaFeatures: boolean;
+}
+
+export interface SessionDetailsDto {
+  profile: IUserAggregate;
+  session: SessionMetadataDto;
+  accountState: AccountStateFlagsDto;
+  onboarding: OnboardingSummaryDto;
+  providers: ProviderSummaryDto[];
+  flags: UIFeatureFlagsDto;
 }
 
 // Export all error types

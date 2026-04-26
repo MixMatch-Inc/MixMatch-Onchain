@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import bcrypt from "bcryptjs";
-import { UserRole } from "@mixmatch/types";
+import { UserRole, SessionDetailsDto, AccountStatus, ModerationState } from "@mixmatch/types";
 import { container } from "../../config/di";
 import { generateToken } from "../../services/jwt.service";
 import { emailService } from "../../services/email.service";
@@ -173,6 +173,97 @@ export const updateOnboardingStatus = async (
       },
     });
   } catch {
+    res.status(500).json({ message: "Internal server error" });
+  }
+};
+
+export const session = async (
+  req: Request & { user?: AuthenticatedRequestUser },
+  res: Response,
+): Promise<void> => {
+  if (!req.user?.userId) {
+    res.status(401).json({ message: "Unauthorized: missing or invalid token" });
+    return;
+  }
+
+  try {
+    const user = await container.userRepository.findById(req.user.userId);
+
+    if (!user) {
+      res.status(404).json({ message: "User not found" });
+      return;
+    }
+
+    // Get wallet linkages for provider summary
+    const wallets = await container.walletLinkageRepository.findByUserId(req.user.userId);
+
+    const now = new Date();
+    const iat = req.user.iat ? new Date(req.user.iat * 1000) : user.createdAt;
+    const exp = req.user.exp ? new Date(req.user.exp * 1000) : new Date(now.getTime() + 24 * 60 * 60 * 1000);
+    const ageSeconds = Math.floor((now.getTime() - iat.getTime()) / 1000);
+
+    const response: SessionDetailsDto = {
+      profile: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role as any,
+        onboardingCompleted: user.onboardingCompleted,
+        accountStatus: user.accountStatus as AccountStatus,
+        moderationState: user.moderationState as ModerationState,
+        ageGatePassed: user.ageGatePassed,
+        lastActiveAt: user.lastActiveAt,
+        createdAt: user.createdAt,
+        updatedAt: user.updatedAt,
+        timezone: user.timezone || 'UTC',
+        locale: user.locale || 'en-US',
+        visibilityPreference: user.visibilityPreference as any || 'PUBLIC',
+        privacySettings: user.privacySettings || {
+          blindListeningEligible: true,
+          profileRevealAllowed: true,
+          showOnlineStatus: true,
+          allowDirectMessages: true,
+          visibilityPreference: 'PUBLIC'
+        }
+      },
+      session: {
+        sessionId: req.user.userId, // Using userId as session identifier for now
+        issuedAt: iat,
+        expiresAt: exp,
+        ageSeconds,
+        ipAddress: req.ip,
+        userAgent: req.get('User-Agent'),
+      },
+      accountState: {
+        status: user.accountStatus as AccountStatus,
+        moderation: user.moderationState as ModerationState,
+        isVerified: user.accountStatus === AccountStatus.ACTIVE,
+        isRestricted: user.moderationState !== ModerationState.CLEAR,
+        isSuspended: user.accountStatus === AccountStatus.SUSPENDED,
+      },
+      onboarding: {
+        completed: user.onboardingCompleted,
+        progressPercentage: user.onboardingCompleted ? 100 : 50, // Placeholder
+        pendingSteps: user.onboardingCompleted ? [] : ['PROFILE_COMPLETION'],
+      },
+      providers: wallets.map(w => ({
+        type: 'STELLAR',
+        linked: w.status === 'ACTIVE',
+        linkedAt: w.verifiedAt || w.createdAt,
+        externalId: w.stellarAccountId,
+      })),
+      flags: {
+        canTransact: user.accountStatus === AccountStatus.ACTIVE && user.moderationState === ModerationState.CLEAR,
+        canPost: user.moderationState === ModerationState.CLEAR,
+        requiresOnboarding: !user.onboardingCompleted,
+        requiresRecoverySetup: true, // Placeholder for recovery requirement
+        showBetaFeatures: user.role === 'ADMIN',
+      }
+    };
+
+    sendSuccess(res, 200, response);
+  } catch (error) {
+    console.error('Session error:', error);
     res.status(500).json({ message: "Internal server error" });
   }
 };

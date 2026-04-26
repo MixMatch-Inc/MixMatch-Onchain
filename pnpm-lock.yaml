@@ -26,12 +26,6 @@ importers:
       '@mixmatch/env-manifest':
         specifier: workspace:*
         version: link:../../packages/env-manifest
-      '@mixmatch/logger':
-        specifier: workspace:*
-        version: link:../../packages/logger
-      '@mixmatch/observability':
-        specifier: workspace:*
-        version: link:../../packages/observability
       '@mixmatch/types':
         specifier: workspace:*
         version: link:../../packages/types

@@ -1,10 +1,5 @@
 import { Router } from 'express';
-import { login, register, updateOnboardingStatus, me } from './auth.controller';
-import {
-  requestVerification,
-  confirmVerification,
-  verificationStatus,
-} from './email-verification.controller';
+import { login, register, updateOnboardingStatus, me, session } from './auth.controller';
 import { requireAuth } from '../../middleware/auth.middleware';
 
 const authRouter = Router();
@@ -12,6 +7,7 @@ const authRouter = Router();
 authRouter.post('/register', register);
 authRouter.post('/login', login);
 authRouter.get('/me', requireAuth, me);
+authRouter.get('/session', requireAuth, session);
 authRouter.patch('/onboarding', requireAuth, updateOnboardingStatus);
 
 // ── Email Verification ───────────────────────────────────────────────────────

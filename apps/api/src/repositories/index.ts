@@ -12,3 +12,4 @@ export { MongooseVibeJourneyRepository } from './adapters/mongoose-vibe-journey.
 export { MongooseTrackReferenceRepository } from './adapters/mongoose-track-reference.repository';
 export { MongooseBlocklistRepository } from './adapters/mongoose-blocklist.repository';
 export { MongooseSearchIndex } from './adapters/mongoose-search-index.repository';
+export { ISessionRepository, MongooseSessionRepository } from './session.repository';

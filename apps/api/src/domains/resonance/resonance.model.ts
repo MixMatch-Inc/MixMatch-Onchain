@@ -2,13 +2,6 @@ import mongoose, { Document, Schema } from 'mongoose';
 
 export type ResonanceStatus = 'active' | 'expired' | 'blocked';
 
-export interface IResonance {
-  userA: mongoose.Types.ObjectId;
-  userB: mongoose.Types.ObjectId;
-  /** Canonical sorted pair key for dedup: `${minId}_${maxId}` */
-  pairKey: string;
-  status: ResonanceStatus;
-  revealInitialized: boolean;
 export enum ResonanceRevealStatus {
   PENDING = 'PENDING',
   REVEALED = 'REVEALED',
@@ -23,9 +16,11 @@ export enum SongExchangeState {
 }
 
 export interface IResonance {
-  id: string;
-  userId: string;
-  matchedUserId: string;
+  userA: mongoose.Types.ObjectId;
+  userB: mongoose.Types.ObjectId;
+  /** Canonical sorted pair key for dedup: `${minId}_${maxId}` */
+  pairKey: string;
+  status: ResonanceStatus;
   revealStatus: ResonanceRevealStatus;
   songExchangeState: SongExchangeState;
   lastActivityAt: Date;
@@ -44,25 +39,6 @@ const ResonanceSchema = new Schema<IResonanceDocument>(
       type: String,
       enum: ['active', 'expired', 'blocked'],
       default: 'active',
-    },
-    revealInitialized: { type: Boolean, default: false },
-type IResonanceDocumentFields = Omit<IResonance, 'id' | 'createdAt' | 'updatedAt'>;
-
-export interface IResonanceDocument extends IResonanceDocumentFields, Document {}
-
-const ResonanceSchema = new Schema<IResonanceDocument>(
-  {
-    userId: {
-      type: Schema.Types.ObjectId,
-      ref: 'User',
-      required: true,
-      index: true,
-    },
-    matchedUserId: {
-      type: Schema.Types.ObjectId,
-      ref: 'User',
-      required: true,
-      index: true,
     },
     revealStatus: {
       type: String,
@@ -84,9 +60,7 @@ const ResonanceSchema = new Schema<IResonanceDocument>(
 
 ResonanceSchema.index({ userA: 1 });
 ResonanceSchema.index({ userB: 1 });
-
-const Resonance = mongoose.model<IResonanceDocument>('Resonance', ResonanceSchema);
-ResonanceSchema.index({ userId: 1, lastActivityAt: -1 });
+ResonanceSchema.index({ pairKey: 1 }, { unique: true });
 
 const Resonance = mongoose.model<IResonanceDocument>('Resonance', ResonanceSchema);
 

@@ -14,10 +14,6 @@
   "dependencies": {
     "@mixmatch/logger": "workspace:*",
     "@mixmatch/observability": "workspace:*",
-    "test": "node --import tsx --test tests/**/*.test.ts",
-    "migrate:wallets": "tsx scripts/migrate-wallets.ts"
-  },
-  "dependencies": {
     "@mixmatch/analytics": "workspace:*",
     "@mixmatch/env-manifest": "workspace:*",
     "@mixmatch/types": "workspace:*",

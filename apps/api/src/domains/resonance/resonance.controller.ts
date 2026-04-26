@@ -1,17 +1,20 @@
 import type { Request, Response } from 'express';
-import { getResonancesForUser } from './resonance.service';
+import { getResonancesForUser, updateResonance } from './resonance.service';
+import { ResonanceRevealStatus, SongExchangeState } from './resonance.model';
 
 const serializeResonance = (
   userId: string,
-  resonance: Awaited<ReturnType<typeof getResonancesForUser>>[number],
+  resonance: any,
 ) => ({
-  id: String((resonance as { _id?: unknown })._id ?? ''),
+  id: String(resonance._id ?? ''),
   counterpartUserId:
     String(resonance.userA) === userId
       ? String(resonance.userB)
       : String(resonance.userA),
   status: resonance.status,
-  revealInitialized: resonance.revealInitialized,
+  revealStatus: resonance.revealStatus,
+  songExchangeState: resonance.songExchangeState,
+  lastActivityAt: resonance.lastActivityAt,
   createdAt: resonance.createdAt,
   updatedAt: resonance.updatedAt,
 });
@@ -26,39 +29,31 @@ export const listResonances = async (req: Request, res: Response): Promise<void>
     const resonances = await getResonancesForUser(req.user.userId);
     res.status(200).json({
       items: resonances.map((resonance) => serializeResonance(req.user!.userId, resonance)),
-import { Request, Response } from 'express';
-import Resonance from './resonance.model';
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Internal server error' });
+  }
+};
 
-export const listResonances = async (req: Request, res: Response): Promise<void> => {
+export const patchResonance = async (req: Request, res: Response): Promise<void> => {
+  if (!req.user) {
+    res.status(401).json({ message: 'Unauthorized' });
+    return;
+  }
+
   try {
-    const userId = req.user!.userId;
-    const limit = Math.min(parseInt(req.query.limit as string) || 20, 100);
-    const page = Math.max(parseInt(req.query.page as string) || 1, 1);
-    const skip = (page - 1) * limit;
+    const { resonanceId } = req.params;
+    const { revealStatus, songExchangeState } = req.body;
 
-    const [items, total] = await Promise.all([
-      Resonance.find({ userId })
-        .sort({ lastActivityAt: -1 })
-        .skip(skip)
-        .limit(limit)
-        .lean(),
-      Resonance.countDocuments({ userId }),
-    ]);
+    const resonance = await updateResonance(resonanceId, {
+      revealStatus: revealStatus as ResonanceRevealStatus,
+      songExchangeState: songExchangeState as SongExchangeState,
+    });
 
     res.status(200).json({
-      items: items.map((r) => ({
-        id: String(r._id),
-        matchedUserId: String(r.matchedUserId),
-        revealStatus: r.revealStatus,
-        songExchangeState: r.songExchangeState,
-        lastActivityAt: r.lastActivityAt,
-        createdAt: r.createdAt,
-      })),
-      page,
-      pageSize: limit,
-      total,
+      resonance: serializeResonance(req.user.userId, resonance),
     });
-  } catch {
+  } catch (error) {
     res.status(500).json({ message: 'Internal server error' });
   }
 };

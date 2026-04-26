@@ -1,5 +1,4 @@
 {
-<<<<<<< HEAD
   "extends": "@mixmatch/config/tsconfig.base.json",
   "compilerOptions": {
     "target": "ES2022",
@@ -15,26 +14,11 @@
     "resolveJsonModule": true,
     "isolatedModules": true,
     "noEmit": true,
-    "types": ["expo"]
-  },
-  "include": ["src/**/*", "tests/**/*"],
-  "exclude": ["node_modules"]
-}
-=======
-  "extends": "@mixmatch/config/base.json",
-  "compilerOptions": {
-    "target": "ES2020",
-    "lib": ["ES2020"],
-    "jsx": "react-native",
-    "module": "ES2020",
-    "moduleResolution": "bundler",
-    "allowImportingTsExtensions": true,
-    "noEmit": true,
+    "types": ["expo"],
     "paths": {
       "@/*": ["./src/*"]
     }
   },
-  "include": ["src", "app.tsx"],
+  "include": ["src/**/*", "tests/**/*", "app.tsx"],
   "exclude": ["node_modules"]
 }
->>>>>>> cfb38abd24b6ac994893a7ab8c5fab1ff09d8f94

@@ -5,10 +5,13 @@ import {
   TokenExpiredError,
   verifyToken,
 } from '../services/jwt.service';
+import { container } from '../config/di';
 
 export interface AuthenticatedRequestUser {
+  id: string;
   userId: string;
   role: UserRole;
+  sessionId: string;
 }
 
 const extractBearerToken = (authorizationHeader?: string): string | null => {
@@ -25,7 +28,7 @@ const extractBearerToken = (authorizationHeader?: string): string | null => {
   return token;
 };
 
-export const requireAuth = (req: Request, res: Response, next: NextFunction): void => {
+export const requireAuth = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   const token = extractBearerToken(req.header('authorization'));
 
   if (!token) {
@@ -36,9 +39,19 @@ export const requireAuth = (req: Request, res: Response, next: NextFunction): vo
   try {
     const payload = verifyToken(token);
 
+    if (payload.sessionId) {
+      const session = await container.sessionRepository.findSessionById(payload.sessionId, payload.userId);
+      if (!session) {
+        res.status(401).json({ message: 'Unauthorized: session revoked or expired' });
+        return;
+      }
+    }
+
     req.user = {
+      id: payload.userId,
       userId: payload.userId,
       role: payload.role,
+      sessionId: payload.sessionId,
     };
     if (req.context) {
       req.context.actor = {

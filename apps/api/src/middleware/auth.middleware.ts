@@ -9,6 +9,8 @@ import {
 export interface AuthenticatedRequestUser {
   userId: string;
   role: UserRole;
+  iat?: number;
+  exp?: number;
 }
 
 const extractBearerToken = (authorizationHeader?: string): string | null => {
@@ -39,6 +41,8 @@ export const requireAuth = (req: Request, res: Response, next: NextFunction): vo
     req.user = {
       userId: payload.userId,
       role: payload.role,
+      iat: payload.iat,
+      exp: payload.exp,
     };
     if (req.context) {
       req.context.actor = {

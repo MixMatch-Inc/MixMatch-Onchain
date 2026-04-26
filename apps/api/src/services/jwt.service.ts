@@ -7,6 +7,8 @@ const TOKEN_EXPIRATION = '24h';
 export interface AuthTokenPayload {
   userId: string;
   role: UserRole;
+  iat?: number;
+  exp?: number;
 }
 
 const getJwtSecret = (): string => {

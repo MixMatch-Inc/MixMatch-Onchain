@@ -11,7 +11,8 @@ export interface AuthenticatedRequestUser {
   id: string;
   userId: string;
   role: UserRole;
-  sessionId: string;
+  iat?: number;
+  exp?: number;
 }
 
 const extractBearerToken = (authorizationHeader?: string): string | null => {
@@ -51,7 +52,8 @@ export const requireAuth = async (req: Request, res: Response, next: NextFunctio
       id: payload.userId,
       userId: payload.userId,
       role: payload.role,
-      sessionId: payload.sessionId,
+      iat: payload.iat,
+      exp: payload.exp,
     };
     if (req.context) {
       req.context.actor = {

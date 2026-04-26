@@ -1,4 +1,4 @@
-import { MongooseUserRepository, MongooseBookingRepository, MongooseVibeJourneyRepository, MongooseTrackReferenceRepository, MongooseSessionRepository } from '../repositories';
+import { MongooseUserRepository, MongooseBookingRepository, MongooseVibeJourneyRepository, MongooseTrackReferenceRepository, MongooseWalletLinkageRepository } from '../repositories';
 
 // Simple dependency injection container
 export const container = {
@@ -6,5 +6,5 @@ export const container = {
   bookingRepository: new MongooseBookingRepository(),
   vibeJourneyRepository: new MongooseVibeJourneyRepository(),
   trackReferenceRepository: new MongooseTrackReferenceRepository(),
-  sessionRepository: new MongooseSessionRepository(),
+  walletLinkageRepository: new MongooseWalletLinkageRepository(),
 };

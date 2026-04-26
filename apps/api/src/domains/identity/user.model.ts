@@ -81,7 +81,7 @@ const UserSchema = new Schema<IUserDocument>(
     accountStatus: {
       type: String,
       enum: Object.values(AccountStatus),
-      default: AccountStatus.ACTIVE,
+      default: AccountStatus.PENDING_VERIFICATION,
     },
     timezone: {
       type: String,

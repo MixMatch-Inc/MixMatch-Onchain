@@ -14,11 +14,8 @@
     "resolveJsonModule": true,
     "isolatedModules": true,
     "noEmit": true,
-    "types": ["expo"],
-    "paths": {
-      "@/*": ["./src/*"]
-    }
+    "types": ["expo"]
   },
-  "include": ["src/**/*", "tests/**/*", "app.tsx"],
+  "include": ["src/**/*", "tests/**/*"],
   "exclude": ["node_modules"]
 }

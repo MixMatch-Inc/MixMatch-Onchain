@@ -495,6 +495,39 @@ export interface WalletLinkageResponseDto {
   updatedAt: Date;
 }
 
+// ─── Email Verification ───────────────────────────────────────────────────────
+
+export interface IEmailVerificationToken {
+  id: string;
+  userId: string;
+  /** SHA-256 of the raw token; never store the raw value */
+  tokenHash: string;
+  expiresAt: Date;
+  consumedAt?: Date;
+  supersededAt?: Date;
+  /** _id of the token that triggered this resend, if any */
+  resendLineage?: string;
+  resendCount: number;
+  ipAddress?: string;
+  userAgent?: string;
+  createdAt: Date;
+}
+
+export enum EmailVerificationEventType {
+  ISSUED    = 'EMAIL_VERIFICATION_ISSUED',
+  CONFIRMED = 'EMAIL_VERIFICATION_CONFIRMED',
+  SUPERSEDED = 'EMAIL_VERIFICATION_SUPERSEDED',
+  EXPIRED   = 'EMAIL_VERIFICATION_EXPIRED',
+}
+
+export interface EmailVerificationEvent {
+  type: EmailVerificationEventType;
+  userId: string;
+  tokenId: string;
+  occurredAt: string; // ISO-8601
+  metadata?: Record<string, unknown>;
+}
+
 // Export all error types
 export * from "./errors";
 export * from "./client-errors";

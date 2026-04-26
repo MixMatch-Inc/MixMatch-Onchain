@@ -4,6 +4,10 @@ import Journey, { JourneyVisibility } from './journey.model';
 import { DjGenre } from '@mixmatch/types';
 import { RevealService } from '../discovery/reveal.service';
 import { RevealPhase } from '@mixmatch/types';
+import { createDraftJourneySchema, updateSlotsSchema } from './journey.validation';
+import * as journeyService from './journey.service';
+import { IVibeJourneyDocument } from './vibe-journey.model';
+import { IJourneySnapshotDocument } from './journey-snapshot.model';
 
 interface LeanJourney {
   _id: mongoose.Types.ObjectId;
@@ -56,16 +60,54 @@ const serializeRevealedView = (j: LeanJourney, phase: RevealPhase) => {
   return base;
 };
 
+const serializeJourney = (journey: IVibeJourneyDocument) => ({
+  id: String(journey._id),
+  author: String(journey.author),
+  title: journey.title,
+  description: journey.description,
+  status: journey.status,
+  slots: journey.slots,
+  version: journey.version,
+  latestPublishedSnapshotId: journey.latestPublishedSnapshotId
+    ? String(journey.latestPublishedSnapshotId)
+    : undefined,
+  createdAt: journey.createdAt,
+  updatedAt: journey.updatedAt,
+});
+
+const serializeSnapshot = (snapshot: IJourneySnapshotDocument) => ({
+  id: String(snapshot._id),
+  journeyId: String(snapshot.journeyId),
+  authorId: String(snapshot.authorId),
+  title: snapshot.title,
+  description: snapshot.description,
+  slots: snapshot.slots,
+  draftVersion: snapshot.draftVersion,
+  createdAt: snapshot.createdAt,
+});
+
 /** GET /journeys/:id — viewer-aware single journey */
 export const getJourney = async (req: Request, res: Response): Promise<void> => {
+  if (!req.user) {
+    res.status(401).json({ message: 'Unauthorized' });
+    return;
+  }
+
   try {
     const journey = await Journey.findById(req.params.id).lean() as LeanJourney | null;
     if (!journey) {
-      res.status(404).json({ message: 'Journey not found' });
-      return;
+      // Try service-based lookup if model-based fails
+      try {
+        const sj = await journeyService.getJourney(req.params.id, req.user.userId);
+        res.status(200).json({ journey: serializeJourney(sj) });
+        return;
+      } catch {
+        res.status(404).json({ message: 'Journey not found' });
+        return;
+      }
     }
 
-    const viewerId = req.user!.userId;
+    const viewerId = req.user.userId;
     const isOwner = String(journey.owner) === viewerId;
 
     if (isOwner) {
@@ -93,36 +135,9 @@ export const getJourney = async (req: Request, res: Response): Promise<void> => 
 
     res.status(200).json({ journey: serializePublicView(journey) });
   } catch {
-import { createDraftJourneySchema, updateSlotsSchema } from './journey.validation';
-import * as journeyService from './journey.service';
-import { IVibeJourneyDocument } from './vibe-journey.model';
-import { IJourneySnapshotDocument } from './journey-snapshot.model';
-
-const serializeJourney = (journey: IVibeJourneyDocument) => ({
-  id: String(journey._id),
-  author: String(journey.author),
-  title: journey.title,
-  description: journey.description,
-  status: journey.status,
-  slots: journey.slots,
-  version: journey.version,
-  latestPublishedSnapshotId: journey.latestPublishedSnapshotId
-    ? String(journey.latestPublishedSnapshotId)
-    : undefined,
-  createdAt: journey.createdAt,
-  updatedAt: journey.updatedAt,
-});
-
-const serializeSnapshot = (snapshot: IJourneySnapshotDocument) => ({
-  id: String(snapshot._id),
-  journeyId: String(snapshot.journeyId),
-  authorId: String(snapshot.authorId),
-  title: snapshot.title,
-  description: snapshot.description,
-  slots: snapshot.slots,
-  draftVersion: snapshot.draftVersion,
-  createdAt: snapshot.createdAt,
-});
+    res.status(500).json({ message: 'Internal server error' });
+  }
+};
 
 export const createDraftJourney = async (req: Request, res: Response): Promise<void> => {
   if (!req.user) {
@@ -226,8 +241,13 @@ export const publishJourney = async (req: Request, res: Response): Promise<void>
 
 /** GET /journeys/owner/me — owner's own journeys */
 export const listOwnerJourneys = async (req: Request, res: Response): Promise<void> => {
+  if (!req.user) {
+    res.status(401).json({ message: 'Unauthorized' });
+    return;
+  }
+
   try {
-    const journeys = await Journey.find({ owner: req.user!.userId })
+    const journeys = await Journey.find({ owner: req.user.userId })
       .sort({ createdAt: -1 })
       .lean() as LeanJourney[];
 
@@ -238,10 +258,10 @@ export const listOwnerJourneys = async (req: Request, res: Response): Promise<vo
 };
 
 /** GET /journeys/public/:userId — public journeys for a user profile */
-export const listPublicJourneys = async (req: Request, res: Response): Promise<void> => {
+export const listPublicJourneys = async (_req: Request, res: Response): Promise<void> => {
   try {
     const journeys = await Journey.find({
-      owner: req.params.userId,
+      owner: _req.params.userId,
       visibility: JourneyVisibility.PUBLIC,
     })
       .sort({ createdAt: -1 })
@@ -249,27 +269,6 @@ export const listPublicJourneys = async (req: Request, res: Response): Promise<v
 
     res.status(200).json({ journeys: journeys.map(serializePublicView) });
   } catch {
-    res.status(500).json({ message: 'Internal server error' });
-  }
-};
-export const getJourney = async (req: Request, res: Response): Promise<void> => {
-  if (!req.user) {
-    res.status(401).json({ message: 'Unauthorized' });
-    return;
-  }
-
-  try {
-    const journey = await journeyService.getJourney(req.params.journeyId, req.user.userId);
-    res.status(200).json({ journey: serializeJourney(journey) });
-  } catch (error) {
-    if (error instanceof journeyService.JourneyNotFoundError) {
-      res.status(404).json({ message: error.message });
-      return;
-    }
-    if (error instanceof journeyService.JourneyForbiddenError) {
-      res.status(403).json({ message: error.message });
-      return;
-    }
     res.status(500).json({ message: 'Internal server error' });
   }
 };

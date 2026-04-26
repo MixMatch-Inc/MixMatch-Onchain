@@ -9,23 +9,18 @@ import { loginSchema, registerSchema } from "./auth.validation";
 import { AuthenticatedRequestUser } from "../../middleware/auth.middleware";
 import { sendSuccess } from "../../utils/api-response";
 import { AuthError, ValidationError } from "../../utils/errors";
+import { auditLogService } from "../moderation/audit-log.service";
+import { IUser } from "../../repositories/user.repository";
 
 const SALT_ROUNDS = 10;
+const SESSION_EXPIRATION_MS = 24 * 60 * 60 * 1000; // 24 hours
 
 const deriveNameFromEmail = (email: string): string => {
   const localPart = email.split("@")[0] || "mixmatch-user";
   return localPart.trim() || "mixmatch-user";
 };
 
-const serializeUser = (user: {
-  id: string;
-  name: string;
-  email: string;
-  role: string;
-  onboardingCompleted: boolean;
-  createdAt?: Date;
-  updatedAt?: Date;
-}) => ({
+const serializeUser = (user: IUser) => ({
   id: user.id,
   name: user.name,
   email: user.email,
@@ -77,6 +72,7 @@ export const register = async (req: Request, res: Response): Promise<void> => {
 
     sendSuccess(res, 201, {
       token,
+      sessionId: session.sessionId,
       user: serializeUser(createdUser),
     });
   } catch (error) {
@@ -123,10 +119,19 @@ export const login = async (req: Request, res: Response): Promise<void> => {
       throw AuthError.invalidCredentials();
     }
 
-    const token = generateToken(existingUser.id, existingUser.role as UserRole);
+    const expiresAt = new Date(Date.now() + SESSION_EXPIRATION_MS);
+    const session = await container.sessionRepository.createSession(
+      existingUser.id,
+      expiresAt,
+      req.headers['user-agent'] as string,
+      req.ip as string
+    );
+
+    const token = generateToken(existingUser.id, existingUser.role as UserRole, session.sessionId);
 
     sendSuccess(res, 200, {
       token,
+      sessionId: session.sessionId,
       user: serializeUser(existingUser),
     });
   } catch (error) {
@@ -289,6 +294,57 @@ export const me = async (
       user: serializeUser(user),
     });
   } catch {
+    res.status(500).json({ message: "Internal server error" });
+  }
+};
+
+export const logout = async (
+  req: Request & { user?: AuthenticatedRequestUser },
+  res: Response,
+): Promise<void> => {
+  if (!req.user?.userId || !req.user?.sessionId) {
+    res.status(401).json({ message: "Unauthorized" });
+    return;
+  }
+
+  try {
+    const sessionIdToRevoke = req.body?.sessionId || req.user.sessionId;
+    await container.sessionRepository.revokeSession(sessionIdToRevoke, req.user.userId);
+
+    await auditLogService.log({
+      action: 'USER_LOGGED_OUT',
+      actorId: req.user.userId,
+      targetId: req.user.userId,
+      metadata: { sessionId: sessionIdToRevoke },
+    });
+
+    res.status(200).json({ message: "Logged out successfully" });
+  } catch (error) {
+    res.status(500).json({ message: "Internal server error" });
+  }
+};
+
+export const logoutAll = async (
+  req: Request & { user?: AuthenticatedRequestUser },
+  res: Response,
+): Promise<void> => {
+  if (!req.user?.userId) {
+    res.status(401).json({ message: "Unauthorized" });
+    return;
+  }
+
+  try {
+    const count = await container.sessionRepository.revokeAllUserSessions(req.user.userId);
+
+    await auditLogService.log({
+      action: 'USER_LOGGED_OUT_ALL',
+      actorId: req.user.userId,
+      targetId: req.user.userId,
+      metadata: { sessionsRevoked: count },
+    });
+
+    res.status(200).json({ message: "All sessions logged out successfully" });
+  } catch (error) {
     res.status(500).json({ message: "Internal server error" });
   }
 };

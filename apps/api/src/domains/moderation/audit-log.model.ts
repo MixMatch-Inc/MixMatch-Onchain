@@ -7,7 +7,9 @@ export type AuditAction =
   | 'MODERATION_TRANSITION'
   | 'ENTITLEMENT_GRANTED'
   | 'ENTITLEMENT_CONSUMED'
-  | 'ACCOUNT_PRIVACY_CHANGED';
+  | 'ACCOUNT_PRIVACY_CHANGED'
+  | 'USER_LOGGED_OUT'
+  | 'USER_LOGGED_OUT_ALL';
 
 export interface IAuditLogEntry {
   action: AuditAction;

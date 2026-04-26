@@ -15,8 +15,8 @@ const getJwtSecret = (): string => {
   return apiEnv.jwtSecret;
 };
 
-export const generateToken = (userId: string, role: UserRole): string => {
-  const payload: AuthTokenPayload = { userId, role };
+export const generateToken = (userId: string, role: UserRole, sessionId: string): string => {
+  const payload: AuthTokenPayload = { userId, role, sessionId };
 
   return jwt.sign(payload, getJwtSecret(), {
     expiresIn: TOKEN_EXPIRATION,

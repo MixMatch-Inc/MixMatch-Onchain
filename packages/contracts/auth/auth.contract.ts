@@ -17,6 +17,20 @@ export interface LoginDto extends BaseAuthContract {
   password: string;
 }
 
+export interface AuthResponseDto extends BaseAuthContract {
+  token: string;
+  sessionId: string;
+  user: {
+    id: string;
+    name: string;
+    email: string;
+    role: string;
+    onboardingCompleted: boolean;
+    createdAt?: Date;
+    updatedAt?: Date;
+  };
+}
+
 export interface RefreshTokenDto extends BaseAuthContract {
   refreshToken: string;
 }

@@ -9,6 +9,8 @@ authRouter.post('/login', login);
 authRouter.get('/me', requireAuth, me);
 authRouter.get('/session', requireAuth, session);
 authRouter.patch('/onboarding', requireAuth, updateOnboardingStatus);
+authRouter.post('/logout', requireAuth, logout);
+authRouter.post('/logout-all', requireAuth, logoutAll);
 
 // ── Email Verification ───────────────────────────────────────────────────────
 // POST /auth/verify/request  — issue / re-issue a token (rate-limited)

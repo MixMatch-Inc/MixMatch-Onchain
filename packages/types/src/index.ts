@@ -495,6 +495,53 @@ export interface WalletLinkageResponseDto {
   updatedAt: Date;
 }
 
+export interface SessionMetadataDto {
+  sessionId: string;
+  issuedAt: Date;
+  expiresAt: Date;
+  ageSeconds: number;
+  ipAddress?: string;
+  userAgent?: string;
+}
+
+export interface AccountStateFlagsDto {
+  status: AccountStatus;
+  moderation: ModerationState;
+  isVerified: boolean;
+  isRestricted: boolean;
+  isSuspended: boolean;
+}
+
+export interface OnboardingSummaryDto {
+  completed: boolean;
+  progressPercentage: number;
+  pendingSteps: string[];
+}
+
+export interface ProviderSummaryDto {
+  type: ProviderType | 'STELLAR';
+  linked: boolean;
+  linkedAt?: Date;
+  externalId?: string;
+}
+
+export interface UIFeatureFlagsDto {
+  canTransact: boolean;
+  canPost: boolean;
+  requiresOnboarding: boolean;
+  requiresRecoverySetup: boolean;
+  showBetaFeatures: boolean;
+}
+
+export interface SessionDetailsDto {
+  profile: IUserAggregate;
+  session: SessionMetadataDto;
+  accountState: AccountStateFlagsDto;
+  onboarding: OnboardingSummaryDto;
+  providers: ProviderSummaryDto[];
+  flags: UIFeatureFlagsDto;
+}
+
 // Export all error types
 export * from "./errors";
 export * from "./client-errors";

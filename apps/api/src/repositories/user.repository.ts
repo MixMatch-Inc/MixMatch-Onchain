@@ -7,6 +7,14 @@ export interface IUser {
   passwordHash: string;
   role: string;
   onboardingCompleted: boolean;
+  accountStatus: string;
+  moderationState: string;
+  ageGatePassed: boolean;
+  timezone: string;
+  locale: string;
+  visibilityPreference: string;
+  privacySettings: any;
+  lastActiveAt: Date;
   createdAt: Date;
   updatedAt: Date;
 }

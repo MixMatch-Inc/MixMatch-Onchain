@@ -3,6 +3,8 @@ import bcrypt from "bcryptjs";
 import { UserRole, SessionDetailsDto, AccountStatus, ModerationState } from "@mixmatch/types";
 import { container } from "../../config/di";
 import { generateToken } from "../../services/jwt.service";
+import { emailService } from "../../services/email.service";
+import { EmailVerificationService } from "./email-verification.service";
 import { loginSchema, registerSchema } from "./auth.validation";
 import { AuthenticatedRequestUser } from "../../middleware/auth.middleware";
 import { sendSuccess } from "../../utils/api-response";
@@ -60,6 +62,17 @@ export const register = async (req: Request, res: Response): Promise<void> => {
       onboardingCompleted: false,
     });
 
+    // Issue a verification token and send the email immediately after registration.
+    // Fire-and-forget: a delivery failure should not block the 201 response.
+    const verificationService = new EmailVerificationService(
+      container.emailVerificationTokenRepository,
+      container.userRepository,
+      emailService,
+    );
+    verificationService
+      .issueToken(createdUser.id, createdUser.email, req.ip, req.headers['user-agent'])
+      .catch((err) => console.error('[register] Failed to send verification email:', err));
+
     const token = generateToken(createdUser.id, createdUser.role as UserRole);
 
     sendSuccess(res, 201, {
@@ -82,6 +95,7 @@ export const register = async (req: Request, res: Response): Promise<void> => {
     throw error;
   }
 };
+
 
 export const login = async (req: Request, res: Response): Promise<void> => {
   const parsedPayload = loginSchema.safeParse(req.body);

@@ -131,6 +131,34 @@ export class AuthError extends MixMatchErrorBase {
       requestId,
     );
   }
+
+  /**
+   * Thrown when a verification token has already been consumed (single-use
+   * enforcement). Maps to HTTP 409 Conflict.
+   */
+  static verificationTokenAlreadyUsed(requestId?: string) {
+    return new AuthError(
+      ErrorCode.AUTH_TOKEN_INVALID,
+      "Verification token has already been used",
+      "This verification link has already been used. Request a new one if you need to verify again.",
+      { retryable: false, userActionable: true },
+      requestId,
+    );
+  }
+
+  /**
+   * Thrown by requireEmailVerified middleware when the account is still
+   * PENDING_VERIFICATION. Maps to HTTP 403 Forbidden.
+   */
+  static emailNotVerified(requestId?: string) {
+    return new AuthError(
+      ErrorCode.AUTH_EMAIL_NOT_VERIFIED,
+      "Email address has not been verified",
+      "Please verify your email address before accessing this feature. Check your inbox for a verification link.",
+      { retryable: false, userActionable: true },
+      requestId,
+    );
+  }
 }
 
 // Provider Sync Error Classes

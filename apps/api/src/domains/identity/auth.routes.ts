@@ -1,8 +1,11 @@
 import { Router } from 'express';
-import { login, register, updateOnboardingStatus, me, session } from './auth.controller';
+import { login, register, updateOnboardingStatus, me, session, logout, logoutAll } from './auth.controller';
+import { requestVerification, confirmVerification, verificationStatus } from './email-verification.controller';
+import { requestPasswordReset, confirmPasswordReset, passwordResetStatus } from './password-reset.controller';
 import { requireAuth } from '../../middleware/auth.middleware';
 
-const authRouter = Router();
+// Explicit type annotation to satisfy TypeScript's portability check
+const authRouter: ReturnType<typeof Router> = Router();
 
 authRouter.post('/register', register);
 authRouter.post('/login', login);
@@ -19,6 +22,14 @@ authRouter.post('/verify/request', requireAuth, requestVerification);
 authRouter.get('/verify/confirm', confirmVerification);
 // GET  /auth/verify/status  — check current verification state
 authRouter.get('/verify/status', requireAuth, verificationStatus);
+
+// ── Password Reset ───────────────────────────────────────────────────────────
+// POST /auth/password-reset/request  — request password reset email (enumeration-safe)
+authRouter.post('/password-reset/request', requestPasswordReset);
+// POST /auth/password-reset/confirm  — confirm reset with token and new password
+authRouter.post('/password-reset/confirm', confirmPasswordReset);
+// GET  /auth/password-reset/status  — check reset status (authenticated)
+authRouter.get('/password-reset/status', requireAuth, passwordResetStatus);
 
 export default authRouter;
 

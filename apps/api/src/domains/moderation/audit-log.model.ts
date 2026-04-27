@@ -9,7 +9,9 @@ export type AuditAction =
   | 'ENTITLEMENT_CONSUMED'
   | 'ACCOUNT_PRIVACY_CHANGED'
   | 'USER_LOGGED_OUT'
-  | 'USER_LOGGED_OUT_ALL';
+  | 'USER_LOGGED_OUT_ALL'
+  | 'PASSWORD_RESET_REQUESTED'
+  | 'PASSWORD_RESET_CONFIRMED';
 
 export interface IAuditLogEntry {
   action: AuditAction;

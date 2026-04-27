@@ -10,7 +10,11 @@
     "clean": "turbo run clean",
     "bootstrap": "node scripts/bootstrap.js",
     "bootstrap:validate": "node scripts/bootstrap.js --validate-only",
-    "bootstrap:partial": "node scripts/bootstrap.js --partial"
+    "bootstrap:partial": "node scripts/bootstrap.js --partial",
+    "changelog:generate": "node scripts/generate-changelog.js",
+    "changelog:since": "node scripts/generate-changelog.js --since",
+    "changelog:workspace": "node scripts/generate-changelog.js --workspace",
+    "release:notes": "node scripts/generate-changelog.js --output RELEASE_NOTES.md"
   },
   "devDependencies": {
     "turbo": "^2.3.0",

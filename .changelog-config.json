@@ -1,0 +1,59 @@
+{
+  "changelog": {
+    "header": "# Changelog\n\nAll notable changes to this project will be documented in this file.\n\nThe format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),\nand this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).\n",
+    "types": {
+      "feat": {
+        "title": "## 🚀 Features",
+        "semver": "minor"
+      },
+      "fix": {
+        "title": "## 🐛 Bug Fixes",
+        "semver": "patch"
+      },
+      "docs": {
+        "title": "## 📝 Documentation"
+      },
+      "style": {
+        "title": "## 🎨 Styles"
+      },
+      "refactor": {
+        "title": "## ♻️ Code Refactoring"
+      },
+      "perf": {
+        "title": "## ⚡ Performance Improvements"
+      },
+      "test": {
+        "title": "## 🧪 Tests"
+      },
+      "build": {
+        "title": "## 🛠️ Build System"
+      },
+      "ci": {
+        "title": "## 🚀 CI/CD"
+      },
+      "chore": {
+        "title": "## 🔧 Chores"
+      }
+    },
+    "scopes": [
+      "api",
+      "web",
+      "mobile",
+      "stellar-service",
+      "contracts",
+      "types",
+      "analytics",
+      "logger",
+      "observability",
+      "ui",
+      "config",
+      "docs"
+    ],
+    "releaseCommitMessageFormat": "chore(release): {{currentTag}} [skip ci]",
+    "issuePrefixes": ["#"],
+    "issueUrlFormat": "{{host}}/{{owner}}/{{repository}}/issues/{{id}}",
+    "commitUrlFormat": "{{host}}/{{owner}}/{{repository}}/commit/{{hash}}",
+    "compareUrlFormat": "{{host}}/{{owner}}/{{repository}}/compare/{{previousTag}}...{{currentTag}}",
+    "userUrlFormat": "{{host}}/{{user}}"
+  }
+}

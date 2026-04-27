@@ -542,6 +542,43 @@ export interface SessionDetailsDto {
   flags: UIFeatureFlagsDto;
 }
 
+// Password Reset Types
+export interface IPasswordResetToken {
+  id: string;
+  userId: string;
+  tokenHash: string;
+  expiresAt: Date;
+  consumedAt?: Date;
+  requestIp?: string;
+  userAgent?: string;
+  createdAt: Date;
+}
+
+// Email Verification Types
+export interface IEmailVerificationToken {
+  id: string;
+  userId: string;
+  tokenHash: string;
+  expiresAt: Date;
+  consumedAt?: Date;
+  supersededAt?: Date;
+  resendLineage?: string;
+  resendCount: number;
+  ipAddress?: string;
+  userAgent?: string;
+  createdAt: Date;
+}
+
+export type EmailVerificationEventType = 'ISSUED' | 'CONFIRMED' | 'EXPIRED';
+
+export interface EmailVerificationEvent {
+  type: EmailVerificationEventType;
+  userId: string;
+  tokenId: string;
+  occurredAt: string;
+  metadata?: Record<string, unknown>;
+}
+
 // Export all error types
 export * from "./errors";
 export * from "./client-errors";

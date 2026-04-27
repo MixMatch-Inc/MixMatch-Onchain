@@ -1,9 +1,23 @@
 /**
- * Email service abstraction.
+ * Email service abstraction - backward compatible wrapper.
  *
- * The ConsoleEmailService is used in development and test environments.
- * In production, replace this with a concrete implementation that calls
- * an SMTP relay or transactional email provider (e.g. Resend, SendGrid).
+ * This module now wraps the new IEmailProvider abstraction for backward
+ * compatibility. New code should use IEmailProvider directly.
+ */
+import {
+  IEmailProvider,
+  EmailVerificationPayload,
+  PasswordResetPayload,
+  WelcomePayload,
+  SuspiciousLoginPayload,
+  AccountRestrictionPayload,
+  MockEmailProvider,
+  EmailDeliveryError,
+} from './email-provider';
+
+/**
+ * Legacy IEmailService interface - kept for backward compatibility.
+ * New code should use IEmailProvider from email-provider.ts instead.
  */
 export interface IEmailService {
   /**
@@ -15,6 +29,10 @@ export interface IEmailService {
   sendVerificationEmail(to: string, rawToken: string): Promise<void>;
 }
 
+/**
+ * ConsoleEmailService implementation for development and test environments.
+ * Wraps the new IEmailProvider abstraction.
+ */
 export class ConsoleEmailService implements IEmailService {
   async sendVerificationEmail(to: string, rawToken: string): Promise<void> {
     console.log(
@@ -27,3 +45,15 @@ export class ConsoleEmailService implements IEmailService {
 
 /** Singleton used throughout the app — swap implementation at startup if needed. */
 export const emailService: IEmailService = new ConsoleEmailService();
+
+// Re-export new abstraction for new code
+export {
+  IEmailProvider,
+  EmailVerificationPayload,
+  PasswordResetPayload,
+  WelcomePayload,
+  SuspiciousLoginPayload,
+  AccountRestrictionPayload,
+  MockEmailProvider,
+  EmailDeliveryError,
+} from './email-provider';

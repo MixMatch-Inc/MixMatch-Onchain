@@ -1,4 +1,10 @@
-import { MongooseUserRepository, MongooseBookingRepository, MongooseVibeJourneyRepository, MongooseTrackReferenceRepository, MongooseWalletLinkageRepository } from '../repositories';
+import {
+  MongooseUserRepository,
+  MongooseBookingRepository,
+  MongooseVibeJourneyRepository,
+  MongooseTrackReferenceRepository,
+  MongooseWalletLinkageRepository,
+} from '../repositories';
 import { MongoosePasswordResetTokenRepository } from '../repositories/adapters/mongoose-password-reset-token.repository';
 import { MongooseEmailVerificationTokenRepository } from '../repositories/adapters/mongoose-email-verification-token.repository';
 import { MongooseSessionRepository } from '../repositories/session.repository';

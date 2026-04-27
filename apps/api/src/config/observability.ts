@@ -29,6 +29,31 @@ const rateLimitStore = new MemoryRateLimitStore();
 export const apiRateLimitMiddleware = createRateLimitMiddleware({
   store: rateLimitStore,
   rules: [
+    // Tighter limits for password-sensitive operations
+    {
+      name: 'auth-change-password',
+      windowMs: 60_000,
+      max: 5,
+      match: (req) => req.method === 'POST' && req.path === '/auth/change-password',
+      skip: isInternalRequest,
+    },
+    // Verification resend — tighter than general auth
+    {
+      name: 'auth-verify-request',
+      windowMs: 60_000,
+      max: 3,
+      match: (req) => req.method === 'POST' && req.path === '/auth/verify/request',
+      skip: isInternalRequest,
+    },
+    // Password reset requests
+    {
+      name: 'auth-reset',
+      windowMs: 60_000,
+      max: 3,
+      match: (req) => req.method === 'POST' && req.path.startsWith('/auth/reset'),
+      skip: isInternalRequest,
+    },
+    // General auth (login/register/logout)
     {
       name: 'auth',
       windowMs: 60_000,

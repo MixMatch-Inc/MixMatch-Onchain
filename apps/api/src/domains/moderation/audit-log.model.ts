@@ -11,7 +11,9 @@ export type AuditAction =
   | 'USER_LOGGED_OUT'
   | 'USER_LOGGED_OUT_ALL'
   | 'PASSWORD_RESET_REQUESTED'
-  | 'PASSWORD_RESET_CONFIRMED';
+  | 'PASSWORD_RESET_CONFIRMED'
+  | 'PASSWORD_CHANGED'
+  | 'PASSWORD_CHANGE_FAILED';
 
 export interface IAuditLogEntry {
   action: AuditAction;

@@ -18,6 +18,7 @@ const mapToEntity = (doc: any): IUser => ({
   lastActiveAt: doc.lastActiveAt,
   createdAt: doc.createdAt,
   updatedAt: doc.updatedAt,
+  passwordHistory: doc.passwordHistory,
 });
 
 export class MongooseUserRepository implements IUserRepository {
@@ -54,5 +55,10 @@ export class MongooseUserRepository implements IUserRepository {
   async existsByEmail(email: string): Promise<boolean> {
     const count = await User.countDocuments({ email });
     return count > 0;
+  }
+
+  async findByIdWithPasswordHistory(id: string): Promise<IUser | null> {
+    const doc = await User.findById(id).select('+passwordHistory').lean();
+    return doc ? mapToEntity(doc) : null;
   }
 }

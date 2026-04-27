@@ -20,6 +20,18 @@ export const confirmTokenSchema = z.object({
     .regex(/^[0-9a-f]+$/, 'Verification token must be a valid hex string'),
 });
 
+export const changePasswordSchema = z.object({
+  currentPassword: z.string().min(1, 'Current password is required'),
+  newPassword: z
+    .string()
+    .min(8, 'Password must be at least 8 characters long')
+    .regex(/[A-Z]/, 'Password must contain at least one uppercase letter')
+    .regex(/[0-9]/, 'Password must contain at least one number'),
+  revokeAllSessions: z.boolean().optional().default(false),
+});
+
+export type ChangePasswordInput = z.infer<typeof changePasswordSchema>;
+
 export type RegisterInput = z.infer<typeof registerSchema>;
 export type LoginInput = z.infer<typeof loginSchema>;
 export type ConfirmTokenInput = z.infer<typeof confirmTokenSchema>;

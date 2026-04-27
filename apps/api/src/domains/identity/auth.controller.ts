@@ -5,11 +5,12 @@ import { container } from "../../config/di";
 import { generateToken } from "../../services/jwt.service";
 import { emailService } from "../../services/email.service";
 import { EmailVerificationService } from "./email-verification.service";
-import { loginSchema, registerSchema } from "./auth.validation";
+import { loginSchema, registerSchema, changePasswordSchema } from "./auth.validation";
 import { AuthenticatedRequestUser } from "../../middleware/auth.middleware";
 import { sendSuccess } from "../../utils/api-response";
 import { AuthError, ValidationError } from "../../utils/errors";
 import { auditLogService } from "../moderation/audit-log.service";
+import { authAuditService } from "../moderation/auth-audit.service";
 import { IUser } from "../../repositories/user.repository";
 
 const SALT_ROUNDS = 10;
@@ -68,11 +69,10 @@ export const register = async (req: Request, res: Response): Promise<void> => {
       .issueToken(createdUser.id, createdUser.email, req.ip, req.headers['user-agent'])
       .catch((err) => console.error('[register] Failed to send verification email:', err));
 
-    const token = generateToken(createdUser.id, createdUser.role as UserRole);
+    const token = generateToken(createdUser.id, createdUser.role as UserRole, '');
 
     sendSuccess(res, 201, {
       token,
-      sessionId: session.sessionId,
       user: serializeUser(createdUser),
     });
   } catch (error) {
@@ -347,4 +347,107 @@ export const logoutAll = async (
   } catch (error) {
     res.status(500).json({ message: "Internal server error" });
   }
+};
+
+/** Max number of previous password hashes to retain for history checks */
+const PASSWORD_HISTORY_LIMIT = 5;
+
+export const changePassword = async (
+  req: Request & { user?: AuthenticatedRequestUser },
+  res: Response,
+): Promise<void> => {
+  if (!req.user?.userId) {
+    res.status(401).json({ message: "Unauthorized" });
+    return;
+  }
+
+  const parsed = changePasswordSchema.safeParse(req.body);
+  if (!parsed.success) {
+    throw ValidationError.invalidInput("body", req.body, "Validation failed");
+  }
+
+  const { currentPassword, newPassword, revokeAllSessions } = parsed.data;
+  const userId = req.user.userId;
+
+  // Fetch user with password history (normally excluded from queries)
+  const user = await container.userRepository.findByIdWithPasswordHistory(userId);
+  if (!user) {
+    res.status(404).json({ message: "User not found" });
+    return;
+  }
+
+  // Verify current password — use a generic error to avoid leaking info
+  const currentMatches = await bcrypt.compare(currentPassword, user.passwordHash);
+  if (!currentMatches) {
+    await authAuditService.log({
+      eventType: 'PASSWORD_CHANGE_FAILED',
+      userId,
+      ipAddress: req.ip,
+      userAgent: req.headers['user-agent'],
+      metadata: { reason: 'wrong_current_password' },
+    });
+    await auditLogService.log({
+      action: 'PASSWORD_CHANGE_FAILED',
+      actorId: userId,
+      targetId: userId,
+    });
+    throw AuthError.invalidCredentials();
+  }
+
+  // Policy: new password must not match current password
+  const matchesCurrent = await bcrypt.compare(newPassword, user.passwordHash);
+  if (matchesCurrent) {
+    throw ValidationError.invalidInput(
+      "newPassword",
+      "[redacted]",
+      "New password must differ from the current password",
+    );
+  }
+
+  // Policy: new password must not appear in recent history
+  const history = user.passwordHistory ?? [];
+  for (const oldHash of history) {
+    const matchesHistory = await bcrypt.compare(newPassword, oldHash);
+    if (matchesHistory) {
+      throw ValidationError.invalidInput(
+        "newPassword",
+        "[redacted]",
+        `Password was used recently. Choose a password not used in the last ${PASSWORD_HISTORY_LIMIT} changes`,
+      );
+    }
+  }
+
+  const newHash = await bcrypt.hash(newPassword, SALT_ROUNDS);
+
+  // Rotate history: prepend current hash, keep last N
+  const updatedHistory = [user.passwordHash, ...history].slice(0, PASSWORD_HISTORY_LIMIT);
+
+  await container.userRepository.update(userId, {
+    passwordHash: newHash,
+    passwordHistory: updatedHistory,
+  } as any);
+
+  // Optionally revoke all sessions
+  if (revokeAllSessions) {
+    await container.sessionRepository.revokeAllUserSessions(userId);
+  } else if (req.user.sessionId) {
+    // Revoke only the current session so the client must re-authenticate
+    await container.sessionRepository.revokeSession(req.user.sessionId, userId);
+  }
+
+  await authAuditService.log({
+    eventType: 'PASSWORD_CHANGED',
+    userId,
+    ipAddress: req.ip,
+    userAgent: req.headers['user-agent'],
+    metadata: { revokeAllSessions },
+  });
+  await auditLogService.log({
+    action: 'PASSWORD_CHANGED',
+    actorId: userId,
+    targetId: userId,
+    metadata: { revokeAllSessions },
+  });
+
+  sendSuccess(res, 200, { message: "Password changed successfully" });
 };

@@ -7,6 +7,7 @@ const TOKEN_EXPIRATION = '24h';
 export interface AuthTokenPayload {
   userId: string;
   role: UserRole;
+  sessionId?: string;
   iat?: number;
   exp?: number;
 }

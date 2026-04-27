@@ -17,9 +17,13 @@ export interface IUser {
   lastActiveAt: Date;
   createdAt: Date;
   updatedAt: Date;
+  /** Last N password hashes for history enforcement */
+  passwordHistory?: string[];
 }
 
 export interface IUserRepository extends IRepository<IUser, string> {
   findByEmail(email: string): Promise<IUser | null>;
   existsByEmail(email: string): Promise<boolean>;
+  /** Fetches user including the passwordHistory field (normally excluded). */
+  findByIdWithPasswordHistory(id: string): Promise<IUser | null>;
 }

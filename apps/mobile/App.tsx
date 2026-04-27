@@ -1,22 +1,11 @@
-import React from 'react';
-import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { AppNavigator } from './src/navigation/AppNavigator';
-import { AuthProvider } from './src/context/AuthContext';
+import React, { useEffect } from 'react';
+import { bootstrapSession } from '@/store/session.store';
+import { RootNavigator } from '@/navigation/RootNavigator';
 
-/**
- * Mobile App Entry Point
- *
- * Root component providing:
- * - SafeArea handling
- * - Authentication context
- * - Navigation container
- */
 export default function App() {
-  return (
-    <SafeAreaProvider>
-      <AuthProvider>
-        <AppNavigator />
-      </AuthProvider>
-    </SafeAreaProvider>
-  );
+  useEffect(() => {
+    bootstrapSession();
+  }, []);
+
+  return <RootNavigator />;
 }

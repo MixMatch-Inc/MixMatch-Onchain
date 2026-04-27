@@ -16,6 +16,8 @@ export interface IUserDocument extends Document {
   moderationState: ModerationState;
   privacySettings: IPrivacySettings;
   lastActiveAt: Date;
+  /** Last N password hashes for history enforcement */
+  passwordHistory: string[];
   createdAt: Date;
   updatedAt: Date;
 }
@@ -123,6 +125,11 @@ const UserSchema = new Schema<IUserDocument>(
     lastActiveAt: {
       type: Date,
       default: Date.now,
+    },
+    passwordHistory: {
+      type: [String],
+      default: [],
+      select: false, // never returned in queries unless explicitly requested
     },
   },
   {

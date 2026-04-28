@@ -1,8 +1,117 @@
-# Legacy Module Migration Guide
+# Legacy Module Migration Guide: Phase-One Booking Platform to MixMatch
 
 ## Overview
 
-This guide helps contributors migrate from deprecated legacy modules to the new architecture being implemented in Sprint 2. All legacy modules are marked with `@deprecated` annotations and include migration guidance.
+This document provides a comprehensive migration plan from the **Phase-One Booking Platform** (DJ/Planner booking system) to the **MixMatch Domain** (onchain identity, mixed/blind modes, music discovery, and event management).
+
+### Context
+
+The MixMatch repository originally started as a DJ/Planner booking platform (Phase One). During Sprint 1, we began transitioning to the MixMatch domain which focuses on:
+
+- **Onchain Identity**: Stellar-powered decentralized identities
+- **Mixed/Blind Identity Modes**: Privacy-first discovery with optional identity reveal
+- **Music Discovery**: Algorithmic music matching and collaborative playlists
+- **Event Management**: Enhanced from simple bookings to full event lifecycle
+- **Blockchain Integration**: Soroban smart contracts for payments and escrow
+
+This guide helps contributors understand what legacy code exists, what's changing, and how to migrate.
+
+### Migration Status
+
+- **Sprint 1**: Foundation and domain reset (current)
+- **Sprint 2**: New architecture implementation
+- **Sprint 3**: Legacy module removal
+
+---
+
+## 📊 Legacy-to-New Domain Mapping
+
+### Phase-One Architecture (Legacy)
+
+```
+apps/web (Next.js)
+├── Registration/Login
+├── DJ Profiles
+├── Planner Profiles  
+├── Discovery Feed
+└── Booking Management
+
+apps/api (Express)
+├── Auth (JWT-based)
+├── Identity (User model)
+├── Discovery (DJ feed)
+├── Bookings (CRUD)
+└── Journeys (Booking flow)
+
+apps/stellar-service
+├── Account Management
+├── Payments
+├── Escrow
+└── Transaction History
+```
+
+### MixMatch Architecture (New)
+
+```
+apps/web (Next.js)
+├── Onchain Authentication
+├── Profile Management (unified)
+├── Discovery (blind/mixed modes)
+├── Event Management
+└── Dashboard (analytics)
+
+apps/api (Express)
+├── Auth (JWT + Stellar wallet)
+├── Profiles (unified, role-agnostic)
+├── Recommendations (algorithmic)
+├── Events (full lifecycle)
+├── Payments (Stellar integration)
+└── Analytics (impressions, matches)
+
+apps/stellar-service
+├── Account Management
+├── Soroban Contract Interaction
+├── Escrow (smart contracts)
+├── Payment Processing
+└── Onchain Identity
+
+apps/mobile (Expo)
+├── Discovery Feed
+├── Profile Management
+├── Event Management
+└── Real-time Updates
+```
+
+### Data Model Mapping
+
+| Legacy Model | New Model | Changes |
+|--------------|-----------|---------|
+| `User` | `UserProfile` | Unified profile with role field, onchain identity |
+| `DjProfile` | `UserProfile.profileType = 'dj'` | Merged into unified profile |
+| `PlannerProfile` | `UserProfile.profileType = 'planner'` | Merged into unified profile |
+| `Booking` | `Event` | Enhanced with payments, escrow, participants |
+| `DiscoveryImpression` | `AnalyticsImpression` | Extended with blind-mode tracking |
+| N/A | `IdentityReveal` | New: Track identity reveal requests |
+| N/A | `MatchRecord` | New: Algorithmic matching results |
+
+### API Endpoint Mapping
+
+| Legacy Endpoint | New Endpoint | Status |
+|-----------------|--------------|--------|
+| `GET /api/discovery/feed` | `GET /api/v2/recommendations/feed` | Deprecated |
+| `GET /api/discovery/djs` | `GET /api/v2/recommendations/djs` | Deprecated |
+| `GET /api/discovery/djs/:id` | `GET /api/v2/profiles/:id` | Deprecated |
+| `POST /api/discovery/impressions` | `POST /api/v2/analytics/impressions` | Deprecated |
+| `GET /api/bookings` | `GET /api/v2/events/my-events` | Deprecated |
+| `POST /api/bookings` | `POST /api/v2/events/create` | Deprecated |
+| `PUT /api/bookings/:id` | `PUT /api/v2/events/:id` | Deprecated |
+| `DELETE /api/bookings/:id` | `DELETE /api/v2/events/:id` | Deprecated |
+| `GET /api/users/me` | `GET /api/v2/profiles/me` | Deprecated |
+| `PUT /api/users/me` | `PUT /api/v2/profiles/me` | Deprecated |
+
+---
+
+## 🗑️ Legacy Modules to be Removed
 
 ## 🚨 Deprecated Modules
 

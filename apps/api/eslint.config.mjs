@@ -1,7 +1,9 @@
+const boundariesPlugin = await import('@mixmatch/config/eslint-plugin-boundaries.js');
+
 export default [
   {
     files: ['**/*.ts', '**/*.js'],
-    ignores: ['dist/**', 'node_modules/**'],
+    ignores: ['dist/**', 'node_modules/**', 'tests/fixtures/**'],
     languageOptions: {
       ecmaVersion: 2022,
       sourceType: 'module',
@@ -10,9 +12,13 @@ export default [
         project: './tsconfig.json',
       },
     },
+    plugins: {
+      boundaries: boundariesPlugin.default || boundariesPlugin,
+    },
     rules: {
       'no-console': 'off',
       'no-unused-vars': 'warn',
+      'boundaries/no-cross-app-imports': 'error',
     },
   },
 ];

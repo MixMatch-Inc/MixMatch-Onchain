@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import bcrypt from "bcryptjs";
-import { UserRole, SessionDetailsDto, AccountStatus, ModerationState } from "@mixmatch/types";
+import { UserRole, SessionDetailsDto, AccountStatus, ModerationState, ONBOARDING_REGISTRY, OnboardingStepId, OnboardingStepStatus, OnboardingProgress, getStepsForRole, getRequiredStepsForRole } from "@mixmatch/types";
 import { container } from "../../config/di";
 import { generateToken } from "../../services/jwt.service";
 import { emailService } from "../../services/email.service";
@@ -178,6 +178,94 @@ export const updateOnboardingStatus = async (
       },
     });
   } catch {
+    res.status(500).json({ message: "Internal server error" });
+  }
+};
+
+/**
+ * GET /auth/onboarding/status
+ * 
+ * Returns detailed onboarding progress using the centralized registry.
+ */
+export const getOnboardingStatus = async (
+  req: Request & { user?: AuthenticatedRequestUser },
+  res: Response,
+): Promise<void> => {
+  if (!req.user?.userId) {
+    res.status(401).json({ message: "Unauthorized: missing or invalid token" });
+    return;
+  }
+
+  try {
+    const user = await container.userRepository.findById(req.user.userId);
+    
+    if (!user) {
+      res.status(404).json({ message: "User not found" });
+      return;
+    }
+
+    const userRole = user.role as UserRole;
+    const steps = getStepsForRole(userRole);
+    const requiredSteps = getRequiredStepsForRole(userRole);
+    
+    // Build step status map
+    const stepStatus: Record<OnboardingStepId, OnboardingStepStatus> = {} as any;
+    const pendingSteps: OnboardingStepId[] = [];
+    let completedCount = 0;
+    
+    for (const step of steps) {
+      // Determine step status based on prerequisites and completion
+      const prerequisitesMet = step.prerequisites.every((prereq) => {
+        if (prereq.type === 'STEP_COMPLETED' && prereq.stepId) {
+          return stepStatus[prereq.stepId] === OnboardingStepStatus.COMPLETED;
+        }
+        return true; // Other prerequisite types handled elsewhere
+      });
+      
+      // For now, use simple logic - in production, check actual user data
+      const isCompleted = user.onboardingCompleted && step.isRequired;
+      
+      if (isCompleted) {
+        stepStatus[step.id] = OnboardingStepStatus.COMPLETED;
+        completedCount++;
+      } else if (!prerequisitesMet) {
+        stepStatus[step.id] = OnboardingStepStatus.LOCKED;
+      } else {
+        stepStatus[step.id] = OnboardingStepStatus.AVAILABLE;
+        pendingSteps.push(step.id);
+      }
+    }
+    
+    // Calculate completion percentage based on required steps
+    const requiredCompleted = requiredSteps.filter(
+      (step) => stepStatus[step.id] === OnboardingStepStatus.COMPLETED
+    ).length;
+    
+    const completionPercentage = requiredSteps.length > 0
+      ? Math.round((requiredCompleted / requiredSteps.length) * 100)
+      : 100;
+    
+    // Determine next step
+    const nextStep = pendingSteps.length > 0 ? pendingSteps[0] : undefined;
+    
+    const isComplete = completionPercentage >= ONBOARDING_REGISTRY.minimumCompletionPercentage;
+    
+    const progress: OnboardingProgress = {
+      userId: user.id,
+      stepStatus,
+      completionPercentage,
+      pendingSteps,
+      nextStep,
+      isComplete,
+    };
+    
+    sendSuccess(res, 200, {
+      progress,
+      registry: ONBOARDING_REGISTRY,
+      checkedAt: new Date().toISOString(),
+    });
+  } catch (error) {
+    console.error('Onboarding status error:', error);
     res.status(500).json({ message: "Internal server error" });
   }
 };

@@ -159,6 +159,48 @@ export class AuthError extends MixMatchErrorBase {
       requestId,
     );
   }
+
+  /**
+   * Thrown when user hasn't completed onboarding.
+   * Maps to HTTP 403 Forbidden.
+   */
+  static onboardingNotComplete(requestId?: string) {
+    return new AuthError(
+      ErrorCode.AUTH_ONBOARDING_INCOMPLETE,
+      "User onboarding not completed",
+      "Please complete your profile setup to access this feature.",
+      { retryable: false, userActionable: true },
+      requestId,
+    );
+  }
+
+  /**
+   * Thrown when account is under moderation or restricted.
+   * Maps to HTTP 403 Forbidden.
+   */
+  static accountRestricted(requestId?: string) {
+    return new AuthError(
+      ErrorCode.AUTH_ACCOUNT_RESTRICTED,
+      "Account is restricted",
+      "Your account is currently under review or restricted. Please contact support.",
+      { retryable: false, userActionable: false },
+      requestId,
+    );
+  }
+
+  /**
+   * Thrown when account is suspended.
+   * Maps to HTTP 403 Forbidden.
+   */
+  static accountSuspended(requestId?: string) {
+    return new AuthError(
+      ErrorCode.AUTH_ACCOUNT_SUSPENDED,
+      "Account is suspended",
+      "Your account has been suspended. Please contact support for more information.",
+      { retryable: false, userActionable: false },
+      requestId,
+    );
+  }
 }
 
 // Provider Sync Error Classes

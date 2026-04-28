@@ -1,5 +1,5 @@
 import { Router, Request, Response, NextFunction } from 'express';
-import { login, register, updateOnboardingStatus, me, session, logout, logoutAll, changePassword } from './auth.controller';
+import { login, register, updateOnboardingStatus, me, session, logout, logoutAll, changePassword, getOnboardingStatus } from './auth.controller';
 import { requestVerification, confirmVerification, verificationStatus } from './email-verification.controller';
 import { requestPasswordReset, confirmPasswordReset, passwordResetStatus } from './password-reset.controller';
 import { requireAuth } from '../../middleware/auth.middleware';
@@ -48,6 +48,7 @@ authRouter.post('/register', withRiskCheck('signup'), withCooldown('signup'), re
 authRouter.post('/login', withRiskCheck('login'), withCooldown('login'), login);
 authRouter.get('/me', requireAuth, me);
 authRouter.get('/session', requireAuth, session);
+authRouter.get('/onboarding/status', requireAuth, getOnboardingStatus);
 authRouter.patch('/onboarding', requireAuth, updateOnboardingStatus);
 authRouter.post('/logout', requireAuth, logout);
 authRouter.post('/logout-all', requireAuth, logoutAll);

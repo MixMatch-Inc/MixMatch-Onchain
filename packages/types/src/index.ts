@@ -582,3 +582,22 @@ export interface EmailVerificationEvent {
 // Export all error types
 export * from "./errors";
 export * from "./client-errors";
+
+// Export onboarding registry types and data
+export * from "./onboarding-registry";
+export {
+  ONBOARDING_STEPS,
+  ONBOARDING_REGISTRY,
+  DEFAULT_ORDER_BY_ROLE,
+  getStepsForRole,
+  getStepSequenceForRole,
+  getStepById,
+  getRequiredStepsForRole,
+  getOptionalStepsForRole,
+} from "./onboarding-registry-data";
+export {
+  validateRegistry,
+  isRegistryValid,
+  getValidationReport,
+  RegistryValidationErrorType,
+} from "./onboarding-registry-validation";

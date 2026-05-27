@@ -2,7 +2,10 @@ import cors from "cors";
 import express from "express";
 import helmet from "helmet";
 
-import type { ApiHealthResponse } from "@themixmatch/types";
+import type {
+  ApiHealthResponse,
+  AuthContractCatalogResponse
+} from "@themixmatch/types";
 
 export function createApiApp() {
   const app = express();
@@ -28,6 +31,35 @@ export function createApiApp() {
       milestone: "Authentication",
       nextStep: "Add auth routes, session storage, and shared contracts."
     });
+  });
+
+  app.get("/api/v1/auth/contracts", (_request, response) => {
+    const payload: AuthContractCatalogResponse = {
+      milestone: "Authentication",
+      version: "0.1.0",
+      flows: [
+        {
+          flow: "email-verification",
+          requestType: "EmailVerificationRequest",
+          responseType: "EmailVerificationResponse",
+          owner: "apps/api"
+        },
+        {
+          flow: "password-recovery",
+          requestType: "PasswordRecoveryRequest",
+          responseType: "PasswordRecoveryResponse",
+          owner: "apps/api"
+        },
+        {
+          flow: "ownership-proof",
+          requestType: "OwnershipProofChallengeRequest",
+          responseType: "OwnershipProofChallengeResponse",
+          owner: "apps/api"
+        }
+      ]
+    };
+
+    response.json(payload);
   });
 
   return app;

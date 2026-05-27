@@ -1,33 +1,23 @@
 {
   "expo": {
-    "name": "MixMatch Mobile",
-    "slug": "mixmatch-mobile",
-    "version": "1.0.0",
+    "name": "TheMixMatch",
+    "slug": "themixmatch-onchain",
+    "scheme": "themixmatch",
+    "version": "0.1.0",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
-    "userInterfaceStyle": "dark",
-    "splash": {
-      "image": "./assets/splash.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#111827"
-    },
-    "assetBundlePatterns": [
-      "**/*"
-    ],
+    "userInterfaceStyle": "light",
+    "assetBundlePatterns": ["**/*"],
     "ios": {
       "supportsTablet": true
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#111827"
+        "backgroundColor": "#f7f5ef"
       }
     },
     "web": {
-      "favicon": "./assets/favicon.png"
+      "bundler": "metro"
     },
-    "plugins": [
-      "expo-secure-store"
-    ]
+    "plugins": ["expo-router"]
   }
 }

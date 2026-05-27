@@ -1,63 +1,34 @@
-import cors from 'cors';
-import express from 'express';
-import { apiEnv } from './config/env';
-import {
-  apiRateLimitMiddleware,
-  isMetricsAuthorized,
-  metricsHandler,
-} from './config/observability';
-import { discoveryRouter } from './domains/discovery';
-import { identityRouter } from './domains/identity';
-import { journeysRouter, journeyRouter } from './domains/journeys';
-import { paymentsRouter } from './domains/payments';
-import { resonanceRouter } from './domains/resonance';
-import { tasteSignalsRouter } from './domains/taste-signals';
-import { contextMiddleware } from './middleware/context.middleware';
-import { errorHandler } from './middleware/error.middleware';
-import { notFoundHandler } from './middleware/not-found.middleware';
-import { requestObservabilityMiddleware } from './middleware/request-observability.middleware';
-import { openApiDocument } from './openapi/document';
-import authRouter from './domains/identity/auth.routes';
-import { createWalletRoutes } from './domains/wallets';
+import cors from "cors";
+import express from "express";
+import helmet from "helmet";
 
-export const createApp = () => {
+import type { ApiHealthResponse } from "@themixmatch/types";
+
+export function createApiApp() {
   const app = express();
 
-  app.use(cors({ origin: apiEnv.corsOrigin }));
+  app.use(helmet());
+  app.use(cors());
   app.use(express.json());
-  app.use(contextMiddleware);
-  app.use(apiRateLimitMiddleware);
-  app.use(requestObservabilityMiddleware);
-  app.use('/auth', authRouter);
-  app.use('/api/wallets', createWalletRoutes());
 
-  app.get('/', (_req, res) => {
-    res.json({ message: 'MixMatch API Running', status: 'OK' });
+  app.get("/health", (_request, response) => {
+    const payload: ApiHealthResponse = {
+      service: "api",
+      status: "ok",
+      timestamp: new Date().toISOString(),
+      version: "0.1.0"
+    };
+
+    response.json(payload);
   });
 
-  app.get('/openapi/v1.json', (_req, res) => {
-    res.status(200).json(openApiDocument);
+  app.get("/api/v1", (_request, response) => {
+    response.json({
+      name: "TheMixMatch API starter",
+      milestone: "Authentication",
+      nextStep: "Add auth routes, session storage, and shared contracts."
+    });
   });
-
-  app.get('/internal/metrics', (req, res) => {
-    if (!isMetricsAuthorized(req)) {
-      res.status(403).json({ message: 'Forbidden' });
-      return;
-    }
-
-    metricsHandler(req, res);
-  });
-
-  app.use('/auth', identityRouter);
-  app.use('/bookings', journeysRouter);
-  app.use('/journeys', journeyRouter);
-  app.use('/taste-signals', tasteSignalsRouter);
-  app.use('/discover', discoveryRouter);
-  app.use('/resonance', resonanceRouter);
-  app.use('/payments', paymentsRouter);
-
-  app.use(notFoundHandler);
-  app.use(errorHandler);
 
   return app;
-};
+}

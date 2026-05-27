@@ -1,26 +1,122 @@
-@import "tailwindcss";
-
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  color-scheme: light;
+  --background: #f7f5ef;
+  --foreground: #1b1a17;
+  --accent: #0f766e;
+  --accent-strong: #115e59;
+  --card: rgba(255, 255, 255, 0.8);
+  --border: rgba(27, 26, 23, 0.12);
+  --muted: #5c5a54;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+* {
+  box-sizing: border-box;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html,
+body {
+  margin: 0;
+  padding: 0;
+  min-height: 100%;
 }
 
 body {
-  background: var(--background);
+  background:
+    radial-gradient(circle at top left, rgba(15, 118, 110, 0.14), transparent 28%),
+    linear-gradient(180deg, #faf8f2 0%, #f2eee4 100%);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: "Iowan Old Style", "Palatino Linotype", "Book Antiqua", serif;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.page-shell {
+  display: grid;
+  min-height: 100vh;
+  place-items: center;
+  padding: 2rem;
+}
+
+.hero-card {
+  width: min(960px, 100%);
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 28px;
+  padding: 2rem;
+  backdrop-filter: blur(10px);
+  box-shadow: 0 30px 80px rgba(27, 26, 23, 0.1);
+}
+
+.hero-grid {
+  display: grid;
+  gap: 2rem;
+}
+
+.eyebrow {
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--accent-strong);
+  font-size: 0.8rem;
+}
+
+.headline {
+  margin: 0.6rem 0 1rem;
+  font-size: clamp(2.5rem, 4vw, 4.75rem);
+  line-height: 0.95;
+}
+
+.lede {
+  max-width: 52rem;
+  color: var(--muted);
+  font-size: 1.05rem;
+  line-height: 1.7;
+}
+
+.pill-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 1.5rem;
+}
+
+.pill {
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.75);
+  border-radius: 999px;
+  padding: 0.7rem 1rem;
+  font-size: 0.95rem;
+}
+
+.callout-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 1rem;
+  margin-top: 2rem;
+}
+
+.callout {
+  border-radius: 20px;
+  padding: 1.2rem;
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.callout h2 {
+  margin: 0 0 0.5rem;
+  font-size: 1rem;
+}
+
+.callout p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+@media (max-width: 640px) {
+  .hero-card {
+    padding: 1.25rem;
+  }
 }

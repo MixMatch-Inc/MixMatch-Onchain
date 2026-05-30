@@ -1,28 +1,32 @@
-import {
+import type {
+  LoginRequest,
+  LoginResponse,
   SignupRequest,
   SignupResponse,
-  ApiResponse,
-} from "@workspace/types/auth";
+} from "@themixmatch/types";
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001/api/v1";
 
 export async function signup(
   payload: SignupRequest,
-): Promise<
-  ApiResponse<SignupResponse>
-> {
-  const response =
-    await fetch(
-      "/api/auth/signup",
-      {
-        method: "POST",
-        headers: {
-          "Content-Type":
-            "application/json",
-        },
-        body: JSON.stringify(
-          payload,
-        ),
-      },
-    );
+): Promise<SignupResponse> {
+  const response = await fetch(`${API_URL}/auth/register`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
 
-  return response.json();
+  return response.json() as Promise<SignupResponse>;
+}
+
+export async function login(
+  payload: LoginRequest,
+): Promise<LoginResponse> {
+  const response = await fetch(`${API_URL}/auth/login`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+
+  return response.json() as Promise<LoginResponse>;
 }

@@ -1,31 +1,38 @@
-const ACCESS_TOKEN_KEY =
-  "access_token";
+const SESSION_KEY = "themixmatch_session";
 
-const REFRESH_TOKEN_KEY =
-  "refresh_token";
+export interface StoredSession {
+  token: string;
+  user: {
+    id: string;
+    name: string;
+    email: string;
+    role: string;
+    onboardingCompleted: boolean;
+  };
+  session: {
+    userId: string;
+    role: string;
+    onboardingCompleted: boolean;
+    issuedAt: string;
+  };
+}
 
 export const authStorage = {
-  saveSession(
-    session: AuthSession,
-  ) {
-    localStorage.setItem(
-      ACCESS_TOKEN_KEY,
-      session.accessToken,
-    );
-
-    localStorage.setItem(
-      REFRESH_TOKEN_KEY,
-      session.refreshToken,
-    );
+  saveSession(data: StoredSession): void {
+    localStorage.setItem(SESSION_KEY, JSON.stringify(data));
   },
 
-  clearSession() {
-    localStorage.removeItem(
-      ACCESS_TOKEN_KEY,
-    );
+  loadSession(): StoredSession | null {
+    const stored = localStorage.getItem(SESSION_KEY);
+    if (!stored) return null;
+    try {
+      return JSON.parse(stored) as StoredSession;
+    } catch {
+      return null;
+    }
+  },
 
-    localStorage.removeItem(
-      REFRESH_TOKEN_KEY,
-    );
+  clearSession(): void {
+    localStorage.removeItem(SESSION_KEY);
   },
 };

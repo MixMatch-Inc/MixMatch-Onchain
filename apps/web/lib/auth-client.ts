@@ -1,18 +1,18 @@
 import type {
   SignupRequest,
   SignupResponse,
-} from '@repo/types/auth';
+} from "@themixmatch/types";
 
 export async function signup(
   payload: SignupRequest,
 ): Promise<SignupResponse> {
   const response = await fetch(
-    '/api/auth/signup',
+    "/api/auth/signup",
     {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'Content-Type':
-          'application/json',
+        "Content-Type":
+          "application/json",
       },
       body: JSON.stringify(payload),
     },
@@ -20,7 +20,7 @@ export async function signup(
 
   if (!response.ok) {
     throw new Error(
-      'Registration failed',
+      "Registration failed",
     );
   }
 

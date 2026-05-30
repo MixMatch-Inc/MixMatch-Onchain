@@ -1,3 +1,27 @@
+// ---------------------------------------------------------------------------
+// API response envelope types
+// ---------------------------------------------------------------------------
+
+export interface ApiSuccess<T> {
+  success: true;
+  data: T;
+}
+
+export interface ApiError {
+  success: false;
+  code: string;
+  message: string;
+  details?: unknown;
+}
+
+export type ApiEnvelope<T> = ApiSuccess<T> | ApiError;
+
+export type ApiResponse<T> = ApiEnvelope<T>;
+
+// ---------------------------------------------------------------------------
+// Auth domain types
+// ---------------------------------------------------------------------------
+
 export enum UserRole {
   DJ = "DJ",
   PLANNER = "PLANNER",
@@ -39,3 +63,30 @@ export interface SignupResponseData extends AuthResponse {
 export type SignupResponse = ApiEnvelope<SignupResponseData>;
 
 export interface AuthSession extends SignupResponseData {}
+
+// ---------------------------------------------------------------------------
+// Login types
+// ---------------------------------------------------------------------------
+
+export interface LoginRequest {
+  email: string;
+  password: string;
+}
+
+export interface LoginResponseData extends AuthResponse {
+  session: SessionBootstrap;
+}
+
+export type LoginResponse = ApiEnvelope<LoginResponseData>;
+
+export enum CredentialErrorCode {
+  INVALID_CREDENTIALS = "INVALID_CREDENTIALS",
+  ACCOUNT_NOT_FOUND = "ACCOUNT_NOT_FOUND",
+  ACCOUNT_LOCKED = "ACCOUNT_LOCKED",
+}
+
+export interface CredentialErrorContract {
+  code: CredentialErrorCode;
+  message: string;
+  retryAfter?: number;
+}

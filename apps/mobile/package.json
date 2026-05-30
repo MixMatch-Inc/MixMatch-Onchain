@@ -12,6 +12,7 @@
   "dependencies": {
     "@themixmatch/types": "workspace:*",
     "expo": "^54.0.5",
+    "expo-secure-store": "^14.2.3",
     "expo-router": "^6.0.4",
     "expo-status-bar": "^3.0.8",
     "react": "^19.1.1",

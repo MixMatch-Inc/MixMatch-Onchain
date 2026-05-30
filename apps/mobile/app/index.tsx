@@ -1,16 +1,46 @@
-import { SafeAreaView, StyleSheet, Text, View } from "react-native";
+import { Link } from "expo-router";
+import { Pressable, SafeAreaView, StyleSheet, Text, View } from "react-native";
+
+import { useAuth } from "../src/auth/AuthProvider";
 
 export default function MobileHomeScreen() {
+  const { status, session, lastError, signOut } = useAuth();
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.container}>
-        <Text style={styles.eyebrow}>Hackathon starter</Text>
-        <Text style={styles.title}>TheMixMatch mobile workspace is ready.</Text>
-        <Text style={styles.body}>
-          This clean Expo app is reserved for the authentication-first rebuild.
-          The next milestone adds account onboarding, token handling, and
-          Stellar-linked identity flows.
-        </Text>
+        <Text style={styles.eyebrow}>Authentication</Text>
+        <Text style={styles.title}>Expo auth slice</Text>
+
+        {status === "loading" ? (
+          <Text style={styles.body}>Loading session…</Text>
+        ) : session ? (
+          <>
+            <Text style={styles.body}>Signed in as {session.user.email}</Text>
+            <Text style={styles.meta}>
+              Role: {session.user.role} · Issued: {session.session.issuedAt}
+            </Text>
+            <Pressable style={styles.button} onPress={signOut}>
+              <Text style={styles.buttonText}>Sign out</Text>
+            </Pressable>
+          </>
+        ) : (
+          <>
+            <Text style={styles.body}>
+              No session found. Create an account to bootstrap the first session
+              and persist it locally for future launches.
+            </Text>
+            <Link href="/register" asChild>
+              <Pressable style={styles.button}>
+                <Text style={styles.buttonText}>Create account</Text>
+              </Pressable>
+            </Link>
+          </>
+        )}
+
+        {lastError ? (
+          <Text style={styles.error}>{lastError.message}</Text>
+        ) : null}
       </View>
     </SafeAreaView>
   );
@@ -45,5 +75,27 @@ const styles = StyleSheet.create({
     fontSize: 16,
     lineHeight: 26,
     color: "#5c5a54"
+  },
+  meta: {
+    fontSize: 14,
+    lineHeight: 22,
+    color: "#6b6a64"
+  },
+  error: {
+    marginTop: 16,
+    color: "#b91c1c",
+    fontSize: 14
+  },
+  button: {
+    marginTop: 12,
+    backgroundColor: "#115e59",
+    paddingVertical: 12,
+    paddingHorizontal: 18,
+    borderRadius: 12,
+    alignSelf: "flex-start"
+  },
+  buttonText: {
+    color: "#f7f5ef",
+    fontWeight: "700"
   }
 });

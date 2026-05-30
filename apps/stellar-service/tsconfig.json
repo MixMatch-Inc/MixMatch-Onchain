@@ -2,7 +2,11 @@
   "extends": "../../packages/config/tsconfig.base.json",
   "compilerOptions": {
     "rootDir": "src",
-    "outDir": "dist"
+    "outDir": "dist",
+    "baseUrl": ".",
+    "paths": {
+      "@themixmatch/*": ["../../packages/*/src"]
+    }
   },
   "include": ["src/**/*.ts"]
 }

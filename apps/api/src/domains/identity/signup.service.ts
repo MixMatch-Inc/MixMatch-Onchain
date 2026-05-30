@@ -1,9 +1,9 @@
 import bcrypt from "bcryptjs";
-import { UserRole } from "@mixmatch/types";
-import type { SignupRequest, AuthResponse, SessionBootstrap } from "@mixmatch/types/src/auth";
-import { container } from "../../config/di";
-import { generateToken } from "../../services/jwt.service";
-import { AuthError } from "../../utils/errors";
+import { UserRole } from "@themixmatch/types";
+import type { SignupRequest, AuthResponse, SessionBootstrap } from "@themixmatch/types";
+import { container } from "../../config/di.js";
+import { generateToken } from "../../services/jwt.service.js";
+import { AuthError } from "../../utils/errors.js";
 
 const SALT_ROUNDS = 10;
 

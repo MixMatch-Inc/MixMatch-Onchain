@@ -1,8 +1,8 @@
-import { Request, Response } from "express";
-import { registerSchema } from "./auth.validation";
-import { createAccount, buildSessionBootstrap } from "./signup.service";
-import { sendSuccess } from "../../utils/api-response";
-import { ValidationError } from "../../utils/errors";
+import type { Request, Response } from "express";
+import { registerSchema } from "./auth.validation.js";
+import { createAccount, buildSessionBootstrap } from "./signup.service.js";
+import { sendSuccess } from "../../utils/api-response.js";
+import { ValidationError } from "../../utils/errors.js";
 
 /**
  * POST /api/v1/auth/register

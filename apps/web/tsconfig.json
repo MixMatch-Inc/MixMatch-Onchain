@@ -8,7 +8,8 @@
       }
     ],
     "paths": {
-      "@/*": ["./*"]
+      "@/*": ["./*"],
+      "@themixmatch/*": ["../../packages/*/src"]
     }
   },
   "include": [

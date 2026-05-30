@@ -1,6 +1,6 @@
 import { Networks } from "@stellar/stellar-sdk";
 import dotenv from "dotenv";
-import express from "express";
+import express, { type Request, type Response } from "express";
 import { z } from "zod";
 
 import type { StellarHealthResponse } from "@themixmatch/types";
@@ -22,7 +22,7 @@ const env = envSchema.parse(process.env);
 
 const app = express();
 
-app.get("/health", (_request, response) => {
+app.get("/health", (_request: Request, response: Response) => {
   const payload: StellarHealthResponse = {
     service: "stellar-service",
     status: "ok",
@@ -34,7 +34,7 @@ app.get("/health", (_request, response) => {
   response.json(payload);
 });
 
-app.get("/network", (_request, response) => {
+app.get("/network", (_request: Request, response: Response) => {
   response.json({
     name: "TheMixMatch Stellar service starter",
     scope: "Network access, wallet utilities, and future signing workflows."

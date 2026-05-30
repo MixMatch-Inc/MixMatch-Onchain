@@ -2,21 +2,7 @@ export enum UserRole {
   DJ = "DJ",
   PLANNER = "PLANNER",
   MUSIC_LOVER = "MUSIC_LOVER",
-}
-
-export interface ApiSuccess<T = unknown> {
-  success: true;
-  data: T;
-}
-
-export interface ApiError {
-  success: false;
-  code: string;
-  message: string;
-  details?: unknown;
-}
-
-export type ApiEnvelope<T> = ApiSuccess<T> | ApiError;
+};
 
 export interface SignupRequest {
   email: string;

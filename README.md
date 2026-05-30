@@ -68,3 +68,11 @@ pnpm lint
 ## Current status
 
 This repository is intentionally reset to a minimal baseline. The first implementation milestone is authentication across API, web, mobile, and Stellar-linked account workflows.
+
+## Authentication
+
+See:
+
+apps/api/docs/AUTHENTICATION.md
+apps/api/docs/REGISTRATION_FLOW.md
+apps/api/docs/LOCAL_AUTH_SETUP.md

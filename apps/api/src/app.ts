@@ -4,6 +4,7 @@ import helmet from "helmet";
 
 import type { ApiHealthResponse } from "@themixmatch/types";
 import { signupHandler } from "./domains/identity/signup.handler.js";
+import { loginHandler } from "./domains/identity/login.handler.js";
 import { sendError } from "./utils/api-response.js";
 
 export function createApiApp() {
@@ -33,6 +34,7 @@ export function createApiApp() {
   });
 
   app.post("/api/v1/auth/register", signupHandler);
+  app.post("/api/v1/auth/login", loginHandler);
 
   app.use((err: unknown, _req: Request, res: Response, _next: NextFunction) => {
     if (err && typeof err === "object" && "code" in err && "message" in err && "statusCode" in err) {

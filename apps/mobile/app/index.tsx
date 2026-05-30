@@ -30,11 +30,18 @@ export default function MobileHomeScreen() {
               No session found. Create an account to bootstrap the first session
               and persist it locally for future launches.
             </Text>
-            <Link href="/register" asChild>
-              <Pressable style={styles.button}>
-                <Text style={styles.buttonText}>Create account</Text>
-              </Pressable>
-            </Link>
+            <View style={styles.buttonGroup}>
+              <Link href="/login" asChild>
+                <Pressable style={styles.button}>
+                  <Text style={styles.buttonText}>Sign in</Text>
+                </Pressable>
+              </Link>
+              <Link href="/register" asChild>
+                <Pressable style={[styles.button, styles.buttonOutline]}>
+                  <Text style={[styles.buttonText, styles.buttonOutlineText]}>Create account</Text>
+                </Pressable>
+              </Link>
+            </View>
           </>
         )}
 
@@ -86,16 +93,28 @@ const styles = StyleSheet.create({
     color: "#b91c1c",
     fontSize: 14
   },
-  button: {
+  buttonGroup: {
+    flexDirection: "row",
+    gap: 12,
     marginTop: 12,
+  },
+  button: {
     backgroundColor: "#115e59",
     paddingVertical: 12,
     paddingHorizontal: 18,
     borderRadius: 12,
     alignSelf: "flex-start"
   },
+  buttonOutline: {
+    backgroundColor: "transparent",
+    borderWidth: 1.5,
+    borderColor: "#115e59"
+  },
   buttonText: {
     color: "#f7f5ef",
     fontWeight: "700"
+  },
+  buttonOutlineText: {
+    color: "#115e59"
   }
 });

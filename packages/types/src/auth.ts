@@ -1,4 +1,8 @@
-import { UserRole } from "./index";
+export enum UserRole {
+  DJ = "DJ",
+  PLANNER = "PLANNER",
+  MUSIC_LOVER = "MUSIC_LOVER",
+};
 
 /** POST /auth/register – request body */
 export interface SignupRequest {

@@ -1,0 +1,13 @@
+{
+  "extends": "./packages/config/tsconfig.base.json",
+  "compilerOptions": {
+    "baseUrl": "."
+  },
+  "references": [
+    { "path": "./apps/api" },
+    { "path": "./apps/web" },
+    { "path": "./apps/mobile" },
+    { "path": "./apps/stellar-service" },
+    { "path": "./packages/types" }
+  ]
+}

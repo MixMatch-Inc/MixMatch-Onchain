@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { createAccount, buildSessionBootstrap } from "./signup.service";
-import { UserRole } from "@mixmatch/types";
-import { AuthError } from "../../utils/errors";
+import { createAccount, buildSessionBootstrap } from "./signup.service.js";
+import { UserRole } from "@themixmatch/types";
+import { AuthError } from "../../utils/errors.js";
 
 // ---------------------------------------------------------------------------
 // Shared stubs

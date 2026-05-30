@@ -1,31 +1,25 @@
-const ACCESS_TOKEN_KEY =
-  "access_token";
+import type { AuthSession } from "@workspace/types/auth";
 
-const REFRESH_TOKEN_KEY =
-  "refresh_token";
+const STORAGE_KEY = "mixmatch:auth-session";
 
-export const authStorage = {
-  saveSession(
-    session: AuthSession,
-  ) {
-    localStorage.setItem(
-      ACCESS_TOKEN_KEY,
-      session.accessToken,
-    );
+export async function loadAuthSession(): Promise<AuthSession | null> {
+  if (typeof window === "undefined") return null;
+  const raw = localStorage.getItem(STORAGE_KEY);
+  if (!raw) return null;
+  try {
+    return JSON.parse(raw) as AuthSession;
+  } catch {
+    localStorage.removeItem(STORAGE_KEY);
+    return null;
+  }
+}
 
-    localStorage.setItem(
-      REFRESH_TOKEN_KEY,
-      session.refreshToken,
-    );
-  },
+export async function saveAuthSession(session: AuthSession): Promise<void> {
+  if (typeof window === "undefined") return;
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(session));
+}
 
-  clearSession() {
-    localStorage.removeItem(
-      ACCESS_TOKEN_KEY,
-    );
-
-    localStorage.removeItem(
-      REFRESH_TOKEN_KEY,
-    );
-  },
-};
+export async function clearAuthSession(): Promise<void> {
+  if (typeof window === "undefined") return;
+  localStorage.removeItem(STORAGE_KEY);
+}

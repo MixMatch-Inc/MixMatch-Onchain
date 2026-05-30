@@ -1,3 +1,6 @@
+import { create } from "zustand";
+
+
 interface AuthState {
   user: AuthUser | null;
 
@@ -10,4 +13,6 @@ interface AuthState {
   ): void;
 
   clearSession(): void;
+  
 }
+

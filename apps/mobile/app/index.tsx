@@ -30,8 +30,13 @@ export default function MobileHomeScreen() {
               No session found. Create an account to bootstrap the first session
               and persist it locally for future launches.
             </Text>
-            <Link href="/register" asChild>
+            <Link href="/login" asChild>
               <Pressable style={styles.button}>
+                <Text style={styles.buttonText}>Sign in</Text>
+              </Pressable>
+            </Link>
+            <Link href="/register" asChild>
+              <Pressable style={[styles.button, { backgroundColor: "#0f766e" }]}>
                 <Text style={styles.buttonText}>Create account</Text>
               </Pressable>
             </Link>

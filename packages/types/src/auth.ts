@@ -1,3 +1,5 @@
+import type { ApiResponse } from "./auth-envelope.types.js";
+
 export enum UserRole {
   DJ = "DJ",
   PLANNER = "PLANNER",
@@ -55,11 +57,7 @@ export interface SignupResponseData extends AuthResponse {
   session: SessionBootstrap;
 }
 
-export interface LoginResponseData extends AuthResponse {
-  session: SessionBootstrap;
-}
-
 export type SignupResponse = ApiResponse<SignupResponseData>;
-export type LoginResponse = ApiResponse<LoginResponseData>;
+export type LoginResponse = ApiResponse<SignupResponseData>;
 
 export type AuthSession = SignupResponseData;

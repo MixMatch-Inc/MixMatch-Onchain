@@ -6,20 +6,6 @@ export enum UserRole {
   MUSIC_LOVER = "MUSIC_LOVER",
 }
 
-export interface ApiSuccess<T> {
-  success: true;
-  data: T;
-  message?: string;
-}
-
-export interface ApiError {
-  success: false;
-  message: string;
-  code?: string;
-}
-
-export type ApiResponse<T> = ApiSuccess<T> | ApiError;
-
 export interface SignupRequest {
   email: string;
   password: string;
@@ -69,9 +55,27 @@ export interface SignupResponseData extends AuthResponse {
 }
 
 export type SignupResponse = ApiResponse<SignupResponseData>;
-export type LoginResponse = ApiResponse<SignupResponseData>;
-
 export type AuthSession = SignupResponseData;
+
+// ── Login types ──────────────────────────────────────────────────────────────
+
+export interface LoginResponseData extends AuthResponse {
+  session: SessionBootstrap;
+}
+
+export type LoginResponse = ApiResponse<LoginResponseData>;
+
+export enum CredentialErrorCode {
+  INVALID_CREDENTIALS = "INVALID_CREDENTIALS",
+  ACCOUNT_NOT_FOUND = "ACCOUNT_NOT_FOUND",
+  ACCOUNT_LOCKED = "ACCOUNT_LOCKED",
+}
+
+export interface CredentialErrorContract {
+  code: CredentialErrorCode;
+  message: string;
+  retryAfter?: number;
+}
 
 // ── Session refresh ──────────────────────────────────────────────────────────
 
@@ -103,7 +107,8 @@ export interface IntrospectResponse {
   expiresAt?: string;
 }
 
-// ── Credential error contracts ──────────────────────────────────────────────
+// ── Credential errors ────────────────────────────────────────────────────────
+
 
 export enum CredentialErrorCode {
   INVALID_CREDENTIALS = "INVALID_CREDENTIALS",
@@ -115,38 +120,4 @@ export interface CredentialErrorContract {
   code: CredentialErrorCode;
   message: string;
   retryAfter?: number;
-}
-
-// ── Stellar-boundary auth types (auth-to-Stellar handoff) ────────────────────
-
-export interface StellarAuthRequest {
-  sessionToken: string;
-  stellarPublicKey: string;
-}
-
-export interface StellarAuthResponseData {
-  verified: boolean;
-  stellarAccountId: string;
-  linkedAt: string;
-}
-
-export type StellarAuthResponse = ApiResponse<StellarAuthResponseData>;
-
-export interface StellarChallengeRequest {
-  stellarPublicKey: string;
-}
-
-export interface StellarChallengeResponseData {
-  transactionXdr: string;
-  networkPassphrase: string;
-  expiresAt: string;
-}
-
-export type StellarChallengeResponse = ApiResponse<StellarChallengeResponseData>;
-
-export interface StellarSessionContract {
-  userId: string;
-  stellarPublicKey: string;
-  linkedAt: string;
-  networkPassphrase: string;
 }

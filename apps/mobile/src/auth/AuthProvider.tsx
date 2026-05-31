@@ -20,9 +20,7 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function useAuth(): AuthContextValue {
   const value = useContext(AuthContext);
-  if (!value) {
-    throw new Error("useAuth must be used within AuthProvider");
-  }
+  if (!value) throw new Error("useAuth must be used within AuthProvider");
   return value;
 }
 
@@ -33,32 +31,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     let mounted = true;
-
     loadAuthSession()
       .then((stored) => {
         if (!mounted) return;
-        if (stored) {
-          setSession(stored);
-          setStatus("signedIn");
-          return;
-        }
+        if (stored) { setSession(stored); setStatus("signedIn"); return; }
         setStatus("signedOut");
       })
       .catch((error) => {
         if (!mounted) return;
-        setLastError(
-          error instanceof AuthClientError
-            ? error
-            : new AuthClientError("invalid_response", "Failed to load session", {
-                details: error,
-              }),
-        );
+        setLastError(error instanceof AuthClientError ? error : new AuthClientError("invalid_response", "Failed to load session", { details: error }));
         setStatus("signedOut");
       });
-
-    return () => {
-      mounted = false;
-    };
+    return () => { mounted = false; };
   }, []);
 
   const registerAccount = useCallback(async (input: SignupRequest) => {

@@ -1,20 +1,23 @@
 import type { AuthSession } from "@themixmatch/types";
 
-const SESSION_STORAGE_KEY =
-  "mixmatch_auth_session";
+const STORAGE_KEY = "mixmatch:auth-session";
 
-export const authStorage = {
-  saveSession(session: AuthSession) {
-    localStorage.setItem(
-      SESSION_STORAGE_KEY,
-      JSON.stringify(session),
-    );
-  },
+export async function loadAuthSession(): Promise<AuthSession | null> {
+  if (typeof window === "undefined") return null;
+  const raw = localStorage.getItem(STORAGE_KEY);
+  if (!raw) return null;
+  try {
+    return JSON.parse(raw) as AuthSession;
+  } catch {
+    localStorage.removeItem(STORAGE_KEY);
+    return null;
+  }
+}
 
-  loadSession(): AuthSession | null {
-    const raw = localStorage.getItem(
-      SESSION_STORAGE_KEY,
-    );
+export async function saveAuthSession(session: AuthSession): Promise<void> {
+  if (typeof window === "undefined") return;
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(session));
+}
 
     if (!raw) {
       return null;
@@ -39,5 +42,10 @@ export const authStorage = {
     localStorage.removeItem(
       SESSION_STORAGE_KEY,
     );
+  },
+  },
+
+  clearSession(): void {
+    localStorage.removeItem(SESSION_KEY);
   },
 };

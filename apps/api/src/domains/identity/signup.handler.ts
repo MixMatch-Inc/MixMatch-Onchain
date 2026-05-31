@@ -34,6 +34,7 @@ export const signupHandler = async (req: Request, res: Response): Promise<void> 
 
   sendSuccess(res, 201, {
     token: authResult.token,
+    refreshToken: authResult.refreshToken,
     user: authResult.user,
     session: bootstrap,
   });

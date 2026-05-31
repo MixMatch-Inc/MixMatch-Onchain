@@ -59,6 +59,8 @@ export interface SessionBootstrap {
 
 export interface AuthResponse {
   token: string;
+  /** Refresh token issued alongside the access token */
+  refreshToken: string;
   user: AuthUserPayload;
 }
 
@@ -70,3 +72,33 @@ export type SignupResponse = ApiResponse<SignupResponseData>;
 export type LoginResponse = ApiResponse<SignupResponseData>;
 
 export type AuthSession = SignupResponseData;
+
+// ── Session refresh ──────────────────────────────────────────────────────────
+
+export interface RefreshTokenPayload {
+  userId: string;
+  role: UserRole;
+  /** jti — unique token id used for single-use enforcement */
+  jti: string;
+}
+
+export interface SessionRefreshRequest {
+  refreshToken: string;
+}
+
+export interface SessionRefreshResponse {
+  accessToken: string;
+  refreshToken: string;
+  /** ISO-8601 expiry of the new access token */
+  expiresAt: string;
+}
+
+// ── Introspection ────────────────────────────────────────────────────────────
+
+export interface IntrospectResponse {
+  valid: boolean;
+  userId?: string;
+  role?: UserRole;
+  /** ISO-8601 expiry of the access token */
+  expiresAt?: string;
+}

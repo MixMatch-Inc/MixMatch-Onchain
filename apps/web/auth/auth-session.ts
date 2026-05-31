@@ -1,10 +1,12 @@
+import type { AuthSession } from "@themixmatch/types";
+
+const SESSION_TTL_MS = 1000 * 60 * 60 * 24;
+
 export function isSessionExpired(
-  expiresAt: string,
+  session: AuthSession,
 ): boolean {
-  return (
-    Date.now() >
-    new Date(
-      expiresAt,
-    ).getTime()
-  );
+  const issuedAt = new Date(
+    session.session.issuedAt,
+  ).getTime();
+  return Date.now() > issuedAt + SESSION_TTL_MS;
 }

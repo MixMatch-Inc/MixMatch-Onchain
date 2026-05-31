@@ -4,7 +4,21 @@ export enum UserRole {
   DJ = "DJ",
   PLANNER = "PLANNER",
   MUSIC_LOVER = "MUSIC_LOVER",
-};
+}
+
+export interface ApiSuccess<T> {
+  success: true;
+  data: T;
+  message?: string;
+}
+
+export interface ApiError {
+  success: false;
+  message: string;
+  code?: string;
+}
+
+export type ApiResponse<T> = ApiSuccess<T> | ApiError;
 
 export interface SignupRequest {
   email: string;
@@ -46,4 +60,4 @@ export interface SignupResponseData extends AuthResponse {
 export type SignupResponse = ApiResponse<SignupResponseData>;
 export type LoginResponse = ApiResponse<SignupResponseData>;
 
-export interface AuthSession extends SignupResponseData {}
+export type AuthSession = SignupResponseData;

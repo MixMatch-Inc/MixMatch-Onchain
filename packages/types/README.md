@@ -1,6 +1,7 @@
 # Auth Contracts
 
-Shared between frontend and API.
+This package defines the shared authentication contract used by the API, web, and mobile workspaces.
+The contracts are exported from `@themixmatch/types` and implemented in `packages/types/src/auth.ts`.
 
 ## SignupRequest
 

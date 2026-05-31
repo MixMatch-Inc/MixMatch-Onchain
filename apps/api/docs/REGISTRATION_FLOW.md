@@ -1,14 +1,17 @@
 # Registration Flow
 
-1. Client submits registration request
+1. Client submits a registration request to the API:
 
 POST /api/v1/auth/register
 
-2. API validates request payload
-
-3. User record is created
-
-4. Starter session is generated
+Request body:
+```json
+{
+  "email": "user@example.com",
+  "password": "password123",
+  "role": "DJ"
+}
+```
 
 5. Auth token returned in the shared response envelope
 

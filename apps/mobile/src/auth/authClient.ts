@@ -49,7 +49,6 @@ const apiBaseUrl =
   typeof (globalThis as Record<string, unknown>).process === "object"
     ? ((globalThis as Record<string, unknown>).process as { env?: Record<string, string | undefined> }).env?.EXPO_PUBLIC_API_BASE_URL
     : undefined;
-
 const apiEndpoint = (path: string) => `${(apiBaseUrl ?? "http://localhost:3001").replace(/\/$/, "")}${path}`;
 const randomId = () => `user_${Math.random().toString(16).slice(2)}_${Date.now().toString(16)}`;
 const sessionFromSignup = (data: SignupResponseData): AuthSession => data;
@@ -79,6 +78,10 @@ async function registerRemote(input: SignupRequest): Promise<AuthSession> {
 async function loginRemote(input: LoginRequest): Promise<AuthSession> {
   return remoteFetch(apiEndpoint("/api/v1/auth/login"), input, (json) => sessionFromSignup(parseEnvelope(json)));
 }
+
+// ---------------------------------------------------------------------------
+// Local-only helpers (offline / no API base URL)
+// ---------------------------------------------------------------------------
 
 async function registerLocal(input: SignupRequest): Promise<AuthSession> {
   const userId = randomId();
@@ -119,6 +122,10 @@ async function loginLocal(input: LoginRequest): Promise<AuthSession> {
     },
   };
 }
+
+// ---------------------------------------------------------------------------
+// Public API
+// ---------------------------------------------------------------------------
 
 export async function register(input: SignupRequest): Promise<AuthSession> {
   return apiBaseUrl ? registerRemote(input) : registerLocal(input);

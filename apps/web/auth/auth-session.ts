@@ -5,10 +5,8 @@ const SESSION_TTL_MS = 1000 * 60 * 60 * 24;
 export function isSessionExpired(
   session: AuthSession,
 ): boolean {
-  return (
-    const issuedAt = new Date(
-      session.session.issuedAt,
-    ).getTime();
-    return Date.now() > issuedAt + SESSION_TTL_MS;
-  );
+  const issuedAt = new Date(
+    session.session.issuedAt,
+  ).getTime();
+  return Date.now() > issuedAt + SESSION_TTL_MS;
 }

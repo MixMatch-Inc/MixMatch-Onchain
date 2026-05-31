@@ -34,6 +34,7 @@ export function createApiApp() {
   });
 
   app.post("/api/v1/auth/register", signupHandler);
+  app.post("/api/v1/auth/login", loginHandler);
 
   app.use((err: unknown, _req: Request, res: Response, _next: NextFunction) => {
     if (err && typeof err === "object" && "code" in err && "message" in err && "statusCode" in err) {

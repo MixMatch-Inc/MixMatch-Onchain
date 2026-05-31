@@ -80,5 +80,12 @@ describe("buildSessionBootstrap", () => {
     expect(bootstrap.role).toBe(UserRole.DJ);
     expect(bootstrap.onboardingCompleted).toBe(false);
     expect(typeof bootstrap.issuedAt).toBe("string");
+    expect(bootstrap.wallet).toEqual({
+      service: "stellar-service",
+      status: "unlinked",
+      networkPassphrase: expect.any(String),
+      horizonUrl: expect.any(String),
+      availableWallets: expect.arrayContaining(["phantom", "freighter"]),
+    });
   });
 });

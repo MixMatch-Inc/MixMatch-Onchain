@@ -146,6 +146,13 @@ async function registerLocal(input: SignupRequest): Promise<AuthSession> {
       role: input.role ?? UserRole.MUSIC_LOVER,
       onboardingCompleted: false,
       issuedAt: now,
+      wallet: {
+        service: "stellar-service",
+        status: "unlinked",
+        networkPassphrase: "Test SDF Network ; September 2015",
+        horizonUrl: "https://horizon-testnet.stellar.org",
+        availableWallets: ["phantom", "freighter"],
+      },
     },
   };
 }

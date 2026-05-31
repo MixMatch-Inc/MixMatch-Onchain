@@ -28,8 +28,42 @@ The MixMatch Onchain monorepo implements a three-tier authentication system:
 |--------|------|-------------|
 | POST | `/api/v1/auth/register` | Create account |
 | POST | `/api/v1/auth/login` | Sign in → token + session |
+| POST | `/api/v1/auth/refresh` | Refresh access token |
+| GET | `/api/v1/auth/introspect` | Introspect access token |
 | POST | `/api/v1/stellar/auth/challenge` | Generate Stellar challenge |
 | POST | `/api/v1/stellar/auth/verify` | Verify session on Stellar boundary |
+
+## Web Auth Files
+
+```
+apps/web/auth/
+├── auth-client.ts      # HTTP client for register & login (zod-free)
+├── auth-storage.ts     # localStorage persistence for AuthSession
+├── auth-session.ts     # Session expiry check (24h TTL)
+apps/web/app/
+├── login/page.tsx      # Login form → auth-client → redirect
+├── hooks/useLogin.ts   # Login hook with loading/error state
+├── hooks/useSessionBootstrap.ts  # Boot session from storage
+```
+
+## Mobile Auth Files
+
+```
+apps/mobile/src/auth/
+├── authClient.ts       # API client with remote + local fallback
+├── AuthProvider.tsx    # React context: status, session, signIn, signOut
+├── authStorage.ts       # expo-secure-store persistence
+apps/mobile/app/
+├── login.tsx           # Login screen with form
+├── _layout.tsx         # Stack navigator with login route
+```
+
+## Stellar Auth Boundary
+
+The Stellar service provides on-chain authentication awareness at `/api/v1/stellar/auth`:
+
+- `POST /api/v1/stellar/auth/verify` — Verify a session against the Stellar network
+- `POST /api/v1/stellar/auth/challenge` — Generate a Stellar challenge transaction for wallet signing
 
 ## Running the Full Stack
 
@@ -62,7 +96,19 @@ cd apps/stellar-service && pnpm dev
 
 | Symptom | Likely Cause | Fix |
 |---------|-------------|-----|
-| Login returns 401 | Wrong credentials | Check password; verify user via register |
-| Mobile login always succeeds | No API URL configured | Set EXPO_PUBLIC_API_BASE_URL for real API |
-| Stellar verify fails | Invalid session token | Ensure session is obtained via login first |
+| Login returns 401 | Wrong credentials | Check password; verify user exists via register |
+| "Invalid response payload" | API envelope mismatch | Ensure API returns `{ success: true, data: { token, user, session } }` |
+| Session lost on refresh | Storage key mismatch | Check localStorage key = `mixmatch:auth-session` |
+| Mobile login always succeeds | EXPO_PUBLIC_API_BASE_URL not set | The client falls back to local mock when no API URL is configured |
+| Stellar verify fails | Session not registered on-chain | Ensure wallet has signed the Stellar challenge transaction |
 | Stellar challenge fails | Invalid Stellar public key | Verify key format with Stellar SDK |
+
+## PR Checklist
+
+Before opening a PR touching auth:
+- [ ] Shared types updated in `packages/types/src/auth.ts`
+- [ ] API endpoint wired in `apps/api/src/app.ts`
+- [ ] Auth client updated in relevant surface(s)
+- [ ] Login page/screen created or updated
+- [ ] Tests pass: `pnpm -r run typecheck`
+- [ ] Stellar boundary contracts updated if on-chain auth required

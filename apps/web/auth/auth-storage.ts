@@ -40,4 +40,9 @@ export const authStorage = {
       SESSION_STORAGE_KEY,
     );
   },
+  },
+
+  clearSession(): void {
+    localStorage.removeItem(SESSION_KEY);
+  },
 };

@@ -91,6 +91,7 @@ export interface IntrospectResponse {
 
 // ── Credential errors ────────────────────────────────────────────────────────
 
+
 export enum CredentialErrorCode {
   INVALID_CREDENTIALS = "INVALID_CREDENTIALS",
   ACCOUNT_NOT_FOUND = "ACCOUNT_NOT_FOUND",

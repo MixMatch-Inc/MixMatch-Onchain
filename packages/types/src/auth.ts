@@ -1,3 +1,5 @@
+import type { ApiResponse } from "../auth/auth-envelope.types.js";
+
 export enum UserRole {
   DJ = "DJ",
   PLANNER = "PLANNER",
@@ -20,11 +22,20 @@ export interface AuthUserPayload {
   updatedAt?: string | Date;
 }
 
+export interface WalletBootstrap {
+  service: "stellar-service";
+  status: "unlinked" | "pending" | "linked";
+  networkPassphrase: string;
+  horizonUrl: string;
+  availableWallets: string[];
+}
+
 export interface SessionBootstrap {
   userId: string;
   role: UserRole;
   onboardingCompleted: boolean;
   issuedAt: string;
+  wallet: WalletBootstrap;
 }
 
 export interface AuthResponse {
@@ -36,6 +47,6 @@ export interface SignupResponseData extends AuthResponse {
   session: SessionBootstrap;
 }
 
-export type SignupResponse = ApiEnvelope<SignupResponseData>;
+export type SignupResponse = ApiResponse<SignupResponseData>;
 
 export interface AuthSession extends SignupResponseData {}

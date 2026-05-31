@@ -1,8 +1,8 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 
-import type { AuthSession, SignupRequest } from "@themixmatch/types";
+import type { AuthSession, LoginRequest, SignupRequest } from "@themixmatch/types";
 
-import { AuthClientError, register } from "./authClient";
+import { AuthClientError, login as loginClient, register } from "./authClient";
 import { clearAuthSession, loadAuthSession, saveAuthSession } from "./authStorage";
 
 type AuthStatus = "loading" | "signedOut" | "signedIn";
@@ -12,6 +12,7 @@ export interface AuthContextValue {
   session: AuthSession | null;
   lastError: AuthClientError | null;
   registerAccount: (input: SignupRequest) => Promise<void>;
+  signIn: (input: LoginRequest) => Promise<void>;
   signOut: () => Promise<void>;
 }
 
@@ -68,6 +69,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setStatus("signedIn");
   }, []);
 
+  const signIn = useCallback(async (input: LoginRequest) => {
+    setLastError(null);
+    const nextSession = await loginClient(input);
+    await saveAuthSession(nextSession);
+    setSession(nextSession);
+    setStatus("signedIn");
+  }, []);
+
   const signOut = useCallback(async () => {
     setLastError(null);
     await clearAuthSession();
@@ -81,6 +90,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       session,
       lastError,
       registerAccount,
+      signIn,
       signOut,
     }),
     [lastError, registerAccount, session, signOut, status],

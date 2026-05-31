@@ -1,6 +1,9 @@
 {
   "extends": "../../packages/config/tsconfig.react.json",
   "compilerOptions": {
+    "composite": true,
+    "noEmit": false,
+    "outDir": "dist",
     "baseUrl": ".",
     "plugins": [
       {

@@ -1,37 +1,34 @@
-// ---------------------------------------------------------------------------
-// API response envelope types (shared across API / web / mobile / Stellar)
-// ---------------------------------------------------------------------------
-
-export interface ApiSuccess<T> {
-  success: true;
-  data: T;
-}
-
-export interface ApiError {
-  success: false;
-  code: string;
-  message: string;
-  details?: unknown;
-}
-
-export type ApiEnvelope<T> = ApiSuccess<T> | ApiError;
-
-export type ApiResponse<T> = ApiEnvelope<T>;
-
-// ---------------------------------------------------------------------------
-// Auth domain types
-// ---------------------------------------------------------------------------
+import type { ApiResponse } from "./auth-envelope.types.js";
 
 export enum UserRole {
   DJ = "DJ",
   PLANNER = "PLANNER",
   MUSIC_LOVER = "MUSIC_LOVER",
-};
+}
+
+export interface ApiSuccess<T> {
+  success: true;
+  data: T;
+  message?: string;
+}
+
+export interface ApiError {
+  success: false;
+  message: string;
+  code?: string;
+}
+
+export type ApiResponse<T> = ApiSuccess<T> | ApiError;
 
 export interface SignupRequest {
   email: string;
   password: string;
   role: UserRole.DJ | UserRole.PLANNER | UserRole.MUSIC_LOVER;
+}
+
+export interface LoginRequest {
+  email: string;
+  password: string;
 }
 
 export interface AuthUserPayload {
@@ -44,15 +41,26 @@ export interface AuthUserPayload {
   updatedAt?: string | Date;
 }
 
+export interface WalletBootstrap {
+  service: "stellar-service";
+  status: "unlinked" | "pending" | "linked";
+  networkPassphrase: string;
+  horizonUrl: string;
+  availableWallets: string[];
+}
+
 export interface SessionBootstrap {
   userId: string;
   role: UserRole;
   onboardingCompleted: boolean;
   issuedAt: string;
+  wallet: WalletBootstrap;
 }
 
 export interface AuthResponse {
   token: string;
+  /** Refresh token issued alongside the access token */
+  refreshToken: string;
   user: AuthUserPayload;
 }
 
@@ -60,24 +68,42 @@ export interface SignupResponseData extends AuthResponse {
   session: SessionBootstrap;
 }
 
-export type SignupResponse = ApiEnvelope<SignupResponseData>;
+export type SignupResponse = ApiResponse<SignupResponseData>;
+export type LoginResponse = ApiResponse<SignupResponseData>;
 
-export interface AuthSession extends SignupResponseData {}
+export type AuthSession = SignupResponseData;
 
-// ---------------------------------------------------------------------------
-// Login types (shared across API / web / mobile)
-// ---------------------------------------------------------------------------
+// ── Session refresh ──────────────────────────────────────────────────────────
 
-export interface LoginRequest {
-  email: string;
-  password: string;
+export interface RefreshTokenPayload {
+  userId: string;
+  role: UserRole;
+  /** jti — unique token id used for single-use enforcement */
+  jti: string;
 }
 
-export interface LoginResponseData extends AuthResponse {
-  session: SessionBootstrap;
+export interface SessionRefreshRequest {
+  refreshToken: string;
 }
 
-export type LoginResponse = ApiEnvelope<LoginResponseData>;
+export interface SessionRefreshResponse {
+  accessToken: string;
+  refreshToken: string;
+  /** ISO-8601 expiry of the new access token */
+  expiresAt: string;
+}
+
+// ── Introspection ────────────────────────────────────────────────────────────
+
+export interface IntrospectResponse {
+  valid: boolean;
+  userId?: string;
+  role?: UserRole;
+  /** ISO-8601 expiry of the access token */
+  expiresAt?: string;
+}
+
+// ── Credential error contracts ──────────────────────────────────────────────
 
 export enum CredentialErrorCode {
   INVALID_CREDENTIALS = "INVALID_CREDENTIALS",
@@ -91,9 +117,7 @@ export interface CredentialErrorContract {
   retryAfter?: number;
 }
 
-// ---------------------------------------------------------------------------
-// Stellar-boundary auth types (auth-to-Stellar handoff)
-// ---------------------------------------------------------------------------
+// ── Stellar-boundary auth types (auth-to-Stellar handoff) ────────────────────
 
 export interface StellarAuthRequest {
   sessionToken: string;
@@ -106,7 +130,7 @@ export interface StellarAuthResponseData {
   linkedAt: string;
 }
 
-export type StellarAuthResponse = ApiEnvelope<StellarAuthResponseData>;
+export type StellarAuthResponse = ApiResponse<StellarAuthResponseData>;
 
 export interface StellarChallengeRequest {
   stellarPublicKey: string;
@@ -118,7 +142,7 @@ export interface StellarChallengeResponseData {
   expiresAt: string;
 }
 
-export type StellarChallengeResponse = ApiEnvelope<StellarChallengeResponseData>;
+export type StellarChallengeResponse = ApiResponse<StellarChallengeResponseData>;
 
 export interface StellarSessionContract {
   userId: string;

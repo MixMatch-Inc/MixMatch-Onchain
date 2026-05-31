@@ -4,6 +4,7 @@ import helmet from "helmet";
 
 import type { ApiHealthResponse } from "@themixmatch/types";
 import { signupHandler } from "./domains/identity/signup.handler.js";
+import { loginHandler } from "./domains/identity/login.handler.js";
 import { sendError } from "./utils/api-response.js";
 
 export function createApiApp() {

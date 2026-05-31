@@ -12,8 +12,8 @@
   "dependencies": {
     "@themixmatch/types": "workspace:*",
     "expo": "^54.0.5",
-    "expo-secure-store": "^14.2.3",
     "expo-router": "^6.0.4",
+    "expo-secure-store": "^14.2.3",
     "expo-status-bar": "^3.0.8",
     "react": "^19.1.1",
     "react-native": "^0.81.1",
@@ -21,8 +21,11 @@
     "react-native-screens": "^4.16.0"
   },
   "devDependencies": {
+    "@testing-library/jest-native": "^5.4.3",
+    "@testing-library/react-native": "^13.3.3",
     "@types/react": "^19.1.12",
     "babel-preset-expo": "^54.0.1",
-    "typescript": "^5.9.2"
+    "typescript": "^5.9.2",
+    "vitest": "^4.1.7"
   }
 }

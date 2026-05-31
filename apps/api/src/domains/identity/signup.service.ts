@@ -52,20 +52,13 @@ export async function createAccount(input: SignupRequest): Promise<AuthResponse>
 export function buildSessionBootstrap(
   userId: string,
   role: UserRole,
+  wallet: SessionBootstrap["wallet"],
 ): SessionBootstrap {
   return {
     userId,
     role,
     onboardingCompleted: false,
     issuedAt: new Date().toISOString(),
-    wallet: {
-      service: "stellar-service",
-      status: "unlinked",
-      networkPassphrase:
-        process.env.STELLAR_NETWORK_PASSPHRASE || "Test SDF Network ; September 2015",
-      horizonUrl:
-        process.env.STELLAR_HORIZON_URL || "https://horizon-testnet.stellar.org",
-      availableWallets: ["phantom", "freighter"],
-    },
+    wallet,
   };
 }

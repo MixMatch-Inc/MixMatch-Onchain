@@ -75,7 +75,14 @@ describe("createAccount", () => {
 
 describe("buildSessionBootstrap", () => {
   it("returns correct shape for a new user", () => {
-    const bootstrap = buildSessionBootstrap("user-1", UserRole.DJ);
+    const bootstrap = buildSessionBootstrap("user-1", UserRole.DJ, {
+      service: "stellar-service",
+      status: "unlinked",
+      networkPassphrase: "Test SDF Network ; September 2015",
+      horizonUrl: "https://horizon-testnet.stellar.org",
+      availableWallets: ["phantom", "freighter"],
+    });
+
     expect(bootstrap.userId).toBe("user-1");
     expect(bootstrap.role).toBe(UserRole.DJ);
     expect(bootstrap.onboardingCompleted).toBe(false);
@@ -83,8 +90,8 @@ describe("buildSessionBootstrap", () => {
     expect(bootstrap.wallet).toEqual({
       service: "stellar-service",
       status: "unlinked",
-      networkPassphrase: expect.any(String),
-      horizonUrl: expect.any(String),
+      networkPassphrase: "Test SDF Network ; September 2015",
+      horizonUrl: "https://horizon-testnet.stellar.org",
       availableWallets: expect.arrayContaining(["phantom", "freighter"]),
     });
   });

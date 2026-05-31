@@ -13,6 +13,15 @@ export interface StellarHealthResponse {
   timestamp: string;
 }
 
+export interface StellarServiceHandshake {
+  service: "stellar-service";
+  status: "ok";
+  supportedWallets: string[];
+  networkPassphrase: string;
+  horizonUrl: string;
+  timestamp: string;
+}
+
 export interface StarterRoadmapCard {
   title: string;
   body: string;

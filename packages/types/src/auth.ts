@@ -41,11 +41,20 @@ export interface AuthUserPayload {
   updatedAt?: string | Date;
 }
 
+export interface WalletBootstrap {
+  service: "stellar-service";
+  status: "unlinked" | "pending" | "linked";
+  networkPassphrase: string;
+  horizonUrl: string;
+  availableWallets: string[];
+}
+
 export interface SessionBootstrap {
   userId: string;
   role: UserRole;
   onboardingCompleted: boolean;
   issuedAt: string;
+  wallet: WalletBootstrap;
 }
 
 export interface AuthResponse {

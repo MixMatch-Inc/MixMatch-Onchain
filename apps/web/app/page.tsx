@@ -1,3 +1,4 @@
+import Link from "next/link";
 import type { StarterRoadmapCard } from "@themixmatch/types";
 
 const roadmap: StarterRoadmapCard[] = [
@@ -33,6 +34,14 @@ export default function HomePage() {
               <span className="pill">Next.js web</span>
               <span className="pill">Expo mobile</span>
               <span className="pill">Stellar service</span>
+            </div>
+            <div className="button-row">
+              <Link href="/signup" className="button button-primary">
+                Create account
+              </Link>
+              <Link href="/login" className="button button-secondary">
+                Sign in
+              </Link>
             </div>
           </div>
 

@@ -2,16 +2,15 @@
 
 import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
-import { UserRole, type SignupRequest } from "@themixmatch/types";
-import { signup } from "@/auth/auth-client";
+import { login } from "@/auth/auth-client";
+import { type LoginRequest } from "@themixmatch/types";
 import { useAuth } from "@/auth/auth-context";
 
-export default function SignupPage() {
+export default function LoginPage() {
   const router = useRouter();
   const { signIn } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [role, setRole] = useState<UserRole | "">("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -20,23 +19,22 @@ export default function SignupPage() {
     setLoading(true);
     setError(null);
 
-    const payload: SignupRequest = {
+    const payload: LoginRequest = {
       email,
       password,
-      role: role as UserRole,
     };
 
     try {
-      const response = await signup(payload);
+      const response = await login(payload);
       if (!response.success) {
-        setError(response.message ?? "Unable to create account.");
+        setError(response.message ?? "Invalid credentials.");
         return;
       }
 
       signIn(response.data);
       router.push("/dashboard");
-    } catch (err) {
-      setError("Something went wrong. Please try again.");
+    } catch {
+      setError("Unable to sign in. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -45,9 +43,9 @@ export default function SignupPage() {
   return (
     <main className="page-shell">
       <section className="hero-card">
-        <h1 className="headline">Create your MixMatch account</h1>
+        <h1 className="headline">Sign in to MixMatch</h1>
         <p className="lede">
-          Create a secure auth session and continue to your dashboard.
+          Enter your credentials to resume your session.
         </p>
 
         <form onSubmit={handleSubmit} className="signup-form">
@@ -76,26 +74,10 @@ export default function SignupPage() {
             />
           </div>
 
-          <div className="form-group">
-            <label htmlFor="role">Role</label>
-            <select
-              id="role"
-              value={role}
-              onChange={(event) => setRole(event.target.value as UserRole)}
-              required
-              disabled={loading}
-            >
-              <option value="">Select your role</option>
-              <option value={UserRole.DJ}>DJ</option>
-              <option value={UserRole.PLANNER}>Planner</option>
-              <option value={UserRole.MUSIC_LOVER}>Music Lover</option>
-            </select>
-          </div>
-
           {error && <div className="error-message">{error}</div>}
 
           <button type="submit" disabled={loading}>
-            {loading ? "Creating account..." : "Create account"}
+            {loading ? "Signing in..." : "Sign in"}
           </button>
         </form>
       </section>

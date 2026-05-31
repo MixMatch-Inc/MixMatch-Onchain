@@ -8,6 +8,7 @@ import {
   useMemo,
   useState,
 } from "react";
+import type { ReactNode } from "react";
 import type { AuthSession } from "@themixmatch/types";
 import { authStorage } from "./auth-storage";
 import { isSessionExpired } from "./auth-session";
@@ -27,7 +28,7 @@ const AuthContext = createContext<AuthContextValue | undefined>(
 export function AuthProvider({
   children,
 }: {
-  children: React.ReactNode;
+  children: ReactNode;
 }) {
   const [session, setSession] = useState<AuthSession | null>(null);
 

@@ -6,9 +6,9 @@ export function isSessionExpired(
   session: AuthSession,
 ): boolean {
   return (
-    Date.now() >
-    new Date(
-      expiresAt,
-    ).getTime()
+    const issuedAt = new Date(
+      session.session.issuedAt,
+    ).getTime();
+    return Date.now() > issuedAt + SESSION_TTL_MS;
   );
 }

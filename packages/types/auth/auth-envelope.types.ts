@@ -5,10 +5,9 @@ export interface ApiSuccess<T> {
 
 export interface ApiError {
   success: false;
-  error: {
-    code: string;
-    message: string;
-  };
+  code: string;
+  message: string;
+  details?: unknown;
 }
 
 export type ApiResponse<T> =

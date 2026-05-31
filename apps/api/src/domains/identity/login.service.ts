@@ -2,7 +2,7 @@ import bcrypt from "bcryptjs";
 import { UserRole } from "@themixmatch/types";
 import type { LoginRequest, AuthResponse } from "@themixmatch/types";
 import { container } from "../../config/di.js";
-import { generateToken } from "../../services/jwt.service.js";
+import { generateAccessToken, generateRefreshToken } from "../../services/jwt.service.js";
 import { AuthError } from "../../utils/errors.js";
 
 function mapUserToPayload(user: { id: string; name: string; email: string; role: UserRole; onboardingCompleted: boolean; createdAt: Date; updatedAt: Date; }): AuthResponse["user"] {
@@ -30,10 +30,21 @@ export async function authenticateAccount(input: LoginRequest): Promise<AuthResp
     throw AuthError.invalidCredentials();
   }
 
-  const token = generateToken(user.id, user.role as UserRole);
+  const token = generateAccessToken(user.id, user.role as UserRole);
+
+  // Issue a refresh token and persist it
+  const { token: refreshToken, jti } = generateRefreshToken(user.id, user.role as UserRole);
+  const REFRESH_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+  await container.refreshTokenRepository.save({
+    jti,
+    userId: user.id,
+    expiresAt: new Date(Date.now() + REFRESH_TTL_MS).toISOString(),
+    revoked: false,
+  });
 
   return {
     token,
+    refreshToken,
     user: mapUserToPayload(user),
   };
 }

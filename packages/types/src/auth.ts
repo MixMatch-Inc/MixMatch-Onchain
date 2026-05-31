@@ -1,4 +1,4 @@
-import type { ApiResponse } from "./auth-envelope.types.js";
+import type { ApiResponse } from "../auth/auth-envelope.types.js";
 
 export enum UserRole {
   DJ = "DJ",

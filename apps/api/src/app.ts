@@ -29,7 +29,7 @@ export function createApiApp() {
     response.json({
       name: "TheMixMatch API starter",
       milestone: "Authentication",
-      nextStep: "Add auth routes, session storage, and shared contracts."
+      nextStep: "Use /api/v1/auth/register and /api/v1/auth/login with the shared auth contract."
     });
   });
 

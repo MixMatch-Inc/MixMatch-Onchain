@@ -55,9 +55,27 @@ export interface SignupResponseData extends AuthResponse {
 }
 
 export type SignupResponse = ApiResponse<SignupResponseData>;
-export type LoginResponse = ApiResponse<SignupResponseData>;
-
 export type AuthSession = SignupResponseData;
+
+// ── Login types ──────────────────────────────────────────────────────────────
+
+export interface LoginResponseData extends AuthResponse {
+  session: SessionBootstrap;
+}
+
+export type LoginResponse = ApiResponse<LoginResponseData>;
+
+export enum CredentialErrorCode {
+  INVALID_CREDENTIALS = "INVALID_CREDENTIALS",
+  ACCOUNT_NOT_FOUND = "ACCOUNT_NOT_FOUND",
+  ACCOUNT_LOCKED = "ACCOUNT_LOCKED",
+}
+
+export interface CredentialErrorContract {
+  code: CredentialErrorCode;
+  message: string;
+  retryAfter?: number;
+}
 
 // ── Session refresh ──────────────────────────────────────────────────────────
 

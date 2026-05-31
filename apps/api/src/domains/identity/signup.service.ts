@@ -52,11 +52,13 @@ export async function createAccount(input: SignupRequest): Promise<AuthResponse>
 export function buildSessionBootstrap(
   userId: string,
   role: UserRole,
+  wallet: SessionBootstrap["wallet"],
 ): SessionBootstrap {
   return {
     userId,
     role,
     onboardingCompleted: false,
     issuedAt: new Date().toISOString(),
+    wallet,
   };
 }

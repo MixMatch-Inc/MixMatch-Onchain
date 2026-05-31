@@ -1,37 +1,34 @@
-// ---------------------------------------------------------------------------
-// API response envelope types
-// ---------------------------------------------------------------------------
-
-export interface ApiSuccess<T> {
-  success: true;
-  data: T;
-}
-
-export interface ApiError {
-  success: false;
-  code: string;
-  message: string;
-  details?: unknown;
-}
-
-export type ApiEnvelope<T> = ApiSuccess<T> | ApiError;
-
-export type ApiResponse<T> = ApiEnvelope<T>;
-
-// ---------------------------------------------------------------------------
-// Auth domain types
-// ---------------------------------------------------------------------------
+import type { ApiResponse } from "./auth-envelope.types.js";
 
 export enum UserRole {
   DJ = "DJ",
   PLANNER = "PLANNER",
   MUSIC_LOVER = "MUSIC_LOVER",
-};
+}
+
+export interface ApiSuccess<T> {
+  success: true;
+  data: T;
+  message?: string;
+}
+
+export interface ApiError {
+  success: false;
+  message: string;
+  code?: string;
+}
+
+export type ApiResponse<T> = ApiSuccess<T> | ApiError;
 
 export interface SignupRequest {
   email: string;
   password: string;
   role: UserRole.DJ | UserRole.PLANNER | UserRole.MUSIC_LOVER;
+}
+
+export interface LoginRequest {
+  email: string;
+  password: string;
 }
 
 export interface AuthUserPayload {
@@ -44,11 +41,20 @@ export interface AuthUserPayload {
   updatedAt?: string | Date;
 }
 
+export interface WalletBootstrap {
+  service: "stellar-service";
+  status: "unlinked" | "pending" | "linked";
+  networkPassphrase: string;
+  horizonUrl: string;
+  availableWallets: string[];
+}
+
 export interface SessionBootstrap {
   userId: string;
   role: UserRole;
   onboardingCompleted: boolean;
   issuedAt: string;
+  wallet: WalletBootstrap;
 }
 
 export interface AuthResponse {
@@ -60,33 +66,7 @@ export interface SignupResponseData extends AuthResponse {
   session: SessionBootstrap;
 }
 
-export type SignupResponse = ApiEnvelope<SignupResponseData>;
+export type SignupResponse = ApiResponse<SignupResponseData>;
+export type LoginResponse = ApiResponse<SignupResponseData>;
 
-export interface AuthSession extends SignupResponseData {}
-
-// ---------------------------------------------------------------------------
-// Login types
-// ---------------------------------------------------------------------------
-
-export interface LoginRequest {
-  email: string;
-  password: string;
-}
-
-export interface LoginResponseData extends AuthResponse {
-  session: SessionBootstrap;
-}
-
-export type LoginResponse = ApiEnvelope<LoginResponseData>;
-
-export enum CredentialErrorCode {
-  INVALID_CREDENTIALS = "INVALID_CREDENTIALS",
-  ACCOUNT_NOT_FOUND = "ACCOUNT_NOT_FOUND",
-  ACCOUNT_LOCKED = "ACCOUNT_LOCKED",
-}
-
-export interface CredentialErrorContract {
-  code: CredentialErrorCode;
-  message: string;
-  retryAfter?: number;
-}
+export type AuthSession = SignupResponseData;

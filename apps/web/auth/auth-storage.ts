@@ -1,31 +1,43 @@
-const ACCESS_TOKEN_KEY =
-  "access_token";
+import type { AuthSession } from "@themixmatch/types";
 
-const REFRESH_TOKEN_KEY =
-  "refresh_token";
+const SESSION_STORAGE_KEY =
+  "mixmatch_auth_session";
 
 export const authStorage = {
-  saveSession(
-    session: AuthSession,
-  ) {
+  saveSession(session: AuthSession) {
     localStorage.setItem(
-      ACCESS_TOKEN_KEY,
-      session.accessToken,
+      SESSION_STORAGE_KEY,
+      JSON.stringify(session),
+    );
+  },
+
+  loadSession(): AuthSession | null {
+    const raw = localStorage.getItem(
+      SESSION_STORAGE_KEY,
     );
 
-    localStorage.setItem(
-      REFRESH_TOKEN_KEY,
-      session.refreshToken,
-    );
+    if (!raw) {
+      return null;
+    }
+
+    try {
+      const parsed = JSON.parse(raw) as AuthSession;
+      if (
+        !parsed?.token ||
+        !parsed?.user ||
+        !parsed?.session
+      ) {
+        return null;
+      }
+      return parsed;
+    } catch {
+      return null;
+    }
   },
 
   clearSession() {
     localStorage.removeItem(
-      ACCESS_TOKEN_KEY,
-    );
-
-    localStorage.removeItem(
-      REFRESH_TOKEN_KEY,
+      SESSION_STORAGE_KEY,
     );
   },
 };

@@ -1,47 +1,50 @@
-import type { LoginInput } from "./login.validation";
-import type { AuthSession } from "@themixmatch/types";
-import { ApiError } from "../../utils/errors";
-import { userRepository } from "../../repositories/user.repository";
-import { hashPassword } from "./signup.service";
-import { jwtService } from "../../services/jwt.service";
+import bcrypt from "bcryptjs";
+import { UserRole } from "@themixmatch/types";
+import type { LoginRequest, AuthResponse } from "@themixmatch/types";
+import { container } from "../../config/di.js";
+import { generateAccessToken, generateRefreshToken } from "../../services/jwt.service.js";
+import { AuthError } from "../../utils/errors.js";
 
-export async function loginUser(input: LoginInput): Promise<AuthSession> {
-  const { email, password } = input;
+function mapUserToPayload(user: { id: string; name: string; email: string; role: UserRole; onboardingCompleted: boolean; createdAt: Date; updatedAt: Date; }): AuthResponse["user"] {
+  return {
+    id: user.id,
+    name: user.name,
+    email: user.email,
+    role: user.role,
+    onboardingCompleted: user.onboardingCompleted,
+    createdAt: user.createdAt,
+    updatedAt: user.updatedAt,
+  };
+}
 
-  if (!password) {
-    throw new ApiError("AUTH_INVALID_CREDENTIALS", "Invalid email or password", 401);
-  }
+export async function authenticateAccount(input: LoginRequest): Promise<AuthResponse> {
+  const email = input.email.toLowerCase();
 
-  const user = await userRepository.findByEmail(email);
-
+  const user = await container.userRepository.findByEmail(email);
   if (!user) {
-    throw new ApiError("AUTH_INVALID_CREDENTIALS", "Invalid email or password", 401);
+    throw AuthError.invalidCredentials();
   }
 
-  const hashedInput = hashPassword(password);
-  if (user.passwordHash !== hashedInput) {
-    throw new ApiError("AUTH_INVALID_CREDENTIALS", "Invalid email or password", 401);
+  const isValidPassword = await bcrypt.compare(input.password, user.passwordHash);
+  if (!isValidPassword) {
+    throw AuthError.invalidCredentials();
   }
 
-  const token = jwtService.sign({ userId: user.id, role: user.role });
-  const now = new Date().toISOString();
+  const token = generateAccessToken(user.id, user.role as UserRole);
+
+  // Issue a refresh token and persist it
+  const { token: refreshToken, jti } = generateRefreshToken(user.id, user.role as UserRole);
+  const REFRESH_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+  await container.refreshTokenRepository.save({
+    jti,
+    userId: user.id,
+    expiresAt: new Date(Date.now() + REFRESH_TTL_MS).toISOString(),
+    revoked: false,
+  });
 
   return {
     token,
-    user: {
-      id: user.id,
-      name: user.name,
-      email: user.email,
-      role: user.role,
-      onboardingCompleted: user.onboardingCompleted,
-      createdAt: user.createdAt,
-      updatedAt: user.updatedAt,
-    },
-    session: {
-      userId: user.id,
-      role: user.role,
-      onboardingCompleted: user.onboardingCompleted,
-      issuedAt: now,
-    },
+    refreshToken,
+    user: mapUserToPayload(user),
   };
 }

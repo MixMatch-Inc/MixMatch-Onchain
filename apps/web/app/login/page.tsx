@@ -1,13 +1,14 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import React, { type FormEvent, useState } from "react";
-import { login } from "../../auth/auth-client";
-import { saveAuthSession } from "../../auth/auth-storage";
-import { AuthClientError } from "../../auth/auth-client";
+import { useState, type FormEvent } from "react";
+import { useAuth } from "@/auth/auth-context";
+import { login } from "@/auth/auth-client";
+import { AuthClientError } from "@/auth/auth-client";
 
 export default function LoginPage() {
   const router = useRouter();
+  const { signIn } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -21,8 +22,8 @@ export default function LoginPage() {
 
     try {
       const session = await login({ email: email.trim(), password });
-      await saveAuthSession(session);
-      router.push("/");
+      signIn(session);
+      router.push("/dashboard");
     } catch (caught) {
       setError(
         caught instanceof AuthClientError
@@ -37,36 +38,46 @@ export default function LoginPage() {
   };
 
   return (
-    <main style={{ maxWidth: 400, margin: "0 auto", padding: "3rem 1rem" }}>
-      <h1>Sign in</h1>
-      <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
-        <label>
-          Email
-          <input
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="you@example.com"
-            required
-            style={{ display: "block", width: "100%", marginTop: 4 }}
-          />
-        </label>
-        <label>
-          Password
-          <input
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            placeholder="Enter your password"
-            required
-            style={{ display: "block", width: "100%", marginTop: 4 }}
-          />
-        </label>
-        <button type="submit" disabled={submitting || !email.trim() || !password}>
-          {submitting ? "Signing in…" : "Sign in"}
-        </button>
-      </form>
-      {error && <p style={{ color: "#b91c1c", marginTop: "1rem" }}>{error}</p>}
+    <main className="page-shell">
+      <section className="hero-card">
+        <h1 className="headline">Sign in to MixMatch</h1>
+        <p className="lede">
+          Enter your credentials to resume your session.
+        </p>
+
+        <form onSubmit={handleSubmit} className="signup-form">
+          <div className="form-group">
+            <label htmlFor="email">Email</label>
+            <input
+              id="email"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+              disabled={submitting}
+            />
+          </div>
+
+          <div className="form-group">
+            <label htmlFor="password">Password</label>
+            <input
+              id="password"
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+              disabled={submitting}
+              minLength={8}
+            />
+          </div>
+
+          {error && <div className="error-message">{error}</div>}
+
+          <button type="submit" disabled={submitting || !email.trim() || !password}>
+            {submitting ? "Signing in..." : "Sign in"}
+          </button>
+        </form>
+      </section>
     </main>
   );
 }

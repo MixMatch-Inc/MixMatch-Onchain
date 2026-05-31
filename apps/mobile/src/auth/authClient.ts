@@ -95,8 +95,28 @@ async function loginLocal(input: LoginRequest): Promise<AuthSession> {
   const now = new Date().toISOString();
   return {
     token: `local.${userId}.${Date.now()}`,
-    user: { id: userId, name: input.email.split("@")[0]?.trim() || "mixmatch-user", email: input.email.toLowerCase(), role: UserRole.MUSIC_LOVER, onboardingCompleted: false, createdAt: now, updatedAt: now },
-    session: { userId, role: UserRole.MUSIC_LOVER, onboardingCompleted: false, issuedAt: now },
+    user: {
+      id: userId,
+      name: input.email.split("@")[0]?.trim() || "mixmatch-user",
+      email: input.email.toLowerCase(),
+      role: input.role,
+      onboardingCompleted: false,
+      createdAt: now,
+      updatedAt: now,
+    },
+    session: {
+      userId,
+      role: input.role ?? UserRole.MUSIC_LOVER,
+      onboardingCompleted: false,
+      issuedAt: now,
+      wallet: {
+        service: "stellar-service",
+        status: "unlinked",
+        networkPassphrase: "Test SDF Network ; September 2015",
+        horizonUrl: "https://horizon-testnet.stellar.org",
+        availableWallets: ["phantom", "freighter"],
+      },
+    },
   };
 }
 

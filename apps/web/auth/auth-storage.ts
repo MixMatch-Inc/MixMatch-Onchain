@@ -1,4 +1,4 @@
-import type { AuthSession } from "@workspace/types/auth";
+import type { AuthSession } from "@themixmatch/types";
 
 const STORAGE_KEY = "mixmatch:auth-session";
 

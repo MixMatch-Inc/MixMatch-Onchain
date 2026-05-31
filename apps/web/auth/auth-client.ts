@@ -1,5 +1,4 @@
-import type { ApiError, AuthSession, LoginRequest, SignupRequest, SignupResponse } from "@workspace/types/auth";
-import type { ApiResponse } from "@workspace/types/auth";
+import type { ApiError, AuthSession, LoginRequest, SignupRequest } from "@themixmatch/types";
 
 type AuthClientErrorKind = "network" | "http" | "api" | "invalid_response";
 

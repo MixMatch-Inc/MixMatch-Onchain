@@ -13,9 +13,21 @@ export interface StellarHealthResponse {
   timestamp: string;
 }
 
+export interface StellarServiceHandshake {
+  service: "stellar-service";
+  status: "ok";
+  supportedWallets: string[];
+  networkPassphrase: string;
+  horizonUrl: string;
+  timestamp: string;
+}
+
 export interface StarterRoadmapCard {
   title: string;
   body: string;
 }
 
 export * from "./auth.js";
+export * from "./auth-envelope.types.js";
+export * from "./auth-errors.types.js";
+export * from "./session.types.js";

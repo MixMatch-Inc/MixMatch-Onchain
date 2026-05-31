@@ -68,7 +68,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setStatus("signedOut");
   }, []);
 
-  const value = useMemo<AuthContextValue>(() => ({ status, session, lastError, registerAccount, signIn, signOut }), [lastError, registerAccount, session, signOut, status]);
+  const value = useMemo<AuthContextValue>(
+    () => ({
+      status,
+      session,
+      lastError,
+      registerAccount,
+      signIn,
+      signOut,
+    }),
+    [lastError, registerAccount, session, signOut, status],
+  );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

@@ -33,7 +33,3 @@ export const loginHandler = async (req: Request, res: Response): Promise<void> =
   });
 };
 
-export const loginErrorStatus: Record<string, number> = {
-  AUTH_INVALID_CREDENTIALS: 401,
-  VALIDATION_INVALID_INPUT: 422,
-};

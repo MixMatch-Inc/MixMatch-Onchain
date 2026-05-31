@@ -67,4 +67,5 @@ const styles = StyleSheet.create({
   secondary: { marginTop: 8, paddingVertical: 10, paddingHorizontal: 12, alignSelf: "flex-start" },
   secondaryText: { color: "#115e59", fontWeight: "700" },
   error: { marginTop: 12, color: "#b91c1c", fontSize: 14 },
+
 });

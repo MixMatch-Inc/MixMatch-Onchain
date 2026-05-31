@@ -6,20 +6,6 @@ export enum UserRole {
   MUSIC_LOVER = "MUSIC_LOVER",
 }
 
-export interface ApiSuccess<T> {
-  success: true;
-  data: T;
-  message?: string;
-}
-
-export interface ApiError {
-  success: false;
-  message: string;
-  code?: string;
-}
-
-export type ApiResponse<T> = ApiSuccess<T> | ApiError;
-
 export interface SignupRequest {
   email: string;
   password: string;
@@ -101,4 +87,18 @@ export interface IntrospectResponse {
   role?: UserRole;
   /** ISO-8601 expiry of the access token */
   expiresAt?: string;
+}
+
+// ── Credential errors ────────────────────────────────────────────────────────
+
+export enum CredentialErrorCode {
+  INVALID_CREDENTIALS = "INVALID_CREDENTIALS",
+  ACCOUNT_NOT_FOUND = "ACCOUNT_NOT_FOUND",
+  ACCOUNT_LOCKED = "ACCOUNT_LOCKED",
+}
+
+export interface CredentialErrorContract {
+  code: CredentialErrorCode;
+  message: string;
+  retryAfter?: number;
 }

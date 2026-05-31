@@ -3,7 +3,9 @@ import express, { type Request, type Response, type NextFunction } from "express
 import helmet from "helmet";
 
 import type { ApiHealthResponse } from "@themixmatch/types";
+import { loginHandler } from "./domains/identity/login.handler.js";
 import { signupHandler } from "./domains/identity/signup.handler.js";
+import { loginHandler } from "./domains/identity/login.handler.js";
 import { sendError } from "./utils/api-response.js";
 
 export function createApiApp() {
@@ -28,11 +30,12 @@ export function createApiApp() {
     response.json({
       name: "TheMixMatch API starter",
       milestone: "Authentication",
-      nextStep: "Add auth routes, session storage, and shared contracts."
+      nextStep: "Use /api/v1/auth/register and /api/v1/auth/login with the shared auth contract."
     });
   });
 
   app.post("/api/v1/auth/register", signupHandler);
+  app.post("/api/v1/auth/login", loginHandler);
 
   app.use((err: unknown, _req: Request, res: Response, _next: NextFunction) => {
     if (err && typeof err === "object" && "code" in err && "message" in err && "statusCode" in err) {

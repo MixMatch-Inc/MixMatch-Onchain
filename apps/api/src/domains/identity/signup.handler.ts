@@ -1,6 +1,7 @@
 import type { Request, Response } from "express";
 import { registerSchema } from "./auth.validation.js";
 import { createAccount, buildSessionBootstrap } from "./signup.service.js";
+import { getStellarHandshake, defaultWalletBootstrap, mapHandshakeToWalletBootstrap } from "../../services/stellar.service.js";
 import { sendSuccess } from "../../utils/api-response.js";
 import { ValidationError } from "../../utils/errors.js";
 
@@ -20,7 +21,16 @@ export const signupHandler = async (req: Request, res: Response): Promise<void> 
   }
 
   const authResult = await createAccount(parsed.data);
-  const bootstrap = buildSessionBootstrap(authResult.user.id, authResult.user.role);
+
+  let wallet = defaultWalletBootstrap();
+  try {
+    const handshake = await getStellarHandshake();
+    wallet = mapHandshakeToWalletBootstrap(handshake);
+  } catch (error) {
+    console.warn("stellar-service handshake unavailable", error instanceof Error ? error.message : error);
+  }
+
+  const bootstrap = buildSessionBootstrap(authResult.user.id, authResult.user.role, wallet);
 
   sendSuccess(res, 201, {
     token: authResult.token,

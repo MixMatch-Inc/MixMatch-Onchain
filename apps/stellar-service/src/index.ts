@@ -3,7 +3,7 @@ import dotenv from "dotenv";
 import express, { type Request, type Response } from "express";
 import { z } from "zod";
 
-import type { StellarHealthResponse } from "@themixmatch/types";
+import type { StellarHealthResponse, StellarServiceHandshake } from "@themixmatch/types";
 
 dotenv.config();
 
@@ -26,6 +26,19 @@ app.get("/health", (_request: Request, response: Response) => {
   const payload: StellarHealthResponse = {
     service: "stellar-service",
     status: "ok",
+    networkPassphrase: env.STELLAR_NETWORK_PASSPHRASE,
+    horizonUrl: env.STELLAR_HORIZON_URL,
+    timestamp: new Date().toISOString()
+  };
+
+  response.json(payload);
+});
+
+app.get("/handshake", (_request: Request, response: Response) => {
+  const payload: StellarServiceHandshake = {
+    service: "stellar-service",
+    status: "ok",
+    supportedWallets: ["phantom", "freighter"],
     networkPassphrase: env.STELLAR_NETWORK_PASSPHRASE,
     horizonUrl: env.STELLAR_HORIZON_URL,
     timestamp: new Date().toISOString()

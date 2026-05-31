@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { login } from "@/auth/auth-client";
 import { type LoginRequest } from "@themixmatch/types";
@@ -79,6 +80,13 @@ export default function LoginPage() {
           <button type="submit" disabled={loading}>
             {loading ? "Signing in..." : "Sign in"}
           </button>
+
+          <p style={{ textAlign: "center", marginTop: "1rem", color: "var(--muted)" }}>
+            Don&apos;t have an account?{" "}
+            <Link href="/signup" style={{ color: "var(--accent)", fontWeight: 600 }}>
+              Create one
+            </Link>
+          </p>
         </form>
       </section>
     </main>

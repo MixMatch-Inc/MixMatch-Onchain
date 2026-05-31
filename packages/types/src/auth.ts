@@ -102,3 +102,17 @@ export interface IntrospectResponse {
   /** ISO-8601 expiry of the access token */
   expiresAt?: string;
 }
+
+// ── Credential errors ────────────────────────────────────────────────────────
+
+export enum CredentialErrorCode {
+  INVALID_CREDENTIALS = "INVALID_CREDENTIALS",
+  ACCOUNT_NOT_FOUND = "ACCOUNT_NOT_FOUND",
+  ACCOUNT_LOCKED = "ACCOUNT_LOCKED",
+}
+
+export interface CredentialErrorContract {
+  code: CredentialErrorCode;
+  message: string;
+  retryAfter?: number;
+}

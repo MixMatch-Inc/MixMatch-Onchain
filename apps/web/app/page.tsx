@@ -35,6 +35,14 @@ export default function HomePage() {
               <span className="pill">Expo mobile</span>
               <span className="pill">Stellar service</span>
             </div>
+            <div className="button-row">
+              <Link href="/signup" className="button button-primary">
+                Create account
+              </Link>
+              <Link href="/login" className="button button-secondary">
+                Sign in
+              </Link>
+            </div>
           </div>
 
           <div className="callout-grid">

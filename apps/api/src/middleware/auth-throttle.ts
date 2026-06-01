@@ -62,6 +62,7 @@ export function checkAuthThrottle(req: Request, res: Response, next: NextFunctio
     const cooldown: AuthAbuseCooldown = {
       active: true,
       resetAt: new Date(record.lockedUntil).toISOString(),
+      retryAfter,
       reason: "too_many_attempts",
       failedAttempts: record.count,
     };

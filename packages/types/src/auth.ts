@@ -1,4 +1,4 @@
-import type { ApiResponse } from "./auth-envelope.types.js";
+import type { ApiResponse } from "./auth-envelope.types";
 
 export enum UserRole {
   DJ = "DJ",
@@ -233,4 +233,39 @@ export interface StellarAuthRiskNotice {
   retryAfter?: number;
   /** Suggested follow-up action for the client UI to present. */
   action?: "retry_later" | "re_authenticate" | "contact_support";
+}
+
+// ── Auth throttle and abuse prevention types ──────────────────────────────────
+
+/** Throttle notice embedded in auth failure responses. */
+export interface ThrottleNotice {
+  throttled: boolean;
+  retryAfter?: number;
+  attemptsRemaining?: number;
+}
+
+/** Cooldown notice for repeated auth failures. */
+export interface AuthAbuseCooldown {
+  active: boolean;
+  resetAt: string;
+  retryAfter: number;
+  reason?: string;
+  failedAttempts: number;
+}
+
+/** Session risk notice for suspicious activity. */
+export interface SessionRiskNotice {
+  type: "suspicious_activity" | "unusual_location" | "device_mismatch";
+  message: string;
+  action?: "verify_identity" | "contact_support";
+}
+
+/** Auth failure envelope with throttle and risk notices. */
+export interface AuthFailureEnvelope {
+  success: false;
+  code: string;
+  message: string;
+  throttle?: ThrottleNotice;
+  cooldown?: AuthAbuseCooldown;
+  risk?: SessionRiskNotice;
 }

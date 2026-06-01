@@ -11,15 +11,25 @@
       }
     ],
     "paths": {
-      "@/*": ["./*"],
-      "@themixmatch/*": ["../../packages/*/src"]
-    }
+      "@/*": [
+        "./*"
+      ]
+    },
+    "isolatedModules": true,
+    "jsx": "preserve"
   },
+  "references": [
+    {
+      "path": "../../packages/types"
+    }
+  ],
   "include": [
     "next-env.d.ts",
     "**/*.ts",
     "**/*.tsx",
     ".next/types/**/*.ts"
   ],
-  "exclude": ["node_modules"]
+  "exclude": [
+    "node_modules"
+  ]
 }

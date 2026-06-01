@@ -15,7 +15,7 @@ export async function ensureSessionContinuity(
   }
 
   try {
-    const refreshed = await refreshSession(stored.refreshToken);
+    const refreshed = await refreshSession({ refreshToken: stored.refreshToken });
     const nextSession: AuthSession = {
       ...stored,
       token: refreshed.accessToken,

@@ -9,5 +9,8 @@
     "paths": {
       "@themixmatch/types": ["../../packages/types/src"]
     }
-  }
+  },
+  "references": [
+    { "path": "../../packages/types" }
+  ]
 }

@@ -21,12 +21,12 @@ vi.mock("../authClient", () => ({
 // ---------------------------------------------------------------------------
 
 const walletFixture = {
-  service: "stellar-service",
-  status: "unlinked",
+  service: "stellar-service" as const,
+  status: "unlinked" as const,
   networkPassphrase: "Test SDF Network ; September 2015",
   horizonUrl: "https://horizon-testnet.stellar.org",
   availableWallets: ["phantom", "freighter"],
-} as const;
+};
 
 const storedSession: AuthSession = {
   token: "access.token",

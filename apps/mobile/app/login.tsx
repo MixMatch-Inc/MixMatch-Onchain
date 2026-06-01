@@ -3,6 +3,7 @@ import { useMemo, useState } from "react";
 import { KeyboardAvoidingView, Platform, Pressable, SafeAreaView, StyleSheet, Text, TextInput, View } from "react-native";
 import { useAuth } from "../src/auth/AuthProvider";
 import { AuthClientError } from "../src/auth/authClient";
+import { extractAuthNotices, formatThrottleMessage } from "../src/auth/useAuthNotices";
 
 export default function LoginScreen() {
   const router = useRouter();
@@ -11,8 +12,12 @@ export default function LoginScreen() {
   const [password, setPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isThrottled, setIsThrottled] = useState(false);
 
-  const canSubmit = useMemo(() => email.trim().length > 0 && password.length > 0, [email, password]);
+  const canSubmit = useMemo(
+    () => email.trim().length > 0 && password.length > 0 && !isThrottled,
+    [email, password, isThrottled],
+  );
 
   const onSubmit = async () => {
     if (!canSubmit || submitting) return;
@@ -22,7 +27,16 @@ export default function LoginScreen() {
       await signIn({ email: email.trim(), password });
       router.replace("/");
     } catch (caught) {
-      setError(caught instanceof AuthClientError ? caught.message : caught instanceof Error ? caught.message : "Sign in failed");
+      if (caught instanceof AuthClientError) {
+        const notices = extractAuthNotices(caught);
+        const throttleMsg = formatThrottleMessage(notices.throttleNotice);
+        setError(throttleMsg ?? notices.displayMessage ?? caught.message);
+        if (notices.throttleNotice?.throttled) {
+          setIsThrottled(true);
+        }
+      } else {
+        setError(caught instanceof Error ? caught.message : "Sign in failed");
+      }
     } finally {
       setSubmitting(false);
     }
@@ -35,11 +49,33 @@ export default function LoginScreen() {
           <Text style={styles.eyebrow}>Welcome back</Text>
           <Text style={styles.title}>Sign in to MixMatch</Text>
           <Text style={styles.label}>Email</Text>
-          <TextInput autoCapitalize="none" autoCorrect={false} inputMode="email" keyboardType="email-address" placeholder="you@example.com" value={email} onChangeText={setEmail} style={styles.input} />
+          <TextInput
+            autoCapitalize="none"
+            autoCorrect={false}
+            inputMode="email"
+            keyboardType="email-address"
+            placeholder="you@example.com"
+            value={email}
+            onChangeText={setEmail}
+            style={styles.input}
+            editable={!submitting && !isThrottled}
+          />
           <Text style={styles.label}>Password</Text>
-          <TextInput secureTextEntry placeholder="Enter your password" value={password} onChangeText={setPassword} style={styles.input} />
-          <Pressable style={[styles.button, (!canSubmit || submitting) ? styles.buttonDisabled : null]} onPress={onSubmit}>
-            <Text style={styles.buttonText}>{submitting ? "Signing in…" : "Sign in"}</Text>
+          <TextInput
+            secureTextEntry
+            placeholder="Enter your password"
+            value={password}
+            onChangeText={setPassword}
+            style={styles.input}
+            editable={!submitting && !isThrottled}
+          />
+          <Pressable
+            style={[styles.button, (!canSubmit || submitting) ? styles.buttonDisabled : null]}
+            onPress={onSubmit}
+          >
+            <Text style={styles.buttonText}>
+              {submitting ? "Signing in…" : isThrottled ? "Try again later" : "Sign in"}
+            </Text>
           </Pressable>
           <Pressable style={styles.secondary} onPress={() => router.push("/register")}>
             <Text style={styles.secondaryText}>Create an account</Text>
@@ -47,7 +83,9 @@ export default function LoginScreen() {
           <Pressable style={styles.secondary} onPress={() => router.back()}>
             <Text style={styles.secondaryText}>Back</Text>
           </Pressable>
-          {error ? <Text style={styles.error}>{error}</Text> : null}
+          {error ? (
+            <Text style={isThrottled ? styles.throttleNotice : styles.error}>{error}</Text>
+          ) : null}
         </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -67,5 +105,5 @@ const styles = StyleSheet.create({
   secondary: { marginTop: 8, paddingVertical: 10, paddingHorizontal: 12, alignSelf: "flex-start" },
   secondaryText: { color: "#115e59", fontWeight: "700" },
   error: { marginTop: 12, color: "#b91c1c", fontSize: 14 },
-
+  throttleNotice: { marginTop: 12, color: "#92400e", fontSize: 14, fontWeight: "600" },
 });

@@ -9,6 +9,7 @@ import { stellarAuthVerifyHandler, stellarAuthChallengeHandler } from "./domains
 import { refreshHandler, introspectHandler, logoutHandler } from "./domains/identity/session.handler.js";
 import { stellarHandshakeHandler } from "./domains/identity/stellar.handler.js";
 import { requireAuth } from "./middleware/require-auth.js";
+import { checkAuthThrottle } from "./middleware/auth-throttle.js";
 import { sendError } from "./utils/api-response.js";
 
 export function createApiApp(): Application {
@@ -45,8 +46,8 @@ export function createApiApp(): Application {
   });
 
   // ── Auth — public ───────────────────────────────────────────────────────────
-  app.post("/api/v1/auth/register", signupHandler);
-  app.post("/api/v1/auth/login", loginHandler);
+  app.post("/api/v1/auth/register", checkAuthThrottle, signupHandler);
+  app.post("/api/v1/auth/login", checkAuthThrottle, loginHandler);
   app.post("/api/v1/auth/refresh", refreshHandler);
   app.post("/api/v1/auth/logout", logoutHandler);
   app.get("/api/v1/auth/handshake", stellarHandshakeHandler);

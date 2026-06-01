@@ -159,3 +159,55 @@ export type StellarAuthVerifyApiResponse = ApiResponse<StellarAuthVerifyResponse
 export type SessionRefreshApiResponse = ApiResponse<SessionRefreshResponse>;
 export type SessionLogoutApiResponse = ApiResponse<SessionLogoutResponse>;
 export type IntrospectApiResponse = ApiResponse<IntrospectResponse>;
+
+// ── Auth abuse-control shared contracts (AUTH-118–121) ────────────────────────
+// These types are shared across apps/api, apps/web, and apps/mobile so that
+// all surfaces use the same throttle vocabulary without app-local copies.
+
+/** Returned (or embedded) when a caller is being throttled. */
+export interface ThrottleNotice {
+  /** Whether the caller is currently throttled. */
+  throttled: boolean;
+  /** Seconds until the caller may retry — present when `throttled` is true. */
+  retryAfter?: number;
+  /** Attempts remaining in the current window — present when > 0. */
+  attemptsRemaining?: number;
+}
+
+/**
+ * Machine-readable session risk signal surfaced by the API.
+ * Clients present this as a contextual notice rather than a hard error.
+ */
+export interface SessionRiskNotice {
+  /** Why the risk notice was raised. */
+  type: "multiple_failures" | "account_cooldown" | "suspicious_activity";
+  /** Human-readable explanation suitable for display. */
+  message: string;
+  /** Suggested follow-up action for the UI. */
+  action?: "re_authenticate" | "contact_support" | "wait_and_retry";
+}
+
+/** Tracks whether a credential (email) is under an auth abuse cooldown. */
+export interface AuthAbuseCooldown {
+  /** Whether a cooldown is currently active for this credential. */
+  active: boolean;
+  /** ISO-8601 timestamp when the cooldown lifts — present when active. */
+  resetAt?: string;
+  /** Why the cooldown was imposed. */
+  reason: "too_many_attempts" | "suspicious_activity";
+  /** Failed attempts recorded in the current cooldown window. */
+  failedAttempts?: number;
+}
+
+/** Unified auth-error envelope used on login/register failure paths. */
+export interface AuthFailureEnvelope {
+  success: false;
+  code: string;
+  message: string;
+  /** Present when the failure is due to rate limiting. */
+  throttle?: ThrottleNotice;
+  /** Present when an account-level cooldown is in effect. */
+  cooldown?: AuthAbuseCooldown;
+  /** Present when a session-risk signal should be surfaced to the user. */
+  risk?: SessionRiskNotice;
+}

@@ -1,6 +1,8 @@
 import { Request, Response } from "express";
 import { z } from "zod";
 
+const STELLAR_SERVICE_URL = (process.env.STELLAR_SERVICE_URL ?? "http://localhost:3002").replace(/\/$/, "");
+
 const stellarVerifySchema = z.object({
   sessionToken: z.string().min(1, "Session token is required"),
   stellarPublicKey: z.string().min(1, "Stellar public key is required"),
@@ -16,16 +18,15 @@ export async function stellarAuthVerifyHandler(req: Request, res: Response): Pro
     res.status(422).json({
       success: false,
       code: "VALIDATION_ERROR",
-      message: parsed.error.errors[0]?.message ?? "Invalid input",
+      message: parsed.error.issues[0]?.message ?? "Invalid input",
     });
     return;
   }
 
   const { sessionToken, stellarPublicKey } = parsed.data;
 
-  // Forward to Stellar service for boundary verification
   try {
-    const response = await fetch(`http://localhost:3002/api/v1/stellar/auth/verify`, {
+    const response = await fetch(`${STELLAR_SERVICE_URL}/api/v1/stellar/auth/verify`, {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ sessionToken, stellarPublicKey }),
@@ -33,7 +34,7 @@ export async function stellarAuthVerifyHandler(req: Request, res: Response): Pro
 
     const data = await response.json();
     res.status(response.status).json(data);
-  } catch (error) {
+  } catch {
     res.status(502).json({
       success: false,
       code: "STELLAR_SERVICE_UNAVAILABLE",
@@ -56,13 +57,13 @@ export async function stellarAuthChallengeHandler(req: Request, res: Response): 
     res.status(422).json({
       success: false,
       code: "VALIDATION_ERROR",
-      message: parsed.error.errors[0]?.message ?? "Invalid input",
+      message: parsed.error.issues[0]?.message ?? "Invalid input",
     });
     return;
   }
 
   try {
-    const response = await fetch(`http://localhost:3002/api/v1/stellar/auth/challenge`, {
+    const response = await fetch(`${STELLAR_SERVICE_URL}/api/v1/stellar/auth/challenge`, {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify(parsed.data),
@@ -70,7 +71,7 @@ export async function stellarAuthChallengeHandler(req: Request, res: Response): 
 
     const data = await response.json();
     res.status(response.status).json(data);
-  } catch (error) {
+  } catch {
     res.status(502).json({
       success: false,
       code: "STELLAR_SERVICE_UNAVAILABLE",

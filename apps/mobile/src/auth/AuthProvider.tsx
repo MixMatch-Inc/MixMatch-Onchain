@@ -2,8 +2,9 @@ import React, { createContext, useCallback, useContext, useEffect, useMemo, useS
 
 import type { AuthSession, LoginRequest, SignupRequest } from "@themixmatch/types";
 
-import { AuthClientError, login as loginClient, register } from "./authClient";
+import { AuthClientError, login as loginClient, logoutSession, register } from "./authClient";
 import { clearAuthSession, loadAuthSession, saveAuthSession } from "./authStorage";
+import { ensureSessionContinuity } from "./sessionContinuity";
 
 type AuthStatus = "loading" | "signedOut" | "signedIn";
 
@@ -31,17 +32,38 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     let mounted = true;
-    loadAuthSession()
-      .then((stored) => {
+
+    async function bootstrap() {
+      try {
+        const stored = await loadAuthSession();
         if (!mounted) return;
-        if (stored) { setSession(stored); setStatus("signedIn"); return; }
-        setStatus("signedOut");
-      })
-      .catch((error) => {
+
+        if (!stored) {
+          setStatus("signedOut");
+          return;
+        }
+
+        const outcome = await ensureSessionContinuity(stored);
+        if (!mounted) return;
+
+        if (outcome.status === "expired") {
+          await clearAuthSession();
+          setSession(null);
+          setStatus("signedOut");
+          return;
+        }
+
+        await saveAuthSession(outcome.session);
+        setSession(outcome.session);
+        setStatus("signedIn");
+      } catch (error) {
         if (!mounted) return;
         setLastError(error instanceof AuthClientError ? error : new AuthClientError("invalid_response", "Failed to load session", { details: error }));
         setStatus("signedOut");
-      });
+      }
+    }
+
+    void bootstrap();
     return () => { mounted = false; };
   }, []);
 
@@ -63,10 +85,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signOut = useCallback(async () => {
     setLastError(null);
+    const refreshToken = session?.refreshToken;
     await clearAuthSession();
     setSession(null);
     setStatus("signedOut");
-  }, []);
+    if (refreshToken) {
+      try {
+        await logoutSession(refreshToken);
+      } catch {
+        // Local session is already cleared — server revocation is best-effort
+      }
+    }
+  }, [session?.refreshToken]);
 
   const value = useMemo<AuthContextValue>(
     () => ({

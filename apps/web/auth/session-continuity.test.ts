@@ -76,6 +76,28 @@ describe("ensureSessionContinuity", () => {
 
     await expect(ensureSessionContinuity(storedSession)).resolves.toEqual({ status: "expired" });
   });
+
+  it("refreshes an expired session without calling introspection first", async () => {
+    const expiredSession: AuthSession = {
+      ...storedSession,
+      session: {
+        ...storedSession.session,
+        issuedAt: new Date(Date.now() - 25 * 60 * 60 * 1000).toISOString(),
+      },
+    };
+
+    mockRefreshSession.mockResolvedValue({
+      accessToken: "refreshed.access.token",
+      refreshToken: "refreshed.refresh.token",
+      expiresAt: "2026-06-01T13:15:00.000Z",
+    });
+
+    const outcome = await ensureSessionContinuity(expiredSession);
+
+    expect(mockIntrospectSession).not.toHaveBeenCalled();
+    expect(mockRefreshSession).toHaveBeenCalledWith("refresh.token");
+    expect(outcome.status).toBe("refreshed");
+  });
 });
 
 describe("evaluateProtectedRouteGuard", () => {

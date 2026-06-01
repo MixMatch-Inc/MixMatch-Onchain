@@ -1,6 +1,7 @@
 import type { AuthSession, ProtectedRouteGuard, SessionContinuityOutcome } from "@themixmatch/types";
 
 import { introspectSession, refreshSession } from "./auth-client";
+import { isSessionExpired } from "./auth-session";
 
 /**
  * Shared session seam — validates a stored session and refreshes when needed.
@@ -9,6 +10,30 @@ import { introspectSession, refreshSession } from "./auth-client";
 export async function ensureSessionContinuity(
   stored: AuthSession,
 ): Promise<SessionContinuityOutcome> {
+  if (isSessionExpired(stored)) {
+    if (!stored.refreshToken) {
+      return { status: "expired" };
+    }
+
+    try {
+      const refreshed = await refreshSession(stored.refreshToken);
+      return {
+        status: "refreshed",
+        session: {
+          ...stored,
+          token: refreshed.accessToken,
+          refreshToken: refreshed.refreshToken,
+          session: {
+            ...stored.session,
+            issuedAt: new Date().toISOString(),
+          },
+        },
+      };
+    } catch {
+      return { status: "expired" };
+    }
+  }
+
   const introspection = await introspectSession(stored.token);
   if (introspection.valid) {
     return { status: "valid", session: stored };

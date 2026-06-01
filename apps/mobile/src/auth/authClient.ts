@@ -4,9 +4,12 @@ import type {
   IntrospectResponse,
   LoginRequest,
   SessionLogoutResponse,
+  SessionRefreshRequest,
   SessionRefreshResponse,
   SignupRequest,
   SignupResponseData,
+  ProtectedSession,
+  ValidateSessionRequest,
 } from "@themixmatch/types";
 import { UserRole } from "@themixmatch/types";
 
@@ -43,9 +46,19 @@ const isSignupData = (value: unknown): value is SignupResponseData => {
   return true;
 };
 
-const isSessionRefreshData = (value: unknown): value is SessionRefreshResponse => {
+const isProtectedSession = (value: unknown): value is ProtectedSession => {
   if (!isRecord(value)) return false;
-  return typeof value.accessToken === "string" && typeof value.refreshToken === "string" && typeof value.expiresAt === "string";
+  if (typeof value.isValid !== "boolean") return false;
+  if (typeof value.needsRefresh !== "boolean") return false;
+  return true;
+};
+
+const isSessionRefreshResponse = (value: unknown): value is SessionRefreshResponse => {
+  if (!isRecord(value)) return false;
+  if (typeof value.accessToken !== "string") return false;
+  if (typeof value.refreshToken !== "string") return false;
+  if (typeof value.expiresAt !== "string") return false;
+  return true;
 };
 
 const isIntrospectData = (value: unknown): value is IntrospectResponse => {
@@ -68,11 +81,32 @@ const parseEnvelope = (value: unknown): SignupResponseData => {
   throw new AuthClientError("invalid_response", "Unknown response envelope");
 };
 
+const parseProtectedSessionEnvelope = (value: unknown): ProtectedSession => {
+  if (!isRecord(value)) throw new AuthClientError("invalid_response", "Invalid response shape");
+  if (isApiSuccess(value)) {
+    if (!isProtectedSession(value.data)) throw new AuthClientError("invalid_response", "Invalid response payload");
+    return value.data;
+  }
+  if (isApiError(value)) throw new AuthClientError("api", value.message, { code: value.code, details: value.details });
+  throw new AuthClientError("invalid_response", "Unknown response envelope");
+};
+
+const parseSessionRefreshEnvelope = (value: unknown): SessionRefreshResponse => {
+  if (!isRecord(value)) throw new AuthClientError("invalid_response", "Invalid response shape");
+  if (isApiSuccess(value)) {
+    if (!isSessionRefreshResponse(value.data)) throw new AuthClientError("invalid_response", "Invalid response payload");
+    return value.data;
+  }
+  if (isApiError(value)) throw new AuthClientError("api", value.message, { code: value.code, details: value.details });
+  throw new AuthClientError("invalid_response", "Unknown response envelope");
+};
+
 const apiBaseUrl =
   (globalThis as Record<string, unknown>).process &&
   typeof (globalThis as Record<string, unknown>).process === "object"
     ? ((globalThis as Record<string, unknown>).process as { env?: Record<string, string | undefined> }).env?.EXPO_PUBLIC_API_BASE_URL
     : undefined;
+
 const apiEndpoint = (path: string) => `${(apiBaseUrl ?? "http://localhost:3001").replace(/\/$/, "")}${path}`;
 const randomId = () => `user_${Math.random().toString(16).slice(2)}_${Date.now().toString(16)}`;
 const sessionFromSignup = (data: SignupResponseData): AuthSession => data;
@@ -123,6 +157,18 @@ async function loginRemote(input: LoginRequest): Promise<AuthSession> {
 }
 
 // ---------------------------------------------------------------------------
+// Protected session — remote (AUTH-061)
+// ---------------------------------------------------------------------------
+
+async function validateSessionRemote(input: ValidateSessionRequest): Promise<ProtectedSession> {
+  return remoteFetch(apiEndpoint("/api/v1/auth/validate"), input, parseProtectedSessionEnvelope);
+}
+
+async function refreshSessionRemote(input: SessionRefreshRequest): Promise<SessionRefreshResponse> {
+  return remoteFetch(apiEndpoint("/api/v1/auth/refresh"), input, parseSessionRefreshEnvelope);
+}
+
+// ---------------------------------------------------------------------------
 // Local-only helpers (offline / no API base URL)
 // ---------------------------------------------------------------------------
 
@@ -140,8 +186,22 @@ async function registerLocal(input: SignupRequest): Promise<AuthSession> {
   return {
     token: `local.${userId}.${Date.now()}`,
     refreshToken: `local.refresh.${userId}.${Date.now()}`,
-    user: { id: userId, name: input.email.split("@")[0]?.trim() || "mixmatch-user", email: input.email.toLowerCase(), role: input.role, onboardingCompleted: false, createdAt: now, updatedAt: now },
-    session: { userId, role: input.role ?? UserRole.MUSIC_LOVER, onboardingCompleted: false, issuedAt: now, wallet: defaultWallet },
+    user: {
+      id: userId,
+      name: input.email.split("@")[0]?.trim() || "mixmatch-user",
+      email: input.email.toLowerCase(),
+      role: input.role,
+      onboardingCompleted: false,
+      createdAt: now,
+      updatedAt: now,
+    },
+    session: {
+      userId,
+      role: input.role ?? UserRole.MUSIC_LOVER,
+      onboardingCompleted: false,
+      issuedAt: now,
+      wallet: defaultWallet,
+    },
   };
 }
 
@@ -171,6 +231,21 @@ async function loginLocal(input: LoginRequest): Promise<AuthSession> {
 }
 
 // ---------------------------------------------------------------------------
+// Protected session — local (AUTH-061)
+// ---------------------------------------------------------------------------
+
+/**
+ * For local sessions, we treat them as always valid since they are ephemeral
+ * and have no server-side validation. Protected session logic is a no-op.
+ */
+function validateSessionLocal(_input: ValidateSessionRequest): ProtectedSession {
+  return {
+    isValid: false,
+    needsRefresh: false,
+  };
+}
+
+// ---------------------------------------------------------------------------
 // Public API
 // ---------------------------------------------------------------------------
 
@@ -182,7 +257,11 @@ export async function login(input: LoginRequest): Promise<AuthSession> {
   return apiBaseUrl ? loginRemote(input) : loginLocal(input);
 }
 
-export async function refreshSession(refreshToken: string): Promise<SessionRefreshResponse> {
+export async function validateSession(input: ValidateSessionRequest): Promise<ProtectedSession> {
+  return apiBaseUrl ? validateSessionRemote(input) : validateSessionLocal(input);
+}
+
+export async function refreshSession(input: SessionRefreshRequest): Promise<SessionRefreshResponse> {
   if (!apiBaseUrl) {
     return {
       accessToken: `local.${Date.now()}`,
@@ -190,17 +269,7 @@ export async function refreshSession(refreshToken: string): Promise<SessionRefre
       expiresAt: new Date(Date.now() + 15 * 60 * 1000).toISOString(),
     };
   }
-
-  return remoteFetch(
-    apiEndpoint("/api/v1/auth/refresh"),
-    { refreshToken },
-    (json) => {
-      if (isApiSuccess(json) && isSessionRefreshData(json.data)) {
-        return json.data;
-      }
-      throw new AuthClientError("invalid_response", "Invalid refresh payload");
-    },
-  );
+  return refreshSessionRemote(input);
 }
 
 export async function introspectSession(accessToken: string): Promise<IntrospectResponse> {

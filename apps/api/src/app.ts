@@ -9,6 +9,7 @@ import { stellarAuthVerifyHandler, stellarAuthChallengeHandler } from "./domains
 import { refreshHandler, introspectHandler, logoutHandler } from "./domains/identity/session.handler.js";
 import { stellarHandshakeHandler } from "./domains/identity/stellar.handler.js";
 import { requireAuth } from "./middleware/require-auth.js";
+import { authRateLimit, stellarAuthRateLimit } from "./middleware/rate-limit.js";
 import { sendError } from "./utils/api-response.js";
 
 export function createApiApp(): Application {
@@ -45,15 +46,15 @@ export function createApiApp(): Application {
   });
 
   // ── Auth — public ───────────────────────────────────────────────────────────
-  app.post("/api/v1/auth/register", signupHandler);
-  app.post("/api/v1/auth/login", loginHandler);
+  app.post("/api/v1/auth/register", authRateLimit, signupHandler);
+  app.post("/api/v1/auth/login", authRateLimit, loginHandler);
   app.post("/api/v1/auth/refresh", refreshHandler);
   app.post("/api/v1/auth/logout", logoutHandler);
   app.get("/api/v1/auth/handshake", stellarHandshakeHandler);
 
   // Stellar-boundary auth routes (auth-to-Stellar handoff)
-  app.post("/api/v1/stellar/auth/challenge", stellarAuthChallengeHandler);
-  app.post("/api/v1/stellar/auth/verify", stellarAuthVerifyHandler);
+  app.post("/api/v1/stellar/auth/challenge", stellarAuthRateLimit, stellarAuthChallengeHandler);
+  app.post("/api/v1/stellar/auth/verify", stellarAuthRateLimit, stellarAuthVerifyHandler);
 
   // ── Auth — protected (requires valid access token) ──────────────────────────
   app.get("/api/v1/auth/introspect", requireAuth, introspectHandler);

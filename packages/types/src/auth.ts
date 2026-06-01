@@ -159,3 +159,53 @@ export type StellarAuthVerifyApiResponse = ApiResponse<StellarAuthVerifyResponse
 export type SessionRefreshApiResponse = ApiResponse<SessionRefreshResponse>;
 export type SessionLogoutApiResponse = ApiResponse<SessionLogoutResponse>;
 export type IntrospectApiResponse = ApiResponse<IntrospectResponse>;
+
+// ── Auth abuse controls and audit contracts ───────────────────────────────────
+
+/** Machine-readable event kinds recorded in the auth audit trail. */
+export type AuthAuditEventKind =
+  | "login_attempt"
+  | "login_success"
+  | "login_failure"
+  | "register_attempt"
+  | "register_success"
+  | "register_failure"
+  | "stellar_challenge"
+  | "stellar_verify"
+  | "rate_limited"
+  | "session_refresh"
+  | "logout";
+
+/** Structured audit entry emitted for every auth-boundary event. */
+export interface AuthAuditEntry {
+  event: AuthAuditEventKind;
+  /** Authenticated user id — present after successful login/register. */
+  userId?: string;
+  /** Request origin for abuse-pattern detection. */
+  ip?: string;
+  /** ISO-8601 timestamp. */
+  timestamp: string;
+  /** Route or boundary that produced this entry. */
+  boundary?: "api" | "stellar";
+  /** Arbitrary event metadata — error codes, key fragments, etc. */
+  meta?: Record<string, unknown>;
+}
+
+/** Returned when a caller exceeds the configured request limit. */
+export interface AuthRateLimitError {
+  code: "AUTH_RATE_LIMITED";
+  message: string;
+  /** Seconds until the caller may retry. */
+  retryAfter: number;
+}
+
+/** User-facing notice for throttling, session risk, and recovery at the Stellar boundary. */
+export interface StellarAuthRiskNotice {
+  /** Reason the notice was raised. */
+  type: "rate_limited" | "invalid_key" | "service_unavailable" | "session_risk";
+  message: string;
+  /** Present when `type` is `rate_limited` — seconds to wait before retrying. */
+  retryAfter?: number;
+  /** Suggested follow-up action for the client UI to present. */
+  action?: "retry_later" | "re_authenticate" | "contact_support";
+}

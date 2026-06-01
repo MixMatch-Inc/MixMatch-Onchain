@@ -3,10 +3,9 @@
 import { useState, type FormEvent } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState, type FormEvent } from "react";
 import { useAuth } from "@/auth/auth-context";
-import { login } from "@/auth/auth-client";
-import { AuthClientError } from "@/auth/auth-client";
+import { login, AuthClientError } from "@/auth/auth-client";
+import { extractAuthNotices, formatThrottleMessage } from "@/auth/use-auth-notices";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -15,29 +14,36 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [retryAfter, setRetryAfter] = useState<number | null>(null);
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     if (!email.trim() || !password || submitting) return;
     setSubmitting(true);
     setError(null);
+    setRetryAfter(null);
 
     try {
       const session = await login({ email: email.trim(), password });
       signIn(session);
       router.push("/dashboard");
     } catch (caught) {
-      setError(
-        caught instanceof AuthClientError
-          ? caught.message
-          : caught instanceof Error
-            ? caught.message
-            : "Sign in failed",
-      );
+      if (caught instanceof AuthClientError) {
+        const notices = extractAuthNotices(caught);
+        const throttleMsg = formatThrottleMessage(notices.throttleNotice);
+        setError(throttleMsg ?? notices.displayMessage ?? caught.message);
+        if (notices.throttleNotice?.retryAfter) {
+          setRetryAfter(notices.throttleNotice.retryAfter);
+        }
+      } else {
+        setError(caught instanceof Error ? caught.message : "Sign in failed");
+      }
     } finally {
       setSubmitting(false);
     }
   };
+
+  const isThrottled = retryAfter !== null;
 
   return (
     <main className="page-shell">
@@ -56,7 +62,7 @@ export default function LoginPage() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
-              disabled={submitting}
+              disabled={submitting || isThrottled}
             />
           </div>
 
@@ -68,15 +74,19 @@ export default function LoginPage() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
-              disabled={submitting}
+              disabled={submitting || isThrottled}
               minLength={8}
             />
           </div>
 
-          {error && <div className="error-message">{error}</div>}
+          {error && (
+            <div className={isThrottled ? "throttle-notice" : "error-message"}>
+              {error}
+            </div>
+          )}
 
-          <button type="submit" disabled={submitting || !email.trim() || !password}>
-            {submitting ? "Signing in..." : "Sign in"}
+          <button type="submit" disabled={submitting || isThrottled || !email.trim() || !password}>
+            {submitting ? "Signing in..." : isThrottled ? "Try again later" : "Sign in"}
           </button>
 
           <p style={{ textAlign: "center", marginTop: "1rem", color: "var(--muted)" }}>

@@ -3,8 +3,9 @@
 import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { UserRole, type SignupRequest } from "@themixmatch/types";
-import { signup } from "@/auth/auth-client";
+import { register, AuthClientError } from "@/auth/auth-client";
 import { useAuth } from "@/auth/auth-context";
+import { extractAuthNotices, formatThrottleMessage } from "@/auth/use-auth-notices";
 
 export default function SignupPage() {
   const router = useRouter();
@@ -14,11 +15,13 @@ export default function SignupPage() {
   const [role, setRole] = useState<UserRole | "">("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [retryAfter, setRetryAfter] = useState<number | null>(null);
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setLoading(true);
     setError(null);
+    setRetryAfter(null);
 
     const payload: SignupRequest = {
       email,
@@ -27,20 +30,26 @@ export default function SignupPage() {
     };
 
     try {
-      const response = await signup(payload);
-      if (!response.success) {
-        setError(response.message ?? "Unable to create account.");
-        return;
-      }
-
-      signIn(response.data);
+      const session = await register(payload);
+      signIn(session);
       router.push("/dashboard");
     } catch (err) {
-      setError("Something went wrong. Please try again.");
+      if (err instanceof AuthClientError) {
+        const notices = extractAuthNotices(err);
+        const throttleMsg = formatThrottleMessage(notices.throttleNotice);
+        setError(throttleMsg ?? notices.displayMessage ?? err.message);
+        if (notices.throttleNotice?.retryAfter) {
+          setRetryAfter(notices.throttleNotice.retryAfter);
+        }
+      } else {
+        setError("Something went wrong. Please try again.");
+      }
     } finally {
       setLoading(false);
     }
   };
+
+  const isThrottled = retryAfter !== null;
 
   return (
     <main className="page-shell">
@@ -59,7 +68,7 @@ export default function SignupPage() {
               value={email}
               onChange={(event) => setEmail(event.target.value)}
               required
-              disabled={loading}
+              disabled={loading || isThrottled}
             />
           </div>
 
@@ -71,7 +80,7 @@ export default function SignupPage() {
               value={password}
               onChange={(event) => setPassword(event.target.value)}
               required
-              disabled={loading}
+              disabled={loading || isThrottled}
               minLength={8}
             />
           </div>
@@ -83,7 +92,7 @@ export default function SignupPage() {
               value={role}
               onChange={(event) => setRole(event.target.value as UserRole)}
               required
-              disabled={loading}
+              disabled={loading || isThrottled}
             >
               <option value="">Select your role</option>
               <option value={UserRole.DJ}>DJ</option>
@@ -92,10 +101,14 @@ export default function SignupPage() {
             </select>
           </div>
 
-          {error && <div className="error-message">{error}</div>}
+          {error && (
+            <div className={isThrottled ? "throttle-notice" : "error-message"}>
+              {error}
+            </div>
+          )}
 
-          <button type="submit" disabled={loading}>
-            {loading ? "Creating account..." : "Create account"}
+          <button type="submit" disabled={loading || isThrottled}>
+            {loading ? "Creating account..." : isThrottled ? "Try again later" : "Create account"}
           </button>
         </form>
       </section>

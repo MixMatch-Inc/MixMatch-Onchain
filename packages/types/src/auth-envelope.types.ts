@@ -13,3 +13,10 @@ export interface ApiError {
 export type ApiResponse<T> =
   | ApiSuccess<T>
   | ApiError;
+
+/**
+ * Backwards-compatible alias used by older auth clients and docs.
+ * Keeping this alongside ApiResponse avoids duplicating envelope shapes
+ * across web, mobile, and API workspaces.
+ */
+export type ApiEnvelope<T> = ApiResponse<T>;

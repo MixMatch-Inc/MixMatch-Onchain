@@ -17,6 +17,14 @@ export interface LoginRequest {
   password: string;
 }
 
+/**
+ * User profile included in auth responses.
+ *
+ * Ownership semantics:
+ * - `id`: Immutable user identifier; must be preserved across refresh and recovery flows
+ * - `role`: User's authorization level; must be consistent across token rotations
+ * - All fields are read-only from client perspective (set by API only)
+ */
 export interface AuthUserPayload {
   id: string;
   name: string;
@@ -35,6 +43,18 @@ export interface WalletBootstrap {
   availableWallets: string[];
 }
 
+/**
+ * Session metadata bootstrapped on login/signup and preserved through recovery.
+ *
+ * Ownership semantics (AUTH-062):
+ * - `userId`: Source of truth for session ownership; must match JWT claims at all boundaries
+ * - `role`: Mirrors user role for client-side authorization decisions
+ * - `wallet`: Stellar service endpoint configuration; preserved across token refresh
+ *
+ * Recovery guarantees:
+ * - All fields are preserved when client calls refresh endpoint with valid refresh token
+ * - Clients must reject sessions where SessionBootstrap.userId differs from AuthUserPayload.id
+ */
 export interface SessionBootstrap {
   userId: string;
   role: UserRole;
@@ -67,6 +87,25 @@ export type LoginResponse = ApiResponse<LoginResponseData>;
 
 // ── Session refresh ──────────────────────────────────────────────────────────
 
+/**
+ * JWT payload decoded from refresh token (server-side only).
+ *
+ * Ownership & recovery semantics (AUTH-062):
+ * - `userId`: Must match the user record in refresh token store (ownership boundary)
+ * - `jti`: Unique token identifier enabling single-use enforcement
+ *   - On refresh: old jti is revoked, new jti is issued
+ *   - Prevents token replay attacks and enforces family rotation
+ * - `role`: Included in JWT for efficiency; server must re-verify at boundaries
+ *
+ * Recovery flow:
+ * 1. Client POST /refresh with old refresh token
+ * 2. Server verifies JWT signature and decodes userId + jti
+ * 3. Server fetches token record by jti from store
+ * 4. Server verifies: userId in JWT == userId in record (ownership check)
+ * 5. Server verifies: record.revoked == false (single-use check)
+ * 6. Server revokes old jti
+ * 7. Server issues new access + refresh token pair with new jti
+ */
 export interface RefreshTokenPayload {
   userId: string;
   role: UserRole;
@@ -78,6 +117,19 @@ export interface SessionRefreshRequest {
   refreshToken: string;
 }
 
+/**
+ * Refreshed token pair returned after successful POST /refresh.
+ *
+ * Recovery semantics (AUTH-062):
+ * - Both tokens are new (single-use enforcement; old tokens are revoked)
+ * - Ownership: new tokens belong to the same user as the refresh request
+ * - Clients must update stored session with both tokens
+ * - `expiresAt`: Describes the new access token's lifetime (15 minutes default)
+ *
+ * Metadata preservation:
+ * - User ID, role, onboarding status, and wallet config must be preserved by client
+ * - (API does not re-send AuthUserPayload or SessionBootstrap on refresh)
+ */
 export interface SessionRefreshResponse {
   accessToken: string;
   refreshToken: string;
@@ -87,6 +139,20 @@ export interface SessionRefreshResponse {
 
 // ── Introspection ────────────────────────────────────────────────────────────
 
+/**
+ * Token introspection response — ownership audit trail and recovery decision point.
+ *
+ * Ownership semantics (AUTH-063):
+ * - `valid`: Whether the token passes signature and lifetime checks
+ * - `userId`: Provided only when valid; enables client-side ownership verification
+ * - `role`: Provided only when valid; used for client-side authorization decisions
+ * - `expiresAt`: Provided only when valid; enables client-side refresh scheduling
+ *
+ * Security notes:
+ * - userId is always omitted when valid=false (no user enumeration)
+ * - Clients use this to validate stored sessions on app boot
+ * - Recovery: if valid=false but refreshToken exists, client should attempt POST /refresh
+ */
 export interface IntrospectResponse {
   valid: boolean;
   userId?: string;
@@ -138,6 +204,15 @@ export interface SessionLogoutRequest {
   refreshToken: string;
 }
 
+/**
+ * Response after POST /logout — refresh token revocation confirmation.
+ *
+ * Ownership semantics (AUTH-064):
+ * - Idempotent: loggedOut=true even if token was already revoked or invalid
+ * - Server revokes the refresh token jti to prevent reuse
+ * - Clients must clear all session storage after receiving loggedOut=true
+ * - Enables multi-device logout: each device has its own refresh token
+ */
 export interface SessionLogoutResponse {
   loggedOut: boolean;
 }
@@ -150,7 +225,18 @@ export interface AuthenticatedRequestContext {
   role: UserRole;
 }
 
-/** Client-side outcome when restoring or validating a stored session. */
+/**
+ * Client-side outcome when restoring or validating a stored session.
+ *
+ * Recovery semantics (AUTH-063):
+ * - `valid`: Stored session token passed introspection; no API calls needed
+ * - `refreshed`: Stored session token expired; client called /refresh and succeeded
+ * - `expired`: Token invalid and refresh failed or unavailable; client must re-authenticate
+ *
+ * Ownership invariant:
+ * - Both `valid` and `refreshed` outcomes preserve the original AuthSession with updated tokens
+ * - userId, user metadata, and wallet config are immutable across outcomes
+ */
 export type SessionContinuityOutcome =
   | { status: "valid"; session: AuthSession }
   | { status: "refreshed"; session: AuthSession }

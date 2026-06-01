@@ -1,13 +1,14 @@
 /**
- * Session handlers — AUTH-052
+ * Session handlers — AUTH-052, AUTH-061
  *
  * POST /api/v1/auth/refresh    — rotate a refresh token, get a new pair
+ * POST /api/v1/auth/validate   — validate session, return ProtectedSession shape (AUTH-061)
  * GET  /api/v1/auth/introspect — validate an access token, return claims
  */
 
 import type { Request, Response } from "express";
 import { z } from "zod";
-import { refreshSession, introspectSession } from "./session.service.js";
+import { refreshSession, introspectSession, validateSession } from "./session.service.js";
 import { sendSuccess } from "../../utils/api-response.js";
 import { ValidationError } from "../../utils/errors.js";
 
@@ -35,5 +36,28 @@ export const introspectHandler = (req: Request, res: Response): void => {
 
   const result = introspectSession(token);
   // Always 200 — callers check result.valid
+  sendSuccess(res, 200, result);
+};
+
+// ── POST /api/v1/auth/validate (AUTH-061) ───────────────────────────────────
+
+const validateBodySchema = z.object({
+  accessToken: z.string().min(1),
+});
+
+/**
+ * POST /api/v1/auth/validate
+ *
+ * Validates a stored access token and returns a ProtectedSession shape.
+ * Clients use this to check if a session is usable before making
+ * authenticated requests to protected endpoints.
+ */
+export const validateHandler = (req: Request, res: Response): void => {
+  const parsed = validateBodySchema.safeParse(req.body);
+  if (!parsed.success) {
+    throw ValidationError.invalidInput("body", req.body, "accessToken is required");
+  }
+
+  const result = validateSession(parsed.data);
   sendSuccess(res, 200, result);
 };

@@ -65,18 +65,6 @@ export interface LoginResponseData extends AuthResponse {
 
 export type LoginResponse = ApiResponse<LoginResponseData>;
 
-export enum CredentialErrorCode {
-  INVALID_CREDENTIALS = "INVALID_CREDENTIALS",
-  ACCOUNT_NOT_FOUND = "ACCOUNT_NOT_FOUND",
-  ACCOUNT_LOCKED = "ACCOUNT_LOCKED",
-}
-
-export interface CredentialErrorContract {
-  code: CredentialErrorCode;
-  message: string;
-  retryAfter?: number;
-}
-
 // ── Session refresh ──────────────────────────────────────────────────────────
 
 export interface RefreshTokenPayload {
@@ -107,8 +95,30 @@ export interface IntrospectResponse {
   expiresAt?: string;
 }
 
-// ── Credential errors ────────────────────────────────────────────────────────
+// ── Protected session types (AUTH-061) ─────────────────────────────────────────
 
+/**
+ * Result of validating a stored session.
+ * Used by clients to determine if a session is usable without introspecting the server.
+ */
+export interface ProtectedSession {
+  isValid: boolean;
+  needsRefresh: boolean;
+  userId?: string;
+  role?: UserRole;
+  /** ISO-8601 expiry of the access token */
+  expiresAt?: string;
+  /** Refresh token for obtaining a new access token */
+  refreshToken?: string;
+}
+
+export interface ValidateSessionRequest {
+  accessToken: string;
+}
+
+export type ValidateSessionResponse = ApiResponse<ProtectedSession>;
+
+// ── Credential errors ────────────────────────────────────────────────────────
 
 export enum CredentialErrorCode {
   INVALID_CREDENTIALS = "INVALID_CREDENTIALS",

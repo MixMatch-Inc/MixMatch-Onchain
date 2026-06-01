@@ -10,7 +10,7 @@
  *  - Emit session events (audit log, analytics)
  */
 
-import type { SessionRefreshResponse, IntrospectResponse } from "@themixmatch/types";
+import type { SessionRefreshResponse, IntrospectResponse, ProtectedSession, ValidateSessionRequest } from "@themixmatch/types";
 import { container } from "../../config/di.js";
 import {
   verifyRefreshToken,
@@ -90,5 +90,29 @@ export function introspectSession(rawToken: string): IntrospectResponse {
     };
   } catch {
     return { valid: false };
+  }
+}
+
+// ── Protected session validation (AUTH-061) ──────────────────────────────────
+
+/**
+ * Validates a stored session and determines if it needs refresh.
+ * This is the entry point for guarded session checks from clients.
+ */
+export function validateSession(input: ValidateSessionRequest): ProtectedSession {
+  try {
+    const payload = verifyAccessToken(input.accessToken);
+    return {
+      isValid: true,
+      needsRefresh: false,
+      userId: payload.userId,
+      role: payload.role,
+      expiresAt: accessTokenExpiresAt(),
+    };
+  } catch {
+    return {
+      isValid: false,
+      needsRefresh: false,
+    };
   }
 }

@@ -72,7 +72,20 @@ export async function refreshSession(rawToken: string): Promise<SessionRefreshRe
   };
 }
 
-// ── Introspect ────────────────────────────────────────────────────────────────
+/**
+ * Revokes the refresh token associated with a logout request.
+ * Idempotent — unknown or already-revoked tokens still return success.
+ */
+export async function logoutSession(rawToken: string): Promise<{ loggedOut: boolean }> {
+  try {
+    const payload = verifyRefreshToken(rawToken);
+    await container.refreshTokenRepository.revoke(payload.jti);
+  } catch {
+    // Token already invalid — treat logout as successful for the client
+  }
+
+  return { loggedOut: true };
+}
 
 /**
  * Validates an access token and returns its claims.

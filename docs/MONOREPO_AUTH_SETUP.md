@@ -2,113 +2,115 @@
 
 ## Overview
 
-The MixMatch Onchain monorepo implements a three-tier authentication system:
+The MixMatch Onchain monorepo implements authentication across four workspaces with shared contracts in `@themixmatch/types`:
 
-1. **API service** (`apps/api`) — Express server handling credential validation and session issuance
-2. **Web app** (`apps/web`) — Next.js frontend with login/register flows
-3. **Mobile app** (`apps/mobile`) — Expo React Native frontend
-4. **Stellar service** (`apps/stellar-service`) — Stellar network boundary for on-chain operations
+1. **API service** (`apps/api`) — session issuance, refresh, introspection, logout, route guards
+2. **Web app** (`apps/web`) — Next.js client with session continuity and protected routes
+3. **Mobile app** (`apps/mobile`) — Expo client with the same session seam
+4. **Stellar service** (`apps/stellar-service`) — wallet challenge/verify boundary
+
+See [Session Lifecycle](./SESSION_LIFECYCLE.md) for the full contributor guide.
 
 ## Shared Contracts (`packages/types`)
 
 | Type | File | Used By |
 |------|------|---------|
-| `LoginRequest` | `packages/types/src/auth.ts` | API, Web, Mobile, Stellar |
-| `LoginResponseData` | `packages/types/src/auth.ts` | API, Web, Mobile, Stellar |
-| `CredentialErrorCode` | `packages/types/src/auth.ts` | API, Web, Mobile |
-| `CredentialErrorContract` | `packages/types/src/auth.ts` | Stellar boundary |
+| `LoginRequest` / `LoginResponseData` | `packages/types/src/auth.ts` | API, Web, Mobile |
+| `SessionRefreshRequest` / `SessionRefreshResponse` | `packages/types/src/auth.ts` | API, Web, Mobile |
+| `IntrospectResponse` | `packages/types/src/auth.ts` | API, Web, Mobile |
+| `SessionLogoutRequest` / `SessionLogoutResponse` | `packages/types/src/auth.ts` | API, Web, Mobile |
+| `SessionContinuityOutcome` | `packages/types/src/auth.ts` | Web, Mobile |
+| `ProtectedRouteGuard` | `packages/types/src/session.types.ts` | Web, Mobile |
+| `StellarAuthChallengeRequest/Response` | `packages/types/src/auth.ts` | API, Stellar |
+| `StellarAuthVerifyRequest/Response` | `packages/types/src/auth.ts` | API, Stellar |
 | `AuthSession` | `packages/types/src/auth.ts` | Web, Mobile |
-| `ApiEnvelope<T>` | `packages/types/src/auth.ts` | API, Web, Mobile |
-| `StellarAuthRequest` | `packages/types/src/auth.ts` | API, Stellar |
-| `StellarSessionContract` | `packages/types/src/auth.ts` | Stellar boundary |
+| `ApiSuccess` / `ApiError` | `packages/types/src/auth-envelope.types.ts` | API, Web, Mobile |
 
 ## API Routes
 
 | Method | Path | Description |
 |--------|------|-------------|
 | POST | `/api/v1/auth/register` | Create account |
-| POST | `/api/v1/auth/login` | Sign in → token + session |
-| POST | `/api/v1/auth/refresh` | Refresh access token |
-| GET | `/api/v1/auth/introspect` | Introspect access token |
-| POST | `/api/v1/stellar/auth/challenge` | Generate Stellar challenge |
-| POST | `/api/v1/stellar/auth/verify` | Verify session on Stellar boundary |
+| POST | `/api/v1/auth/login` | Sign in → token pair + session |
+| POST | `/api/v1/auth/refresh` | Rotate refresh token |
+| GET | `/api/v1/auth/introspect` | Validate access token (protected) |
+| POST | `/api/v1/auth/logout` | Revoke refresh token |
+| GET | `/api/v1/auth/handshake` | Stellar handshake metadata |
+| POST | `/api/v1/stellar/auth/challenge` | Stellar wallet challenge |
+| POST | `/api/v1/stellar/auth/verify` | Stellar session verify |
 
 ## Web Auth Files
 
 ```
 apps/web/auth/
-├── auth-client.ts      # HTTP client for register & login (zod-free)
-├── auth-storage.ts     # localStorage persistence for AuthSession
-├── auth-session.ts     # Session expiry check (24h TTL)
+├── auth-client.ts          # register, login, refresh, introspect, logout
+├── auth-storage.ts         # localStorage persistence (sync API)
+├── auth-context.tsx        # AuthProvider with session continuity bootstrap
+├── session-continuity.ts   # shared seam: ensureSessionContinuity + guard
 apps/web/app/
-├── login/page.tsx      # Login form → auth-client → redirect
-├── hooks/useLogin.ts   # Login hook with loading/error state
-├── hooks/useSessionBootstrap.ts  # Boot session from storage
+├── login/page.tsx          # Login form
+├── dashboard/page.tsx      # Protected route (uses evaluateProtectedRouteGuard)
 ```
 
 ## Mobile Auth Files
 
 ```
 apps/mobile/src/auth/
-├── authClient.ts       # API client with remote + local fallback
-├── AuthProvider.tsx    # React context: status, session, signIn, signOut
-├── authStorage.ts       # expo-secure-store persistence
-apps/mobile/app/
-├── login.tsx           # Login screen with form
-├── _layout.tsx         # Stack navigator with login route
+├── authClient.ts           # API client with refresh/introspect/logout
+├── AuthProvider.tsx        # Session continuity on launch
+├── authStorage.ts          # expo-secure-store persistence
+├── sessionContinuity.ts    # shared seam (mirrors web)
 ```
 
 ## Stellar Auth Boundary
 
-The Stellar service provides on-chain authentication awareness at `/api/v1/stellar/auth`:
+- `GET /handshake` on stellar-service — wallet/network metadata
+- `POST /api/v1/stellar/auth/challenge` — challenge transaction XDR
+- `POST /api/v1/stellar/auth/verify` — session + Stellar key verification (stub)
 
-- `POST /api/v1/stellar/auth/verify` — Verify a session against the Stellar network
-- `POST /api/v1/stellar/auth/challenge` — Generate a Stellar challenge transaction for wallet signing
+API proxies Stellar routes using `STELLAR_SERVICE_URL`.
 
 ## Running the Full Stack
 
 ```bash
-# Terminal 1: API
-cd apps/api && pnpm dev
-
-# Terminal 2: Web (optional)
-cd apps/web && pnpm dev
-
-# Terminal 3: Mobile (optional)
-cd apps/mobile && pnpm dev
-
-# Terminal 4: Stellar service
-cd apps/stellar-service && pnpm dev
+cd apps/api && pnpm dev          # :3001
+cd apps/web && pnpm dev          # :3000
+cd apps/mobile && pnpm dev       # Expo
+cd apps/stellar-service && pnpm dev  # :3002
 ```
 
 ## Environment Variables
 
 | Variable | Required | Default | App |
 |----------|----------|---------|-----|
-| `PORT` | No | 3001 | API |
+| `JWT_SECRET` | No | dev secret | API |
+| `STELLAR_SERVICE_URL` | No | http://localhost:3002 | API |
 | `NEXT_PUBLIC_API_BASE_URL` | No | http://localhost:3001 | Web |
-| `EXPO_PUBLIC_API_BASE_URL` | No | (local mock fallback) | Mobile |
+| `EXPO_PUBLIC_API_BASE_URL` | No | (local mock) | Mobile |
 | `STELLAR_SERVICE_PORT` | No | 3002 | Stellar |
-| `STELLAR_NETWORK_PASSPHRASE` | No | Testnet | Stellar |
-| `STELLAR_HORIZON_URL` | No | https://horizon-testnet.stellar.org | Stellar |
+
+## Verification
+
+```bash
+pnpm --filter @themixmatch/api test
+pnpm --filter @themixmatch/web test
+pnpm --filter @themixmatch/mobile test
+pnpm typecheck
+```
 
 ## Troubleshooting
 
 | Symptom | Likely Cause | Fix |
 |---------|-------------|-----|
-| Login returns 401 | Wrong credentials | Check password; verify user exists via register |
-| "Invalid response payload" | API envelope mismatch | Ensure API returns `{ success: true, data: { token, user, session } }` |
-| Session lost on refresh | Storage key mismatch | Check localStorage key = `mixmatch:auth-session` |
-| Mobile login always succeeds | EXPO_PUBLIC_API_BASE_URL not set | The client falls back to local mock when no API URL is configured |
-| Stellar verify fails | Session not registered on-chain | Ensure wallet has signed the Stellar challenge transaction |
-| Stellar challenge fails | Invalid Stellar public key | Verify key format with Stellar SDK |
+| Session lost after 15m | Access token expired, refresh failed | Check refreshToken in stored session; verify `/auth/refresh` |
+| Dashboard redirects to login | Guard denied access | Confirm session bootstrap completed (`isBootstrapping`) |
+| Introspect returns 401 | Expired/missing Bearer token | Client should attempt refresh, then sign out |
+| Stellar proxy 502 | Stellar service not running | Start `apps/stellar-service` or set `STELLAR_SERVICE_URL` |
 
 ## PR Checklist
 
-Before opening a PR touching auth:
-- [ ] Shared types updated in `packages/types/src/auth.ts`
-- [ ] API endpoint wired in `apps/api/src/app.ts`
-- [ ] Auth client updated in relevant surface(s)
-- [ ] Login page/screen created or updated
-- [ ] Tests pass: `pnpm -r run typecheck`
-- [ ] Stellar boundary contracts updated if on-chain auth required
+- [ ] Shared types updated in `packages/types/src/`
+- [ ] API routes wired in `apps/api/src/app.ts`
+- [ ] Client auth methods updated in web/mobile
+- [ ] Session continuity tests pass
+- [ ] Docs updated in `docs/` and per-app `docs/`

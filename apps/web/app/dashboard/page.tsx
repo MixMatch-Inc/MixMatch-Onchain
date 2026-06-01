@@ -3,18 +3,21 @@
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/auth/auth-context";
+import { evaluateProtectedRouteGuard } from "@/auth/session-continuity";
 
 export default function DashboardPage() {
   const router = useRouter();
-  const { user, session, isAuthenticated, signOut } = useAuth();
+  const { user, session, isAuthenticated, isBootstrapping, signOut } = useAuth();
+  const guard = evaluateProtectedRouteGuard(session);
 
   useEffect(() => {
-    if (!isAuthenticated) {
+    if (isBootstrapping) return;
+    if (!guard.allowed) {
       router.replace("/login");
     }
-  }, [isAuthenticated, router]);
+  }, [guard.allowed, isBootstrapping, router]);
 
-  if (!isAuthenticated) {
+  if (isBootstrapping || !isAuthenticated || !guard.allowed) {
     return (
       <main className="page-shell">
         <section className="hero-card">

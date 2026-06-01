@@ -79,6 +79,9 @@ interface ApiError {
   code: string;
   message: string;
 }
+
+// `ApiEnvelope<T>` is a compatibility alias for `ApiSuccess<T> | ApiError`.
+type ApiEnvelope<T> = ApiSuccess<T> | ApiError;
 ```
 
 ### Auth session payload

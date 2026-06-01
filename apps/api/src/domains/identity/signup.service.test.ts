@@ -26,7 +26,7 @@ vi.mock("../../services/jwt.service", () => ({
 const baseInput = {
   email: "dj@example.com",
   password: "securepass1",
-  role: UserRole.DJ as const,
+  role: UserRole.DJ,
 };
 
 const fakeUser = {

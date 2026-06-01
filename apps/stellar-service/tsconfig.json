@@ -6,8 +6,11 @@
     "outDir": "dist",
     "baseUrl": ".",
     "paths": {
-      "@themixmatch/*": ["../../packages/*/src"]
+      "@themixmatch/types": ["../../packages/types/dist"]
     }
   },
-  "include": ["src/**/*.ts"]
+  "include": ["src/**/*.ts"],
+  "references": [
+    { "path": "../../packages/types" }
+  ]
 }

@@ -1,4 +1,4 @@
-import { Keypair, Networks, TransactionBuilder, Operation, BASE_FEE } from "@stellar/stellar-sdk";
+import { Keypair, Networks, TransactionBuilder, Operation, BASE_FEE, Account } from "@stellar/stellar-sdk";
 import dotenv from "dotenv";
 import express, { type Request, type Response, type NextFunction } from "express";
 import { z } from "zod";
@@ -127,7 +127,7 @@ const challengeSchema = z.object({
 app.post("/api/v1/stellar/auth/challenge", authLimit, (req: Request, res: Response) => {
   const parsed = challengeSchema.safeParse(req.body);
   if (!parsed.success) {
-    res.status(422).json({ success: false, code: "VALIDATION_ERROR", message: parsed.error.errors[0]?.message ?? "Invalid input" });
+    res.status(422).json({ success: false, code: "VALIDATION_ERROR", message: parsed.error.issues[0]?.message ?? "Invalid input" });
     return;
   }
 
@@ -137,8 +137,9 @@ app.post("/api/v1/stellar/auth/challenge", authLimit, (req: Request, res: Respon
   const now = Math.floor(Date.now() / 1000);
   const expiresAt = new Date((now + 300) * 1000).toISOString();
 
-  const source = Keypair.random();
-  const tx = new TransactionBuilder(source, {
+  const sourceKeypair = Keypair.random();
+  const sourceAccount = new Account(sourceKeypair.publicKey(), "0");
+  const tx = new TransactionBuilder(sourceAccount, {
     fee: BASE_FEE,
     networkPassphrase: env.STELLAR_NETWORK_PASSPHRASE,
   })
@@ -169,7 +170,7 @@ const verifySchema = z.object({
 app.post("/api/v1/stellar/auth/verify", authLimit, (req: Request, res: Response) => {
   const parsed = verifySchema.safeParse(req.body);
   if (!parsed.success) {
-    res.status(422).json({ success: false, code: "VALIDATION_ERROR", message: parsed.error.errors[0]?.message ?? "Invalid input" });
+    res.status(422).json({ success: false, code: "VALIDATION_ERROR", message: parsed.error.issues[0]?.message ?? "Invalid input" });
     return;
   }
 

@@ -3,7 +3,7 @@
 import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { UserRole, type SignupRequest } from "@themixmatch/types";
-import { signup } from "@/auth/auth-client";
+import { register } from "@/auth/auth-client";
 import { useAuth } from "@/auth/auth-context";
 
 export default function Align() {
@@ -27,13 +27,8 @@ export default function Align() {
     };
 
     try {
-      const response = await signup(payload);
-      if (!response.success) {
-        setError(response.message ?? "Unable to create account.");
-        return;
-      }
-
-      signIn(response.data);
+      const session = await register(payload);
+      signIn(session);
       router.push("/dashboard");
     } catch (err) {
       setError("Something went wrong. Please try again.");

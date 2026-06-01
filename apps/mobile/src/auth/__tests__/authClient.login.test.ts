@@ -67,7 +67,7 @@ beforeEach(() => {
 
 describe("AuthClientError", () => {
   it("exposes kind and code on construction", () => {
-    const err = new AuthClientError("api", "AUTH_INVALID_CREDENTIALS", "bad creds");
+    const err = new AuthClientError("api", "bad creds", { code: "AUTH_INVALID_CREDENTIALS" });
     expect(err).toBeInstanceOf(Error);
     expect(err.kind).toBe("api");
     expect(err.code).toBe("AUTH_INVALID_CREDENTIALS");
@@ -75,7 +75,7 @@ describe("AuthClientError", () => {
   });
 
   it("works without a code", () => {
-    const err = new AuthClientError("network", undefined, "Network request failed");
+    const err = new AuthClientError("network", "Network request failed");
     expect(err.kind).toBe("network");
     expect(err.code).toBeUndefined();
   });

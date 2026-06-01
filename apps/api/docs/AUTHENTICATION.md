@@ -2,68 +2,86 @@
 
 ## Overview
 
-This starter implements the first authentication slice with a contract-first API surface and no legacy auth plumbing.
-The auth runtime lives in `apps/api`, and the shared auth contract lives in `packages/types`.
+This starter implements the Authentication milestone with a contract-first API surface. Shared contracts live in `@themixmatch/types`; runtime behavior lives in `apps/api`.
 
-## What matters for contributors
-
-- Shared auth contracts are exported from `@themixmatch/types`.
-- Runtime auth routes are mounted in `apps/api/src/app.ts`.
-- API request validation lives in `apps/api/src/domains/identity/auth.validation.ts`.
-- Auth token generation is handled in `apps/api/src/services/jwt.service.ts`.
-- The current user store is an in-memory repository in `apps/api/src/repositories/user.repository.ts`.
+For the full cross-workspace session lifecycle, see [Session Lifecycle](../../../docs/SESSION_LIFECYCLE.md).
 
 ## Shared contracts
 
-Source:
-- `packages/types/src/auth.ts`
+Source: `packages/types/src/auth.ts`, `packages/types/src/session.types.ts`
 
-Signup DTOs:
-- SignupRequest
-- SignupResponse
-
-Response shapes:
-- `SignupResponse = ApiResponse<SignupResponseData>`
-- `LoginResponse = ApiResponse<LoginResponseData>`
-- `AuthSession = SignupResponseData`
-
-Session DTOs:
-- AuthSession
-- SessionBootstrap
-
-Envelope DTOs:
-- ApiSuccess<T>
-- ApiError
-
-Location:
-packages/types/src/auth.ts
+- `SignupRequest`, `LoginRequest`, `AuthSession`
+- `SessionRefreshRequest`, `SessionRefreshResponse`
+- `IntrospectResponse`
+- `SessionLogoutRequest`, `SessionLogoutResponse`
+- `StellarAuthChallengeRequest/Response`, `StellarAuthVerifyRequest/Response`
+- `ProtectedRouteGuard`, `RefreshTokenRecord`
 
 ## API routes
 
-- POST /api/v1/auth/register — create a new account, return a token, user payload, and session bootstrap.
-- POST /api/v1/auth/login — authenticate an existing account and return the same session-shaped payload.
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| POST | `/api/v1/auth/register` | Public | Create account |
+| POST | `/api/v1/auth/login` | Public | Sign in |
+| POST | `/api/v1/auth/refresh` | Public | Rotate refresh token |
+| GET | `/api/v1/auth/introspect` | Protected | Validate access token |
+| POST | `/api/v1/auth/logout` | Public | Revoke refresh token |
+| GET | `/api/v1/auth/handshake` | Public | Stellar handshake metadata |
 
-## Expected response shape
+## Key runtime files
 
-All successful responses use the shared envelope:
+| File | Purpose |
+|------|---------|
+| `src/app.ts` | Route mounting |
+| `src/domains/identity/session.service.ts` | Refresh, introspect, logout logic |
+| `src/domains/identity/session.handler.ts` | HTTP handlers |
+| `src/middleware/require-auth.ts` | Bearer token guard |
+| `src/services/jwt.service.ts` | Access (15m) + refresh (7d) JWT |
+| `src/repositories/refresh-token.repository.ts` | In-memory refresh store |
+
+## Expected response shapes
+
+Success:
 
 ```json
 {
   "success": true,
   "data": {
-    "token": "...",
-    "user": { /* AuthUserPayload */ },
-    "session": { /* SessionBootstrap */ }
+    "accessToken": "...",
+    "refreshToken": "...",
+    "expiresAt": "2026-06-01T12:15:00.000Z"
   }
 }
 ```
 
-Errors use the shared error envelope:
+Error:
 
 ```json
 {
   "success": false,
-  "code": "AUTH_INVALID_CREDENTIALS",
-  "message": "Invalid email or password"
+  "code": "AUTH_UNAUTHORIZED",
+  "message": "Unauthorized"
 }
 ```
+
+## Environment
+
+| Variable | Default | Notes |
+|----------|---------|-------|
+| `JWT_SECRET` | dev secret | Required in production |
+| `STELLAR_SERVICE_URL` | http://localhost:3002 | Stellar proxy target |
+| `PORT` | 3001 | API listen port |
+
+## Run tests
+
+```bash
+pnpm test
+```
+
+Covers refresh rotation, introspection, logout, and `requireAuth` guard paths.
+
+## Open questions
+
+- Refresh store is in-memory — swap for Redis/DB via repository interface
+- Stellar verify is a format stub — on-chain signature validation is a follow-up
+- Role-based route gating available via `requireRole()` — compose after `requireAuth`

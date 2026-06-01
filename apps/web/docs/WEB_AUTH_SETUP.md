@@ -1,83 +1,68 @@
-# Web Auth Surface — Sign-In Setup & Troubleshooting
+# Web Auth Surface — Setup & Troubleshooting
 
 ## Overview
 
-The web authentication surface handles credential-based sign-in via a Next.js frontend and an Express API backend. The flow follows a shared contract defined in `packages/types/src/auth.ts` and is designed to be extended for wallet-aware identity without premature coupling.
+The web app uses shared auth contracts from `@themixmatch/types` and the same session continuity seam as mobile. Protected routes evaluate the shared `ProtectedRouteGuard` contract rather than ad-hoc checks.
+
+See [Session Lifecycle](../../../docs/SESSION_LIFECYCLE.md) for the full lifecycle guide.
 
 ## Contracts & Routes
 
 | Contract | Location |
-|---|---|
-| Login types (LoginRequest, LoginResponseData, CredentialErrorCode) | `packages/types/src/auth.ts` |
-| API envelope types (ApiSuccess, ApiError, ApiEnvelope) | `packages/types/src/auth.ts` |
+|----------|----------|
+| Session types | `packages/types/src/auth.ts` |
+| Guard contract | `packages/types/src/session.types.ts` |
+| Session continuity | `apps/web/auth/session-continuity.ts` |
 
-### API Endpoint
+### API endpoints used by web client
 
-```
-POST /api/v1/auth/login
-```
+| Method | Path | Purpose |
+|--------|------|---------|
+| POST | `/api/v1/auth/register` | Registration |
+| POST | `/api/v1/auth/login` | Sign in |
+| POST | `/api/v1/auth/refresh` | Rotate token pair |
+| GET | `/api/v1/auth/introspect` | Validate access token |
+| POST | `/api/v1/auth/logout` | Revoke refresh token |
 
-- **Body**: `{ email: string, password: string }`
-- **Success (200)**: `{ success: true, data: { token, user, session } }`
-- **Error (401)**: `{ success: false, code: "AUTH_INVALID_CREDENTIALS", message: "Invalid email or password" }`
-- **Error (422)**: `{ success: false, code: "VALIDATION_INVALID_INPUT", message: "Validation failed for body" }`
-
-## Environment Values
+## Environment
 
 | Variable | Default | Required |
-|---|---|---|
-| `NEXT_PUBLIC_API_URL` | `http://localhost:3001/api/v1` | No |
-| `API_PORT` (API) | `3001` | No |
+|----------|---------|----------|
+| `NEXT_PUBLIC_API_BASE_URL` | `http://localhost:3001` | No |
 
-## Running the Flow
-
-### Prerequisites
-
-1.  API server running on port 3001:
-    ```bash
-    cd apps/api
-    pnpm dev
-    ```
-2.  Web dev server running on port 3000:
-    ```bash
-    cd apps/web
-    pnpm dev
-    ```
-
-### Exercise the Flow
-
-1.  Navigate to `http://localhost:3000/signup`
-2.  Create an account with email, password, and role
-3.  Navigate to `http://localhost:3000/login`
-4.  Sign in with the credentials from step 2
-5.  On success you are redirected to `/` with the session persisted in localStorage
-
-## Key Files
+## Key files
 
 | File | Purpose |
-|---|---|
-| `apps/web/app/login/page.tsx` | Login page UI with form, loading, error states |
-| `apps/web/app/hooks/useLogin.ts` | Login hook for credential submission and redirect |
-| `apps/web/auth/auth-client.ts` | Auth API client (signup + login) |
-| `apps/web/auth/auth-store.ts` | Zustand store for auth state |
-| `apps/web/auth/auth-storage.ts` | localStorage persistence for session |
-| `apps/api/src/domains/identity/login.handler.ts` | API login request handler |
-| `apps/api/src/domains/identity/login.service.ts` | Credential validation & session issuance |
-| `apps/api/src/domains/identity/login.validation.ts` | Zod schema for login payload |
-| `apps/api/src/domains/identity/login.service.test.ts` | Regression tests |
+|------|---------|
+| `auth/auth-client.ts` | HTTP client (register, login, refresh, introspect, logout) |
+| `auth/auth-storage.ts` | localStorage persistence |
+| `auth/auth-context.tsx` | AuthProvider with session continuity bootstrap |
+| `auth/session-continuity.ts` | `ensureSessionContinuity`, `evaluateProtectedRouteGuard` |
+| `app/dashboard/page.tsx` | Protected route example |
+
+## Exercise the flow
+
+1. Start API: `cd apps/api && pnpm dev`
+2. Start web: `cd apps/web && pnpm dev`
+3. Register at `/signup`, sign in at `/login`
+4. Visit `/dashboard` — requires active session
+5. Sign out — clears storage and revokes refresh token
+
+## Run tests
+
+```bash
+pnpm test
+```
 
 ## Troubleshooting
 
-| Symptom | Likely Cause | Fix |
-|---|---|---|
-| `401` on login | Wrong email or password | Verify credentials or re-register |
-| `422` on login | Missing or invalid fields | Ensure email format and non-empty password |
-| `CORS` error in browser | API not running or wrong port | Start API on port 3001 or update `NEXT_PUBLIC_API_URL` |
-| `Cannot fetch` | API server not running | Start API: `cd apps/api && pnpm dev` |
-| Session not persisted | localStorage cleared or blocked | Check browser storage settings |
+| Symptom | Fix |
+|---------|-----|
+| Redirect to login after reload | Check refresh token in stored session; verify API `/auth/refresh` |
+| `Cannot fetch` | Start API on port 3001 |
+| Dashboard stuck on loading | Wait for `isBootstrapping` to finish in AuthProvider |
 
-## Open Questions & Trade-offs
+## Open questions
 
-- **Token storage**: Currently stored in localStorage. A production version should use httpOnly cookies for XSS protection.
-- **Token refresh**: No refresh token rotation is implemented. Sessions are valid for 7 days via JWT expiry.
-- **Wallet-aware identity**: The `LoginRequest` / `AuthResponse` contracts are designed so that a wallet address field can be added without breaking existing credential auth.
+- Token storage is localStorage — production should use httpOnly cookies
+- No Next.js middleware yet — guards are client-side via shared contract

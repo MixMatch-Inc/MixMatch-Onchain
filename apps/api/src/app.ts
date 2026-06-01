@@ -6,7 +6,8 @@ import type { ApiHealthResponse } from "@themixmatch/types";
 import { loginHandler } from "./domains/identity/login.handler.js";
 import { signupHandler } from "./domains/identity/signup.handler.js";
 import { stellarAuthVerifyHandler, stellarAuthChallengeHandler } from "./domains/identity/stellar-auth.handler.js";
-import { refreshHandler, introspectHandler } from "./domains/identity/session.handler.js";
+import { refreshHandler, introspectHandler, logoutHandler } from "./domains/identity/session.handler.js";
+import { stellarHandshakeHandler } from "./domains/identity/stellar.handler.js";
 import { requireAuth } from "./middleware/require-auth.js";
 import { sendError } from "./utils/api-response.js";
 
@@ -37,6 +38,8 @@ export function createApiApp(): Application {
         login: "POST /api/v1/auth/login",
         refresh: "POST /api/v1/auth/refresh",
         introspect: "GET /api/v1/auth/introspect",
+        logout: "POST /api/v1/auth/logout",
+        handshake: "GET /api/v1/auth/handshake",
       },
     });
   });
@@ -45,6 +48,8 @@ export function createApiApp(): Application {
   app.post("/api/v1/auth/register", signupHandler);
   app.post("/api/v1/auth/login", loginHandler);
   app.post("/api/v1/auth/refresh", refreshHandler);
+  app.post("/api/v1/auth/logout", logoutHandler);
+  app.get("/api/v1/auth/handshake", stellarHandshakeHandler);
 
   // Stellar-boundary auth routes (auth-to-Stellar handoff)
   app.post("/api/v1/stellar/auth/challenge", stellarAuthChallengeHandler);

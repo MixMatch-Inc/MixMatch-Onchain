@@ -3,7 +3,12 @@ import dotenv from "dotenv";
 import express, { type Request, type Response } from "express";
 import { z } from "zod";
 
-import type { StellarHealthResponse, StellarServiceHandshake } from "@themixmatch/types";
+import type {
+  StellarHealthResponse,
+  StellarServiceHandshake,
+  StellarAuthChallengeResponse,
+  StellarAuthVerifyResponse,
+} from "@themixmatch/types";
 
 dotenv.config();
 
@@ -94,7 +99,7 @@ app.post("/api/v1/stellar/auth/challenge", (req: Request, res: Response) => {
       transactionXdr: tx.toXDR(),
       networkPassphrase: env.STELLAR_NETWORK_PASSPHRASE,
       expiresAt,
-    },
+    } satisfies StellarAuthChallengeResponse,
   });
 });
 
@@ -135,7 +140,7 @@ app.post("/api/v1/stellar/auth/verify", (req: Request, res: Response) => {
       verified: true,
       stellarAccountId,
       linkedAt: new Date().toISOString(),
-    },
+    } satisfies StellarAuthVerifyResponse,
   });
 });
 

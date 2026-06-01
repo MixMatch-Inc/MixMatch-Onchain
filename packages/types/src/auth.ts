@@ -107,17 +107,55 @@ export interface IntrospectResponse {
   expiresAt?: string;
 }
 
-// ── Credential errors ────────────────────────────────────────────────────────
+// ── Session logout ───────────────────────────────────────────────────────────
 
-
-export enum CredentialErrorCode {
-  INVALID_CREDENTIALS = "INVALID_CREDENTIALS",
-  ACCOUNT_NOT_FOUND = "ACCOUNT_NOT_FOUND",
-  ACCOUNT_LOCKED = "ACCOUNT_LOCKED",
+export interface SessionLogoutRequest {
+  refreshToken: string;
 }
 
-export interface CredentialErrorContract {
-  code: CredentialErrorCode;
-  message: string;
-  retryAfter?: number;
+export interface SessionLogoutResponse {
+  loggedOut: boolean;
 }
+
+// ── Route guard context ────────────────────────────────────────────────────────
+
+/** Claims attached to protected routes after access-token verification. */
+export interface AuthenticatedRequestContext {
+  userId: string;
+  role: UserRole;
+}
+
+/** Client-side outcome when restoring or validating a stored session. */
+export type SessionContinuityOutcome =
+  | { status: "valid"; session: AuthSession }
+  | { status: "refreshed"; session: AuthSession }
+  | { status: "expired" };
+
+// ── Stellar auth boundary (auth-to-Stellar handoff) ───────────────────────────
+
+export interface StellarAuthChallengeRequest {
+  stellarPublicKey: string;
+}
+
+export interface StellarAuthChallengeResponse {
+  transactionXdr: string;
+  networkPassphrase: string;
+  expiresAt: string;
+}
+
+export interface StellarAuthVerifyRequest {
+  sessionToken: string;
+  stellarPublicKey: string;
+}
+
+export interface StellarAuthVerifyResponse {
+  verified: boolean;
+  stellarAccountId: string;
+  linkedAt: string;
+}
+
+export type StellarAuthChallengeApiResponse = ApiResponse<StellarAuthChallengeResponse>;
+export type StellarAuthVerifyApiResponse = ApiResponse<StellarAuthVerifyResponse>;
+export type SessionRefreshApiResponse = ApiResponse<SessionRefreshResponse>;
+export type SessionLogoutApiResponse = ApiResponse<SessionLogoutResponse>;
+export type IntrospectApiResponse = ApiResponse<IntrospectResponse>;

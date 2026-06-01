@@ -1,4 +1,16 @@
-import type { ApiError, AuthSession, LoginRequest, SignupRequest, SignupResponseData, ProtectedSession, ValidateSessionRequest, SessionRefreshRequest, SessionRefreshResponse } from "@themixmatch/types";
+import type {
+  ApiError,
+  AuthSession,
+  IntrospectResponse,
+  LoginRequest,
+  SessionLogoutResponse,
+  SessionRefreshRequest,
+  SessionRefreshResponse,
+  SignupRequest,
+  SignupResponseData,
+  ProtectedSession,
+  ValidateSessionRequest,
+} from "@themixmatch/types";
 import { UserRole } from "@themixmatch/types";
 
 export type AuthClientErrorKind = "network" | "http" | "api" | "invalid_response";
@@ -49,6 +61,16 @@ const isSessionRefreshResponse = (value: unknown): value is SessionRefreshRespon
   return true;
 };
 
+const isIntrospectData = (value: unknown): value is IntrospectResponse => {
+  if (!isRecord(value)) return false;
+  return typeof value.valid === "boolean";
+};
+
+const isLogoutData = (value: unknown): value is SessionLogoutResponse => {
+  if (!isRecord(value)) return false;
+  return typeof value.loggedOut === "boolean";
+};
+
 const parseEnvelope = (value: unknown): SignupResponseData => {
   if (!isRecord(value)) throw new AuthClientError("invalid_response", "Invalid response shape");
   if (isApiSuccess(value)) {
@@ -89,10 +111,29 @@ const apiEndpoint = (path: string) => `${(apiBaseUrl ?? "http://localhost:3001")
 const randomId = () => `user_${Math.random().toString(16).slice(2)}_${Date.now().toString(16)}`;
 const sessionFromSignup = (data: SignupResponseData): AuthSession => data;
 
-async function remoteFetch<T>(url: string, body: unknown, parseData: (json: unknown) => T): Promise<T> {
+interface RequestOptions {
+  method?: string;
+  authorization?: string;
+}
+
+async function remoteFetch<T>(
+  url: string,
+  body: unknown,
+  parseData: (json: unknown) => T,
+  options?: RequestOptions,
+): Promise<T> {
   let response: Response;
+  const headers: Record<string, string> = { "content-type": "application/json" };
+  if (options?.authorization) {
+    headers.authorization = options.authorization;
+  }
+
   try {
-    response = await fetch(url, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
+    response = await fetch(url, {
+      method: options?.method ?? "POST",
+      headers,
+      body: body ? JSON.stringify(body) : undefined,
+    });
   } catch (error) {
     throw new AuthClientError("network", error instanceof Error ? error.message : "Network error");
   }
@@ -131,41 +172,20 @@ async function refreshSessionRemote(input: SessionRefreshRequest): Promise<Sessi
 // Local-only helpers (offline / no API base URL)
 // ---------------------------------------------------------------------------
 
+const defaultWallet = {
+  service: "stellar-service" as const,
+  status: "unlinked" as const,
+  networkPassphrase: "Test SDF Network ; September 2015",
+  horizonUrl: "https://horizon-testnet.stellar.org",
+  availableWallets: ["phantom", "freighter"],
+};
+
 async function registerLocal(input: SignupRequest): Promise<AuthSession> {
   const userId = randomId();
   const now = new Date().toISOString();
   return {
     token: `local.${userId}.${Date.now()}`,
-    user: { 
-      id: userId, 
-      name: input.email.split("@")[0]?.trim() || "mixmatch-user", 
-      email: input.email.toLowerCase(), 
-      role: input.role, 
-      onboardingCompleted: false, 
-      createdAt: now, 
-      updatedAt: now 
-    },
-    session: { 
-      userId, 
-      role: input.role ?? UserRole.MUSIC_LOVER, 
-      onboardingCompleted: false, 
-      issuedAt: now,
-      wallet: {
-        service: "stellar-service",
-        status: "unlinked",
-        networkPassphrase: "Test SDF Network ; September 2015",
-        horizonUrl: "https://horizon-testnet.stellar.org",
-        availableWallets: ["phantom", "freighter"],
-      },
-    },
-  };
-}
-
-async function loginLocal(input: LoginRequest): Promise<AuthSession> {
-  const userId = randomId();
-  const now = new Date().toISOString();
-  return {
-    token: `local.${userId}.${Date.now()}`,
+    refreshToken: `local.refresh.${userId}.${Date.now()}`,
     user: {
       id: userId,
       name: input.email.split("@")[0]?.trim() || "mixmatch-user",
@@ -180,13 +200,32 @@ async function loginLocal(input: LoginRequest): Promise<AuthSession> {
       role: input.role ?? UserRole.MUSIC_LOVER,
       onboardingCompleted: false,
       issuedAt: now,
-      wallet: {
-        service: "stellar-service",
-        status: "unlinked",
-        networkPassphrase: "Test SDF Network ; September 2015",
-        horizonUrl: "https://horizon-testnet.stellar.org",
-        availableWallets: ["phantom", "freighter"],
-      },
+      wallet: defaultWallet,
+    },
+  };
+}
+
+async function loginLocal(input: LoginRequest): Promise<AuthSession> {
+  const userId = randomId();
+  const now = new Date().toISOString();
+  return {
+    token: `local.${userId}.${Date.now()}`,
+    refreshToken: `local.refresh.${userId}.${Date.now()}`,
+    user: {
+      id: userId,
+      name: input.email.split("@")[0]?.trim() || "mixmatch-user",
+      email: input.email.toLowerCase(),
+      role: UserRole.MUSIC_LOVER,
+      onboardingCompleted: false,
+      createdAt: now,
+      updatedAt: now,
+    },
+    session: {
+      userId,
+      role: UserRole.MUSIC_LOVER,
+      onboardingCompleted: false,
+      issuedAt: now,
+      wallet: defaultWallet,
     },
   };
 }
@@ -224,7 +263,53 @@ export async function validateSession(input: ValidateSessionRequest): Promise<Pr
 
 export async function refreshSession(input: SessionRefreshRequest): Promise<SessionRefreshResponse> {
   if (!apiBaseUrl) {
-    throw new AuthClientError("api", "Session refresh not available in local mode");
+    return {
+      accessToken: `local.${Date.now()}`,
+      refreshToken: `local.refresh.${Date.now()}`,
+      expiresAt: new Date(Date.now() + 15 * 60 * 1000).toISOString(),
+    };
   }
   return refreshSessionRemote(input);
+}
+
+export async function introspectSession(accessToken: string): Promise<IntrospectResponse> {
+  if (!apiBaseUrl) {
+    return accessToken.startsWith("local.") ? { valid: true } : { valid: false };
+  }
+
+  try {
+    return await remoteFetch(
+      apiEndpoint("/api/v1/auth/introspect"),
+      null,
+      (json) => {
+        if (isApiSuccess(json) && isIntrospectData(json.data)) {
+          return json.data;
+        }
+        throw new AuthClientError("invalid_response", "Invalid introspection payload");
+      },
+      { method: "GET", authorization: `Bearer ${accessToken}` },
+    );
+  } catch (error) {
+    if (error instanceof AuthClientError && error.status === 401) {
+      return { valid: false };
+    }
+    throw error;
+  }
+}
+
+export async function logoutSession(refreshToken: string): Promise<SessionLogoutResponse> {
+  if (!apiBaseUrl) {
+    return { loggedOut: true };
+  }
+
+  return remoteFetch(
+    apiEndpoint("/api/v1/auth/logout"),
+    { refreshToken },
+    (json) => {
+      if (isApiSuccess(json) && isLogoutData(json.data)) {
+        return json.data;
+      }
+      throw new AuthClientError("invalid_response", "Invalid logout payload");
+    },
+  );
 }

@@ -152,6 +152,9 @@ importers:
 
   apps/web:
     dependencies:
+      '@tanstack/react-query':
+        specifier: ^5.100.14
+        version: 5.100.14(react@19.2.6)
       '@themixmatch/types':
         specifier: workspace:*
         version: link:../../packages/types
@@ -164,6 +167,9 @@ importers:
       react-dom:
         specifier: ^19.1.1
         version: 19.2.6(react@19.2.6)
+      zustand:
+        specifier: ^5.0.14
+        version: 5.0.14(@types/react@19.2.15)(react@19.2.6)(use-sync-external-store@1.6.0(react@19.2.6))
     devDependencies:
       '@types/node':
         specifier: ^24.3.0
@@ -174,6 +180,9 @@ importers:
       '@types/react-dom':
         specifier: ^19.1.9
         version: 19.2.3(@types/react@19.2.15)
+      vitest:
+        specifier: ^4.1.7
+        version: 4.1.7(@types/node@24.12.4)(vite@8.0.14(@types/node@24.12.4)(esbuild@0.28.0)(terser@5.48.0)(tsx@4.22.3)(yaml@2.9.0))
 
   packages/config: {}
 
@@ -1733,6 +1742,14 @@ packages:
 
   '@swc/helpers@0.5.15':
     resolution: {integrity: sha512-JQ5TuMi45Owi4/BIMAJBoSQoOJu12oOk/gADqlcUL9JEdHB8vyjUSsxqeNXnmXHjYKMi2WcYtezGEEhqUI/E2g==}
+
+  '@tanstack/query-core@5.100.14':
+    resolution: {integrity: sha512-5X41dGpxgeaHISCRW2oYwcSycZeULZzAunaudXT9ov1KOTj9xwt0CH6hbwqP1/z74ZWF7rYFnDpyYH07XFcZew==}
+
+  '@tanstack/react-query@5.100.14':
+    resolution: {integrity: sha512-oOr6aRdSFEwWhzxEkD/9ZcItM3+LjBSkeVmadWKwUssAHTsqd/7bOjWrX4AbvEkoEhgAxzN0Xk6H/aYzXiYBAw==}
+    peerDependencies:
+      react: ^18 || ^19
 
   '@testing-library/jest-native@5.4.3':
     resolution: {integrity: sha512-/sSDGaOuE+PJ1Z9Kp4u7PQScSVVXGud59I/qsBFFJvIbcn4P6yYw6cBnBmbPF+X9aRIsTJRDl6gzw5ZkJNm66w==}
@@ -4508,6 +4525,24 @@ packages:
   zod@4.4.3:
     resolution: {integrity: sha512-ytENFjIJFl2UwYglde2jchW2Hwm4GJFLDiSXWdTrJQBIN9Fcyp7n4DhxJEiWNAJMV1/BqWfW/kkg71UDcHJyTQ==}
 
+  zustand@5.0.14:
+    resolution: {integrity: sha512-/8tAspM5LMPr28b3fwLYrtdj77ECpfZviaP75CMTnwO8ISyaE4GDIG/9rDDYq/cH9D2Xw2A2RXglLInmVBQB/g==}
+    engines: {node: '>=12.20.0'}
+    peerDependencies:
+      '@types/react': '>=18.0.0'
+      immer: '>=9.0.6'
+      react: '>=18.0.0'
+      use-sync-external-store: '>=1.2.0'
+    peerDependenciesMeta:
+      '@types/react':
+        optional: true
+      immer:
+        optional: true
+      react:
+        optional: true
+      use-sync-external-store:
+        optional: true
+
 snapshots:
 
   '@0no-co/graphql.web@1.2.0': {}
@@ -6278,6 +6313,13 @@ snapshots:
   '@swc/helpers@0.5.15':
     dependencies:
       tslib: 2.8.1
+
+  '@tanstack/query-core@5.100.14': {}
+
+  '@tanstack/react-query@5.100.14(react@19.2.6)':
+    dependencies:
+      '@tanstack/query-core': 5.100.14
+      react: 19.2.6
 
   '@testing-library/jest-native@5.4.3(react-native@0.81.6(@babel/core@7.29.7)(@types/react@19.2.15)(react@19.2.6))(react-test-renderer@19.2.6(react@19.2.6))(react@19.2.6)':
     dependencies:
@@ -9349,3 +9391,9 @@ snapshots:
   yocto-queue@0.1.0: {}
 
   zod@4.4.3: {}
+
+  zustand@5.0.14(@types/react@19.2.15)(react@19.2.6)(use-sync-external-store@1.6.0(react@19.2.6)):
+    optionalDependencies:
+      '@types/react': 19.2.15
+      react: 19.2.6
+      use-sync-external-store: 1.6.0(react@19.2.6)

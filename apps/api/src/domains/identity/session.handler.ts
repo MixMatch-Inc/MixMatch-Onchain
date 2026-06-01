@@ -8,7 +8,7 @@
 
 import type { Request, Response } from "express";
 import { z } from "zod";
-import { refreshSession, introspectSession, validateSession } from "./session.service.js";
+import { refreshSession, introspectSession, logoutSession, validateSession } from "./session.service.js";
 import { sendSuccess } from "../../utils/api-response.js";
 import { ValidationError } from "../../utils/errors.js";
 
@@ -25,6 +25,18 @@ export const refreshHandler = async (req: Request, res: Response): Promise<void>
   }
 
   const result = await refreshSession(parsed.data.refreshToken);
+  sendSuccess(res, 200, result);
+};
+
+// ── POST /api/v1/auth/logout ──────────────────────────────────────────────────
+
+export const logoutHandler = async (req: Request, res: Response): Promise<void> => {
+  const parsed = refreshBodySchema.safeParse(req.body);
+  if (!parsed.success) {
+    throw ValidationError.invalidInput("body", req.body, "refreshToken is required");
+  }
+
+  const result = await logoutSession(parsed.data.refreshToken);
   sendSuccess(res, 200, result);
 };
 

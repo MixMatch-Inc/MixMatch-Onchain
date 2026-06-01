@@ -1,6 +1,5 @@
 {
-  "name": "@mixmatch/config",
-  "version": "0.0.0",
+  "name": "@themixmatch/config",
   "private": true,
-  "main": "index.js"
+  "version": "0.1.0"
 }

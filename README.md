@@ -1,258 +1,78 @@
-# MixMatch
+# TheMixMatch Onchain
 
-Welcome to the MixMatch codebase! This is a **monorepo** managing the frontend, backend API, and Stellar/Web3 services for the MixMatch platform.
+TheMixMatch Onchain is being rebuilt as a clean open source hackathon starter for teams shipping a full-stack MVP with web, mobile, API, and Stellar components from one repository.
 
-We use **[pnpm workspaces](https://pnpm.io/workspaces)** for dependency management and **[TurboRepo](https://turbo.build/)** for high-performance build orchestration.
+This reset keeps the monorepo baseline and removes the previous product implementation so contributors can build forward from a clear starting point.
 
-## 🚀 Tech Stack
+## What is in the starter
 
-- **Monorepo Manager:** pnpm workspaces + TurboRepo
-- **Frontend:** Next.js 14+ (App Router), TailwindCSS
-- **Backend:** Node.js, Express, TypeScript
-- **Web3:** Stellar SDK (Soroban)
-- **Language:** TypeScript (Strict Mode)
+- `apps/api`: Express API starter in TypeScript
+- `apps/web`: Next.js web app starter
+- `apps/mobile`: Expo mobile workspace starter
+- `apps/stellar-service`: standalone Stellar integration service
+- `packages/config`: shared TypeScript configuration
+- `packages/types`: shared contracts and domain types
 
----
+## Rebuild roadmap
 
-[MIXMATCH FIGMA](https://www.figma.com/design/wYIPrjvmHc1UuR2kFgXdao/Mixmatch?node-id=0-1&t=YGbg33TLval6HRoP-1)
+The MVP backlog will move in this order:
 
-## 🛠 Prerequisites
+1. Authentication and session foundations
+2. User profiles and contributor-safe account flows
+3. Stellar wallet linking and network operations
+4. Core hackathon MVP feature flows
+5. Observability, testing, deployment, and polish
 
-Before you start, ensure you have the following installed:
+Batch 1 of the public issue backlog is reserved for Authentication.
 
-1. **Node.js** (v18 or higher recommended)
-2. **pnpm** (We use this instead of npm/yarn)
+## Getting started
+
+### Prerequisites
+
+- Node.js 20+
+- `pnpm` via Corepack
 
 ```bash
 corepack enable
-# OR
-npm install -g pnpm
-
-```
-
----
-
-## ⚡️ Getting Started
-
-Follow these steps to get the entire platform running locally.
-
-### 1. Clone & Install
-
-```bash
-git clone <your-repo-url>
-cd MixMatch-Onchain
-
-# Install all dependencies for all apps and packages
 pnpm install
-
 ```
 
-### 1.5 Configure Environment Variables
-
-Copy each checked-in example file before starting the services:
-
-```bash
-cp .env.example .env
-cp apps/api/.env.example apps/api/.env
-cp apps/web/.env.example apps/web/.env.local
-cp apps/stellar-service/.env.example apps/stellar-service/.env
-```
-
-To see all required environment variables for a service:
-
-```bash
-pnpm --filter @mixmatch/env-manifest env:list api
-pnpm --filter @mixmatch/env-manifest env:list web
-pnpm --filter @mixmatch/env-manifest env:list stellar-service
-```
-
-To validate environment variables for all services:
-
-```bash
-pnpm --filter @mixmatch/env-manifest env:check
-```
-
-Required values:
-
-- `apps/api/.env`
-  - `MONGO_URI`
-  - `JWT_SECRET`
-- `apps/web/.env.local`
-  - `NEXT_PUBLIC_API_URL`
-- `apps/stellar-service/.env`
-  - `STELLAR_SEC_KEY`
-  - `STELLAR_NETWORK`
-  - `STELLAR_HORIZON_URL`
-
-The API and Stellar service now fail fast during startup when required
-environment variables are missing. The validation uses a shared manifest
-that defines required, optional, and secret variables for each service.
-
-### 2. Run Development Server
-
-This command starts **all** applications (Web, API, and Stellar Service) in parallel.
-
-If you need MongoDB locally, start it first:
-
-```bash
-docker compose up -d mongo
-docker compose ps
-```
-
-The API will use `mongodb://127.0.0.1:27017/mixmatch` by default when `MONGO_URI`
-is not set, which matches the local Docker Compose service.
+### Run the apps
 
 ```bash
 pnpm dev
-
 ```
 
-You will see output from all services in your terminal. They are available at:
+Default ports:
 
-- **Web App:** [http://localhost:3000](https://www.google.com/search?q=http://localhost:3000)
-- **Backend API:** [http://localhost:3001](https://www.google.com/search?q=http://localhost:3001)
-- **Stellar Service:** [http://localhost:3002](https://www.google.com/search?q=http://localhost:3002)
+- Web: `http://localhost:3000`
+- API: `http://localhost:3001`
+- Stellar service: `http://localhost:3002`
+- Expo: use the Metro output from `apps/mobile`
 
----
-
-## 📂 Project Structure
-
-```text
-mixmatch/
-├── apps/
-│   ├── web/               # Next.js Frontend (User & Admin Interface)
-│   ├── api/               # Core Backend API (Express + Node.js)
-│   └── stellar-service/   # Isolated Service for Blockchain/Payments
-│
-├── packages/
-│   ├── types/             # Shared TypeScript interfaces & DTOs
-│   ├── config/            # Shared configurations (TSConfig, ESLint)
-│   └── ui/                # Shared React UI components (Tailwind)
-│
-└── turbo.json             # Build pipeline configuration
-
-```
-
----
-
-## 📜 Available Scripts
-
-Run these from the **root** folder:
-
-| Command      | Description                                  |
-| ------------ | -------------------------------------------- |
-| `pnpm dev`   | Starts all apps in development mode.         |
-| `pnpm build` | Builds all apps and packages for production. |
-| `pnpm lint`  | Runs ESLint across the entire monorepo.      |
-| `pnpm test`  | Runs package tests when a workspace exposes them. |
-| `pnpm clean` | (Optional) Clears Turbo cache and artifacts. |
-
-Demo data:
+### Useful commands
 
 ```bash
-pnpm --filter api seed:demo
+pnpm build
+pnpm typecheck
+pnpm lint
 ```
 
-Seeded credentials:
+## Contributor expectations
 
-- `dj.demo@mixmatch.io` / `mixmatch123`
-- `planner.demo@mixmatch.io` / `mixmatch123`
-- `fan.demo@mixmatch.io` / `mixmatch123`
+- Treat the previous implementation as legacy history, not as active architecture.
+- Build small but meaningful increments that support a hackathon MVP.
+- Prefer shared types and config packages instead of copy-pasted app-local contracts.
+- Keep repo-ops and issue-generation artifacts out of commits unless explicitly requested.
 
----
+## Current status
 
-## 🧩 Adding Dependencies
+This repository is intentionally reset to a minimal baseline. The first implementation milestone is authentication across API, web, mobile, and Stellar-linked account workflows.
 
-Since we use a monorepo, you must specify **where** to install a package.
+## Authentication
 
-**To add a library to the Frontend (`apps/web`):**
+See:
 
-```bash
-# Example: Adding Framer Motion to the web app
-cd apps/web
-pnpm add framer-motion
-
-```
-
-**To add a library to the Backend (`apps/api`):**
-
-```bash
-cd apps/api
-pnpm add mongoose
-
-```
-
-**To use a shared package (e.g., using Types in API):**
-_Note: This is already set up, but for reference:_
-
-```bash
-cd apps/api
-pnpm add "@mixmatch/types@workspace:*" -D
-
-```
-
----
-
-## ⚠️ Troubleshooting
-
-**"Module not found" or Type Errors**
-If you just pulled fresh code or switched branches:
-
-```bash
-pnpm install
-# If issues persist, force a clean install
-rm -rf node_modules
-pnpm install
-
-```
-
-**Local MongoDB is not ready**
-
-```bash
-docker compose up -d mongo
-docker compose logs mongo
-docker compose down
-```
-
-The MongoDB container includes a healthcheck so `docker compose ps` shows when it
-is actually ready to accept connections.
-
-**Git is ignoring files I want to commit**
-We strictly ignore `node_modules` and build artifacts (`.next`, `dist`).
-
-- **Do not** force commit `node_modules`.
-- If your `node_modules` are showing up in Git, run:
-
-```bash
-git rm -r --cached .
-git add .
-git commit -m "fix: clear cached node_modules"
-
-```
-
----
-
-## 🤝 Contribution Guidelines
-
-1. Always run `pnpm lint` before pushing.
-2. Keep shared logic (types, configs) in `packages/`.
-3. Do not edit `apps/*/node_modules` manually.
-4. For significant architectural changes, follow the [RFC workflow](docs/rfcs/README.md).
-5. Architecture decisions are documented in [ADRs](docs/adr/README.md).
-
-### Architectural Changes
-
-For larger proposals that affect multiple domains or introduce significant complexity:
-
-1. Read the [RFC contribution guide](docs/rfcs/README.md)
-2. Create an RFC following the template
-3. Submit for team review
-4. Once accepted, create ADR(s) to document key decisions
-5. Implement according to the approved RFC
-
-See [docs/adr/README.md](docs/adr/README.md) for the ADR process.
-
-## Phase 1 References
-
-- Architecture: `docs/phase-1-architecture.md`
-- Demo script: `docs/phase-1-demo.md`
+apps/api/docs/AUTHENTICATION.md
+apps/api/docs/REGISTRATION_FLOW.md
+apps/api/docs/LOCAL_AUTH_SETUP.md

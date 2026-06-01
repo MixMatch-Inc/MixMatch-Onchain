@@ -1,7 +1,13 @@
-import { MongooseUserRepository, MongooseBookingRepository } from '../repositories';
+import { userRepository } from "../repositories/user.repository.js";
+import { refreshTokenRepository } from "../repositories/refresh-token.repository.js";
+import type { UserRecord } from "../repositories/user.repository.js";
 
-// Simple dependency injection container
-export const container = {
-  userRepository: new MongooseUserRepository(),
-  bookingRepository: new MongooseBookingRepository(),
+interface Container {
+  userRepository: typeof userRepository;
+  refreshTokenRepository: typeof refreshTokenRepository;
+}
+
+export const container: Container = {
+  userRepository,
+  refreshTokenRepository,
 };

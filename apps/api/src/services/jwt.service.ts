@@ -1,36 +1,52 @@
-import jwt, { JsonWebTokenError, TokenExpiredError } from 'jsonwebtoken';
-import { UserRole } from '@mixmatch/types';
-import { apiEnv } from '../config/env';
+import jwt from "jsonwebtoken";
+import { randomUUID } from "crypto";
+import { UserRole } from "@themixmatch/types";
+import type { RefreshTokenPayload } from "@themixmatch/types";
 
-const TOKEN_EXPIRATION = '24h';
+const JWT_SECRET = process.env.JWT_SECRET || "dev-secret-key-change-in-production";
 
-export interface AuthTokenPayload {
+/** Access token TTL — short-lived */
+const ACCESS_TOKEN_EXPIRES_IN = "15m";
+/** Refresh token TTL — long-lived */
+const REFRESH_TOKEN_EXPIRES_IN = "7d";
+/** Milliseconds for access token expiry (used to compute expiresAt) */
+const ACCESS_TOKEN_TTL_MS = 15 * 60 * 1000;
+
+export interface AccessTokenPayload {
   userId: string;
   role: UserRole;
 }
 
-const getJwtSecret = (): string => {
-  return apiEnv.jwtSecret;
-};
+// ── Access token ─────────────────────────────────────────────────────────────
 
-export const generateToken = (userId: string, role: UserRole): string => {
-  const payload: AuthTokenPayload = { userId, role };
+export function generateAccessToken(userId: string, role: UserRole): string {
+  return jwt.sign({ userId, role }, JWT_SECRET, { expiresIn: ACCESS_TOKEN_EXPIRES_IN });
+}
 
-  return jwt.sign(payload, getJwtSecret(), {
-    expiresIn: TOKEN_EXPIRATION,
-  });
-};
+export function verifyAccessToken(token: string): AccessTokenPayload {
+  return jwt.verify(token, JWT_SECRET) as AccessTokenPayload;
+}
 
-export const verifyToken = (token: string): AuthTokenPayload => {
-  try {
-    return jwt.verify(token, getJwtSecret()) as AuthTokenPayload;
-  } catch (error) {
-    if (error instanceof TokenExpiredError || error instanceof JsonWebTokenError) {
-      throw error;
-    }
+/** ISO-8601 timestamp for when a freshly-issued access token will expire */
+export function accessTokenExpiresAt(): string {
+  return new Date(Date.now() + ACCESS_TOKEN_TTL_MS).toISOString();
+}
 
-    throw new JsonWebTokenError('Invalid token');
-  }
-};
+// ── Refresh token ─────────────────────────────────────────────────────────────
 
-export { TokenExpiredError, JsonWebTokenError };
+export function generateRefreshToken(userId: string, role: UserRole): { token: string; jti: string } {
+  const jti = randomUUID();
+  const token = jwt.sign({ userId, role, jti }, JWT_SECRET, { expiresIn: REFRESH_TOKEN_EXPIRES_IN });
+  return { token, jti };
+}
+
+export function verifyRefreshToken(token: string): RefreshTokenPayload {
+  return jwt.verify(token, JWT_SECRET) as RefreshTokenPayload;
+}
+
+// ── Legacy alias (kept so existing callers compile without changes) ───────────
+
+/** @deprecated Use generateAccessToken instead */
+export const generateToken = generateAccessToken;
+/** @deprecated Use verifyAccessToken instead */
+export const verifyToken = verifyAccessToken;

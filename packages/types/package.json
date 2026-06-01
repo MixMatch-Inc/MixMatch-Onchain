@@ -1,7 +1,22 @@
 {
-  "name": "@mixmatch/types",
-  "version": "0.0.0",
+  "name": "@themixmatch/types",
   "private": true,
+  "version": "0.1.0",
+  "type": "module",
   "main": "./src/index.ts",
-  "types": "./src/index.ts"
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./src/auth": "./src/auth.ts",
+    "./auth": "./src/auth.ts"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "lint": "tsc --noEmit -p tsconfig.json",
+    "clean": "rm -rf dist"
+  },
+  "devDependencies": {
+    "@types/node": "^24.3.0"
+  }
 }

@@ -1,37 +1,32 @@
 {
-  "name": "mobile",
-  "version": "0.0.0",
+  "name": "@themixmatch/mobile",
   "private": true,
   "main": "expo-router/entry",
   "scripts": {
     "dev": "expo start",
-    "android": "expo run:android",
-    "ios": "expo run:ios",
-    "lint": "eslint src/",
-    "typecheck": "tsc --noEmit"
+    "build": "node -e \"console.log('Use EAS or expo export when mobile release work begins.')\"",
+    "typecheck": "tsc --noEmit",
+    "lint": "tsc --noEmit",
+    "test": "vitest run",
+    "clean": "rm -rf .expo dist expo-dist"
   },
   "dependencies": {
-    "@mixmatch/types": "workspace:*",
-    "@react-navigation/native": "^6.1.18",
-    "@react-navigation/native-stack": "^6.11.0",
-    "@react-navigation/bottom-tabs": "^6.6.1",
-    "expo": "~51.0.0",
-    "expo-constants": "~16.0.0",
-    "expo-linking": "~6.3.0",
-    "expo-router": "~3.5.0",
-    "expo-secure-store": "~13.0.0",
-    "expo-status-bar": "~1.12.0",
-    "react": "18.2.0",
-    "react-native": "0.74.0",
-    "react-native-safe-area-context": "4.10.1",
-    "react-native-screens": "3.31.1",
-    "zustand": "^4.5.0"
+    "@themixmatch/types": "workspace:*",
+    "expo": "^54.0.5",
+    "expo-router": "^6.0.4",
+    "expo-secure-store": "^14.2.3",
+    "expo-status-bar": "^3.0.8",
+    "react": "^19.1.1",
+    "react-native": "^0.81.1",
+    "react-native-safe-area-context": "^5.6.1",
+    "react-native-screens": "^4.16.0"
   },
   "devDependencies": {
-    "@mixmatch/config": "workspace:*",
-    "@babel/core": "^7.24.0",
-    "@types/react": "~18.2.0",
-    "@types/react-native": "~0.73.0",
-    "typescript": "^5.3.0"
+    "@testing-library/jest-native": "^5.4.3",
+    "@testing-library/react-native": "^13.3.3",
+    "@types/react": "^19.1.12",
+    "babel-preset-expo": "^54.0.1",
+    "typescript": "^5.9.2",
+    "vitest": "^4.1.7"
   }
 }

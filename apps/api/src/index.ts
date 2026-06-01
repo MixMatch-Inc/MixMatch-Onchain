@@ -1,40 +1,17 @@
-import express from 'express';
-import cors from 'cors';
-import connectDB from './config/db';
-import { apiEnv } from './config/env';
-import { identityRouter } from './domains/identity';
-import { journeysRouter, journeyRouter } from './domains/journeys';
-import { discoveryRouter } from './domains/discovery';
-import { resonanceRouter } from './domains/resonance';
-import { paymentsRouter } from './domains/payments';
-import { tasteSignalsRouter } from './domains/taste-signals';
-import { notFoundHandler } from './middleware/not-found.middleware';
-import { errorHandler } from './middleware/error.middleware';
-import { contextMiddleware } from './middleware/context.middleware';
+import dotenv from "dotenv";
+import { z } from "zod";
 
-const app = express();
-const port = apiEnv.port;
+import { createApiApp } from "./app.js";
 
-app.use(cors({ origin: apiEnv.corsOrigin }));
-app.use(express.json());
-app.use(contextMiddleware);
-app.use('/auth', identityRouter);
-app.use('/bookings', journeysRouter);
-app.use('/journeys', journeyRouter);
-app.use('/taste-signals', tasteSignalsRouter);
-app.use('/discover', discoveryRouter);
-app.use('/resonance', resonanceRouter);
-app.use('/payments', paymentsRouter);
+dotenv.config();
 
-connectDB();
-
-app.get('/', (req, res) => {
-  res.json({ message: 'MixMatch API Running', status: 'OK' });
+const envSchema = z.object({
+  API_PORT: z.coerce.number().default(3001)
 });
 
-app.use(notFoundHandler);
-app.use(errorHandler);
+const env = envSchema.parse(process.env);
+const app = createApiApp();
 
-app.listen(port, () => {
-  console.log(`🚀 API listening on port ${port}`);
+app.listen(env.API_PORT, () => {
+  console.log(`api listening on http://localhost:${env.API_PORT}`);
 });

@@ -1,48 +1,19 @@
-import { Response } from 'express';
-import { ZodError } from 'zod';
+import type { Response } from "express";
+import type { ApiSuccess, ApiError } from "@themixmatch/types";
 
-type ErrorDetails = Record<string, unknown> | undefined;
-
-interface SuccessEnvelope<T> {
-  success: true;
-  data: T;
-}
-
-interface ErrorEnvelope {
-  success: false;
-  error: {
-    message: string;
-    details?: ErrorDetails;
-  };
-}
-
-export const sendSuccess = <T>(res: Response, status: number, data: T): void => {
-  const body: SuccessEnvelope<T> = {
+export function sendSuccess<T>(res: Response, statusCode: number, data: T): void {
+  const payload: ApiSuccess<T> = {
     success: true,
     data,
   };
+  res.status(statusCode).json(payload);
+}
 
-  res.status(status).json(body);
-};
-
-export const sendError = (
-  res: Response,
-  status: number,
-  message: string,
-  details?: ErrorDetails,
-): void => {
-  const body: ErrorEnvelope = {
+export function sendError(res: Response, error: { code: string; message: string; statusCode?: number }): void {
+  const payload: ApiError = {
     success: false,
-    error: {
-      message,
-      details,
-    },
+    code: error.code,
+    message: error.message,
   };
-
-  res.status(status).json(body);
-};
-
-export const zodDetails = (error: ZodError): ErrorDetails => ({
-  fieldErrors: error.flatten().fieldErrors,
-  formErrors: error.flatten().formErrors,
-});
+  res.status(error.statusCode || 500).json(payload);
+}

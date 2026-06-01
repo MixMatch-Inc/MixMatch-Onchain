@@ -65,18 +65,6 @@ export interface LoginResponseData extends AuthResponse {
 
 export type LoginResponse = ApiResponse<LoginResponseData>;
 
-export enum CredentialErrorCode {
-  INVALID_CREDENTIALS = "INVALID_CREDENTIALS",
-  ACCOUNT_NOT_FOUND = "ACCOUNT_NOT_FOUND",
-  ACCOUNT_LOCKED = "ACCOUNT_LOCKED",
-}
-
-export interface CredentialErrorContract {
-  code: CredentialErrorCode;
-  message: string;
-  retryAfter?: number;
-}
-
 // ── Session refresh ──────────────────────────────────────────────────────────
 
 export interface RefreshTokenPayload {
@@ -105,6 +93,43 @@ export interface IntrospectResponse {
   role?: UserRole;
   /** ISO-8601 expiry of the access token */
   expiresAt?: string;
+}
+
+// ── Protected session types (AUTH-061) ─────────────────────────────────────────
+
+/**
+ * Result of validating a stored session.
+ * Used by clients to determine if a session is usable without introspecting the server.
+ */
+export interface ProtectedSession {
+  isValid: boolean;
+  needsRefresh: boolean;
+  userId?: string;
+  role?: UserRole;
+  /** ISO-8601 expiry of the access token */
+  expiresAt?: string;
+  /** Refresh token for obtaining a new access token */
+  refreshToken?: string;
+}
+
+export interface ValidateSessionRequest {
+  accessToken: string;
+}
+
+export type ValidateSessionResponse = ApiResponse<ProtectedSession>;
+
+// ── Credential errors ────────────────────────────────────────────────────────
+
+export enum CredentialErrorCode {
+  INVALID_CREDENTIALS = "INVALID_CREDENTIALS",
+  ACCOUNT_NOT_FOUND = "ACCOUNT_NOT_FOUND",
+  ACCOUNT_LOCKED = "ACCOUNT_LOCKED",
+}
+
+export interface CredentialErrorContract {
+  code: CredentialErrorCode;
+  message: string;
+  retryAfter?: number;
 }
 
 // ── Session logout ───────────────────────────────────────────────────────────
@@ -160,54 +185,52 @@ export type SessionRefreshApiResponse = ApiResponse<SessionRefreshResponse>;
 export type SessionLogoutApiResponse = ApiResponse<SessionLogoutResponse>;
 export type IntrospectApiResponse = ApiResponse<IntrospectResponse>;
 
-// ── Auth abuse-control shared contracts (AUTH-118–121) ────────────────────────
-// These types are shared across apps/api, apps/web, and apps/mobile so that
-// all surfaces use the same throttle vocabulary without app-local copies.
+// ── Auth abuse controls and audit contracts ───────────────────────────────────
 
-/** Returned (or embedded) when a caller is being throttled. */
-export interface ThrottleNotice {
-  /** Whether the caller is currently throttled. */
-  throttled: boolean;
-  /** Seconds until the caller may retry — present when `throttled` is true. */
+/** Machine-readable event kinds recorded in the auth audit trail. */
+export type AuthAuditEventKind =
+  | "login_attempt"
+  | "login_success"
+  | "login_failure"
+  | "register_attempt"
+  | "register_success"
+  | "register_failure"
+  | "stellar_challenge"
+  | "stellar_verify"
+  | "rate_limited"
+  | "session_refresh"
+  | "logout";
+
+/** Structured audit entry emitted for every auth-boundary event. */
+export interface AuthAuditEntry {
+  event: AuthAuditEventKind;
+  /** Authenticated user id — present after successful login/register. */
+  userId?: string;
+  /** Request origin for abuse-pattern detection. */
+  ip?: string;
+  /** ISO-8601 timestamp. */
+  timestamp: string;
+  /** Route or boundary that produced this entry. */
+  boundary?: "api" | "stellar";
+  /** Arbitrary event metadata — error codes, key fragments, etc. */
+  meta?: Record<string, unknown>;
+}
+
+/** Returned when a caller exceeds the configured request limit. */
+export interface AuthRateLimitError {
+  code: "AUTH_RATE_LIMITED";
+  message: string;
+  /** Seconds until the caller may retry. */
+  retryAfter: number;
+}
+
+/** User-facing notice for throttling, session risk, and recovery at the Stellar boundary. */
+export interface StellarAuthRiskNotice {
+  /** Reason the notice was raised. */
+  type: "rate_limited" | "invalid_key" | "service_unavailable" | "session_risk";
+  message: string;
+  /** Present when `type` is `rate_limited` — seconds to wait before retrying. */
   retryAfter?: number;
-  /** Attempts remaining in the current window — present when > 0. */
-  attemptsRemaining?: number;
-}
-
-/**
- * Machine-readable session risk signal surfaced by the API.
- * Clients present this as a contextual notice rather than a hard error.
- */
-export interface SessionRiskNotice {
-  /** Why the risk notice was raised. */
-  type: "multiple_failures" | "account_cooldown" | "suspicious_activity";
-  /** Human-readable explanation suitable for display. */
-  message: string;
-  /** Suggested follow-up action for the UI. */
-  action?: "re_authenticate" | "contact_support" | "wait_and_retry";
-}
-
-/** Tracks whether a credential (email) is under an auth abuse cooldown. */
-export interface AuthAbuseCooldown {
-  /** Whether a cooldown is currently active for this credential. */
-  active: boolean;
-  /** ISO-8601 timestamp when the cooldown lifts — present when active. */
-  resetAt?: string;
-  /** Why the cooldown was imposed. */
-  reason: "too_many_attempts" | "suspicious_activity";
-  /** Failed attempts recorded in the current cooldown window. */
-  failedAttempts?: number;
-}
-
-/** Unified auth-error envelope used on login/register failure paths. */
-export interface AuthFailureEnvelope {
-  success: false;
-  code: string;
-  message: string;
-  /** Present when the failure is due to rate limiting. */
-  throttle?: ThrottleNotice;
-  /** Present when an account-level cooldown is in effect. */
-  cooldown?: AuthAbuseCooldown;
-  /** Present when a session-risk signal should be surfaced to the user. */
-  risk?: SessionRiskNotice;
+  /** Suggested follow-up action for the client UI to present. */
+  action?: "retry_later" | "re_authenticate" | "contact_support";
 }

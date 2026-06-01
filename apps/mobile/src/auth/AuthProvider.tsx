@@ -1,9 +1,9 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 
-import type { AuthSession, LoginRequest, SignupRequest } from "@themixmatch/types";
+import type { AuthSession, LoginRequest, SignupRequest, ProtectedSession, SessionRefreshRequest } from "@themixmatch/types";
 
-import { AuthClientError, login as loginClient, logoutSession, register } from "./authClient";
-import { clearAuthSession, loadAuthSession, saveAuthSession } from "./authStorage";
+import { AuthClientError, login as loginClient, logoutSession, register, refreshSession, validateSession } from "./authClient";
+import { clearAuthSession, loadAuthSession, saveAuthSession, validateStoredSession } from "./authStorage";
 import { ensureSessionContinuity } from "./sessionContinuity";
 
 type AuthStatus = "loading" | "signedOut" | "signedIn";
@@ -15,6 +15,10 @@ export interface AuthContextValue {
   registerAccount: (input: SignupRequest) => Promise<void>;
   signIn: (input: LoginRequest) => Promise<void>;
   signOut: () => Promise<void>;
+  /** Check if the current session is valid (AUTH-061) */
+  checkSession: () => Promise<ProtectedSession | null>;
+  /** Refresh the current session token if needed (AUTH-061) */
+  refreshAccessToken: () => Promise<AuthSession | null>;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -98,6 +102,41 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, [session?.refreshToken]);
 
+  const checkSession = useCallback(async (): Promise<ProtectedSession | null> => {
+    const current = session ?? await loadAuthSession();
+    if (!current) return null;
+
+    const localValidation = validateStoredSession(current);
+    if (!localValidation.isValid) return localValidation;
+
+    if (!current.token) return { isValid: false, needsRefresh: false };
+
+    try {
+      return await validateSession({ accessToken: current.token });
+    } catch {
+      return { isValid: false, needsRefresh: false };
+    }
+  }, [session]);
+
+  const refreshAccessToken = useCallback(async (): Promise<AuthSession | null> => {
+    const current = session ?? await loadAuthSession();
+    if (!current?.refreshToken) return null;
+
+    try {
+      const refreshed = await refreshSession({ refreshToken: current.refreshToken });
+      const updatedSession: AuthSession = {
+        ...current,
+        token: refreshed.accessToken,
+        refreshToken: refreshed.refreshToken,
+      };
+      await saveAuthSession(updatedSession);
+      setSession(updatedSession);
+      return updatedSession;
+    } catch {
+      return null;
+    }
+  }, [session]);
+
   const value = useMemo<AuthContextValue>(
     () => ({
       status,
@@ -106,8 +145,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       registerAccount,
       signIn,
       signOut,
+      checkSession,
+      refreshAccessToken,
     }),
-    [lastError, registerAccount, session, signOut, status],
+    [lastError, registerAccount, session, signOut, status, checkSession, refreshAccessToken],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

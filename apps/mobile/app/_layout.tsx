@@ -15,7 +15,7 @@ export default function RootLayout() {
         <Stack.Screen name="index" />
         <Stack.Screen name="register" />
         <Stack.Screen name="signup" />
-        <Stack.Screen name="login" />
+        <Stack.Screen name="protected" />
       </Stack>
     </AuthProvider>
   );

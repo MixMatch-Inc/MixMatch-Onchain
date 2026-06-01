@@ -6,10 +6,10 @@ import type { ApiHealthResponse } from "@themixmatch/types";
 import { loginHandler } from "./domains/identity/login.handler.js";
 import { signupHandler } from "./domains/identity/signup.handler.js";
 import { stellarAuthVerifyHandler, stellarAuthChallengeHandler } from "./domains/identity/stellar-auth.handler.js";
-import { refreshHandler, introspectHandler, logoutHandler } from "./domains/identity/session.handler.js";
+import { refreshHandler, introspectHandler, validateHandler, logoutHandler } from "./domains/identity/session.handler.js";
 import { stellarHandshakeHandler } from "./domains/identity/stellar.handler.js";
 import { requireAuth } from "./middleware/require-auth.js";
-import { checkAuthThrottle } from "./middleware/auth-throttle.js";
+import { authRateLimit, stellarAuthRateLimit } from "./middleware/rate-limit.js";
 import { sendError } from "./utils/api-response.js";
 
 export function createApiApp(): Application {
@@ -39,6 +39,7 @@ export function createApiApp(): Application {
         login: "POST /api/v1/auth/login",
         refresh: "POST /api/v1/auth/refresh",
         introspect: "GET /api/v1/auth/introspect",
+        validate: "POST /api/v1/auth/validate",
         logout: "POST /api/v1/auth/logout",
         handshake: "GET /api/v1/auth/handshake",
       },
@@ -46,15 +47,16 @@ export function createApiApp(): Application {
   });
 
   // ── Auth — public ───────────────────────────────────────────────────────────
-  app.post("/api/v1/auth/register", checkAuthThrottle, signupHandler);
-  app.post("/api/v1/auth/login", checkAuthThrottle, loginHandler);
+  app.post("/api/v1/auth/register", authRateLimit, signupHandler);
+  app.post("/api/v1/auth/login", authRateLimit, loginHandler);
   app.post("/api/v1/auth/refresh", refreshHandler);
+  app.post("/api/v1/auth/validate", validateHandler);
   app.post("/api/v1/auth/logout", logoutHandler);
   app.get("/api/v1/auth/handshake", stellarHandshakeHandler);
 
   // Stellar-boundary auth routes (auth-to-Stellar handoff)
-  app.post("/api/v1/stellar/auth/challenge", stellarAuthChallengeHandler);
-  app.post("/api/v1/stellar/auth/verify", stellarAuthVerifyHandler);
+  app.post("/api/v1/stellar/auth/challenge", stellarAuthRateLimit, stellarAuthChallengeHandler);
+  app.post("/api/v1/stellar/auth/verify", stellarAuthRateLimit, stellarAuthVerifyHandler);
 
   // ── Auth — protected (requires valid access token) ──────────────────────────
   app.get("/api/v1/auth/introspect", requireAuth, introspectHandler);
@@ -70,4 +72,3 @@ export function createApiApp(): Application {
 
   return app;
 }
-

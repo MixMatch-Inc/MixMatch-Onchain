@@ -18,6 +18,12 @@ import {
   ValidateSessionRequest,
   SessionRefreshRequest,
   SessionRefreshResponse,
+  OwnershipProofRequest,
+  OwnershipProofConfirmRequest,
+  EmailVerificationRequest,
+  EmailVerificationConfirmRequest,
+  AccountRecoveryRequest,
+  AccountRecoveryConfirmRequest,
   evaluateProtectedRouteGuard,
   continueSessionAfterRefresh,
   isSupportedStellarSessionToken,
@@ -38,6 +44,20 @@ The current starter split is:
 - `packages/types` defines contracts and tiny boundary helpers
 - `apps/api` implements login, refresh, introspection, logout, and proxy routes
 - `apps/stellar-service` implements handshake, challenge, and verify behavior
+
+## Ownership, verification, and recovery entry points
+
+For the reset Express auth API baseline (`apps/api`), contributors should start with these shared contracts in `packages/types/src/auth.ts`:
+
+- `OwnershipProofRequest` / `OwnershipProofResponse`
+- `OwnershipProofConfirmRequest` / `OwnershipProofConfirmResponse`
+- `EmailVerificationRequest` / `EmailVerificationResponse`
+- `EmailVerificationConfirmRequest` / `EmailVerificationConfirmResponse`
+- `AccountRecoveryRequest` / `AccountRecoveryResponse`
+- `AccountRecoveryConfirmRequest` / `AccountRecoveryConfirmResponse`
+- `OwnershipProof`, `OwnershipProofChallenge`, and `AccountRecoveryGrant`
+
+These are intentionally generic enough to support later mail-provider, password-reset, or wallet-linked identity work without forcing app-local copies of the auth vocabulary.
 
 ## Request Types
 
@@ -170,6 +190,17 @@ local development tokens (`local.*`) and JWT-shaped tokens (`eyJ...`).
 This is intentionally a starter-level seam. Tightening it later should happen here first so `apps/api` and `apps/stellar-service` stay aligned.
 
 ## Routes and env values this package connects
+
+The new ownership/verification/recovery contracts are consumed by the Express auth API routes:
+
+- `/api/v1/auth/email/verify/request`
+- `/api/v1/auth/email/verify/confirm`
+- `/api/v1/auth/recovery/request`
+- `/api/v1/auth/recovery/confirm`
+- `/api/v1/auth/recovery/reset-password`
+- `/api/v1/auth/ownership-proof/request`
+- `/api/v1/auth/ownership-proof/confirm`
+
 
 This package does not own runtime env parsing, but these contracts are consumed by the main Authentication-milestone routes and env values:
 

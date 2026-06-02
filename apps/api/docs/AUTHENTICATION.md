@@ -15,6 +15,7 @@ Source: `packages/types/src/auth.ts`, `packages/types/src/session.types.ts`, `pa
 - `SessionRefreshRequest`, `SessionRefreshResponse`, `SessionContinuityOutcome`
 - `IntrospectResponse`
 - `SessionLogoutRequest`, `SessionLogoutResponse`
+- `OwnershipProof*`, `EmailVerification*`, `AccountRecovery*`
 - `StellarServiceHandshake`
 - `StellarAuthChallengeRequest/Response`, `StellarAuthVerifyRequest/Response`
 - `ProtectedRouteGuard`, `RefreshTokenRecord`
@@ -30,6 +31,13 @@ Source: `packages/types/src/auth.ts`, `packages/types/src/session.types.ts`, `pa
 | GET | `/api/v1/auth/introspect` | Protected | Validate access token |
 | POST | `/api/v1/auth/logout` | Public | Revoke refresh token |
 | GET | `/api/v1/auth/handshake` | Public | Stellar handshake metadata |
+| POST | `/api/v1/auth/email/verify/request` | Public | Start email-verification ownership challenge |
+| POST | `/api/v1/auth/email/verify/confirm` | Public | Confirm email-verification challenge |
+| POST | `/api/v1/auth/recovery/request` | Public | Start account/session recovery challenge |
+| POST | `/api/v1/auth/recovery/confirm` | Public | Confirm recovery challenge and issue recovery grant |
+| POST | `/api/v1/auth/recovery/reset-password` | Public | Consume recovery grant and rotate password |
+| POST | `/api/v1/auth/ownership-proof/request` | Public | Start generic ownership-proof challenge |
+| POST | `/api/v1/auth/ownership-proof/confirm` | Public | Confirm generic ownership-proof challenge |
 | POST | `/api/v1/stellar/auth/challenge` | Public | Proxy challenge generation to `apps/stellar-service` |
 | POST | `/api/v1/stellar/auth/verify` | Public | Proxy session-token + Stellar-key verification to `apps/stellar-service` |
 
@@ -39,7 +47,11 @@ Source: `packages/types/src/auth.ts`, `packages/types/src/session.types.ts`, `pa
 |------|---------|
 | `src/app.ts` | Route mounting |
 | `src/domains/identity/session.service.ts` | Refresh, introspect, logout logic |
-| `src/domains/identity/session.handler.ts` | HTTP handlers |
+| `src/domains/identity/session.handler.ts` | Session HTTP handlers |
+| `src/domains/identity/recovery.service.ts` | Ownership proof, email verification, recovery grants, and password reset logic |
+| `src/domains/identity/recovery.handler.ts` | Verification/recovery HTTP handlers |
+| `src/repositories/ownership-challenge.repository.ts` | Durable seam for verification/recovery challenge storage |
+| `src/repositories/recovery-grant.repository.ts` | Durable seam for password-recovery grant storage |
 | `src/middleware/require-auth.ts` | Bearer token guard |
 | `src/services/jwt.service.ts` | Access (15m) + refresh (7d) JWT |
 | `src/repositories/refresh-token.repository.ts` | In-memory refresh store |
@@ -89,6 +101,8 @@ Error:
 ## Current tradeoffs
 
 - Refresh-token storage is in-memory today.
+- Verification/recovery delivery is modeled as `simulated_email` and returns a `codePreview` for contributor workflows instead of integrating a mail provider.
+- Recovery confirmation issues a short-lived recovery grant that must be consumed by `POST /api/v1/auth/recovery/reset-password`.
 - `POST /api/v1/stellar/auth/verify` currently enforces token shape and Stellar key shape, not on-chain signature proof.
 - The starter deliberately avoids wallet custody and secret management in this milestone.
 

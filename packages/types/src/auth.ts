@@ -31,6 +31,8 @@ export interface AuthUserPayload {
   email: string;
   role: UserRole;
   onboardingCompleted: boolean;
+  emailVerified: boolean;
+  emailVerifiedAt?: string | Date;
   createdAt?: string | Date;
   updatedAt?: string | Date;
 }
@@ -242,6 +244,137 @@ export type SessionContinuityOutcome =
   | { status: "refreshed"; session: AuthSession }
   | { status: "expired" };
 
+// ── Ownership proof, email verification, and recovery ───────────────────────
+
+export type OwnershipProofSubjectType = "email";
+export type OwnershipProofDelivery = "email" | "simulated_email";
+export type OwnershipProofPurpose =
+  | "email_verification"
+  | "account_recovery"
+  | "session_recovery";
+
+/** Durable proof that a caller demonstrated ownership of an auth identifier. */
+export interface OwnershipProof {
+  proofId: string;
+  subjectType: OwnershipProofSubjectType;
+  subject: string;
+  purpose: OwnershipProofPurpose;
+  verifiedAt: string;
+}
+
+/** Challenge issued before verification/recovery can be completed. */
+export interface OwnershipProofChallenge {
+  challengeId: string;
+  subjectType: OwnershipProofSubjectType;
+  maskedSubject: string;
+  purpose: OwnershipProofPurpose;
+  delivery: OwnershipProofDelivery;
+  expiresAt: string;
+  codeLength: number;
+  codePreview?: string;
+}
+
+export interface OwnershipProofRequest {
+  subjectType: OwnershipProofSubjectType;
+  subject: string;
+  purpose: OwnershipProofPurpose;
+}
+
+export interface OwnershipProofResponse {
+  requested: true;
+  challenge: OwnershipProofChallenge;
+}
+
+export interface OwnershipProofConfirmRequest {
+  challengeId: string;
+  code: string;
+}
+
+export interface OwnershipProofConfirmResponse {
+  verified: true;
+  proof: OwnershipProof;
+}
+
+export interface EmailVerificationRequest {
+  email: string;
+}
+
+export interface EmailVerificationResponse {
+  requested: true;
+  challenge: OwnershipProofChallenge;
+  nextStep: "confirm_email_verification";
+}
+
+export interface EmailVerificationConfirmRequest {
+  challengeId: string;
+  code: string;
+}
+
+export interface EmailVerificationConfirmResponse {
+  verified: true;
+  email: string;
+  proof: OwnershipProof;
+}
+
+export interface AccountRecoveryRequest {
+  email: string;
+  purpose?: Extract<
+    OwnershipProofPurpose,
+    "account_recovery" | "session_recovery"
+  >;
+}
+
+export interface AccountRecoveryResponse {
+  requested: true;
+  challenge: OwnershipProofChallenge;
+  recoveryKind: Extract<
+    OwnershipProofPurpose,
+    "account_recovery" | "session_recovery"
+  >;
+  nextStep: "confirm_account_recovery";
+}
+
+export interface AccountRecoveryConfirmRequest {
+  challengeId: string;
+  code: string;
+}
+
+export interface AccountRecoveryGrant {
+  recoveryToken: string;
+  expiresAt: string;
+  proof: OwnershipProof;
+}
+
+export interface AccountRecoveryConfirmResponse {
+  recovered: true;
+  grant: AccountRecoveryGrant;
+}
+
+export interface PasswordRecoveryResetRequest {
+  recoveryToken: string;
+  newPassword: string;
+}
+
+export interface PasswordRecoveryResetResponse {
+  passwordReset: true;
+  userId: string;
+  email: string;
+  resetAt: string;
+}
+
+export type OwnershipProofApiResponse = ApiResponse<OwnershipProofResponse>;
+export type OwnershipProofConfirmApiResponse =
+  ApiResponse<OwnershipProofConfirmResponse>;
+export type EmailVerificationApiResponse =
+  ApiResponse<EmailVerificationResponse>;
+export type EmailVerificationConfirmApiResponse =
+  ApiResponse<EmailVerificationConfirmResponse>;
+export type AccountRecoveryApiResponse = ApiResponse<AccountRecoveryResponse>;
+export type AccountRecoveryConfirmApiResponse =
+  ApiResponse<AccountRecoveryConfirmResponse>;
+export type PasswordRecoveryResetApiResponse =
+  ApiResponse<PasswordRecoveryResetResponse>;
+
 // ── Stellar auth boundary (auth-to-Stellar handoff) ───────────────────────────
 
 export interface StellarAuthChallengeRequest {
@@ -265,8 +398,10 @@ export interface StellarAuthVerifyResponse {
   linkedAt: string;
 }
 
-export type StellarAuthChallengeApiResponse = ApiResponse<StellarAuthChallengeResponse>;
-export type StellarAuthVerifyApiResponse = ApiResponse<StellarAuthVerifyResponse>;
+export type StellarAuthChallengeApiResponse =
+  ApiResponse<StellarAuthChallengeResponse>;
+export type StellarAuthVerifyApiResponse =
+  ApiResponse<StellarAuthVerifyResponse>;
 export type SessionRefreshApiResponse = ApiResponse<SessionRefreshResponse>;
 export type SessionLogoutApiResponse = ApiResponse<SessionLogoutResponse>;
 export type IntrospectApiResponse = ApiResponse<IntrospectResponse>;

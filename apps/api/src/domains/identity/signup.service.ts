@@ -1,8 +1,15 @@
 import bcrypt from "bcryptjs";
 import { UserRole } from "@themixmatch/types";
-import type { SignupRequest, AuthResponse, SessionBootstrap } from "@themixmatch/types";
+import type {
+  SignupRequest,
+  AuthResponse,
+  SessionBootstrap,
+} from "@themixmatch/types";
 import { container } from "../../config/di.js";
-import { generateAccessToken, generateRefreshToken } from "../../services/jwt.service.js";
+import {
+  generateAccessToken,
+  generateRefreshToken,
+} from "../../services/jwt.service.js";
 import { AuthError } from "../../utils/errors.js";
 
 const SALT_ROUNDS = 10;
@@ -14,7 +21,9 @@ const nameFromEmail = (email: string): string =>
  * Creates a new user account and returns an auth token + user payload.
  * Throws AuthError.emailAlreadyExists if the address is taken.
  */
-export async function createAccount(input: SignupRequest): Promise<AuthResponse> {
+export async function createAccount(
+  input: SignupRequest,
+): Promise<AuthResponse> {
   const email = input.email.toLowerCase();
 
   const taken = await container.userRepository.existsByEmail(email);
@@ -28,12 +37,15 @@ export async function createAccount(input: SignupRequest): Promise<AuthResponse>
     passwordHash,
     role: input.role,
     onboardingCompleted: false,
+    emailVerifiedAt: undefined,
   });
 
   const token = generateAccessToken(user.id, user.role as UserRole);
 
-  // Issue a refresh token and persist it
-  const { token: refreshToken, jti } = generateRefreshToken(user.id, user.role as UserRole);
+  const { token: refreshToken, jti } = generateRefreshToken(
+    user.id,
+    user.role as UserRole,
+  );
   const REFRESH_TTL_MS = 7 * 24 * 60 * 60 * 1000;
   await container.refreshTokenRepository.save({
     jti,
@@ -51,6 +63,8 @@ export async function createAccount(input: SignupRequest): Promise<AuthResponse>
       email: user.email,
       role: user.role as UserRole,
       onboardingCompleted: user.onboardingCompleted,
+      emailVerified: Boolean(user.emailVerifiedAt),
+      emailVerifiedAt: user.emailVerifiedAt,
       createdAt: user.createdAt,
       updatedAt: user.updatedAt,
     },

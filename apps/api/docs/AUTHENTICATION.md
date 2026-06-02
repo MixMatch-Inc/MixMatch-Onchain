@@ -78,7 +78,7 @@ Error:
 pnpm test
 ```
 
-Covers refresh rotation, introspection, logout, and `requireAuth` guard paths.
+Covers refresh rotation, introspection, logout, `requireAuth` guard paths, and the shared auth-plus-Stellar boundary contract in `src/domains/identity/auth-stellar-boundary.contract.test.ts`.
 
 ## Open questions
 

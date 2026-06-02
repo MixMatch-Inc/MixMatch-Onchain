@@ -4,6 +4,7 @@
   "type": "module",
   "scripts": {
     "dev": "tsx watch src/index.ts",
+    "test": "vitest run",
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "lint": "tsc --noEmit -p tsconfig.json",
@@ -19,6 +20,9 @@
   "devDependencies": {
     "@types/express": "^5.0.3",
     "@types/node": "^24.3.0",
-    "tsx": "^4.20.5"
+    "@types/supertest": "^2.0.12",
+    "supertest": "^7.2.2",
+    "tsx": "^4.20.5",
+    "vitest": "^4.1.7"
   }
 }

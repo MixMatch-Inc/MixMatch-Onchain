@@ -28,6 +28,7 @@ export interface StarterRoadmapCard {
 }
 
 export * from "./auth";
+export * from "./auth-boundary";
 export * from "./auth-envelope.types";
 export * from "./auth-errors.types";
 export * from "./session.types";

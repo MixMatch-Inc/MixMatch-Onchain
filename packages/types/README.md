@@ -5,17 +5,20 @@ The contracts are exported from `@themixmatch/types` and implemented in `package
 
 ## Contract Entry Points (AUTH-061)
 
-All auth-related types are available from the main entry point:
+All auth-related types and shared auth-boundary helpers are available from the main entry point:
 
 ```ts
-import { 
-  SignupRequest, 
-  LoginRequest, 
-  AuthSession, 
+import {
+  SignupRequest,
+  LoginRequest,
+  AuthSession,
   ProtectedSession,
   ValidateSessionRequest,
   SessionRefreshRequest,
   SessionRefreshResponse,
+  evaluateProtectedRouteGuard,
+  continueSessionAfterRefresh,
+  isSupportedStellarSessionToken,
 } from "@themixmatch/types";
 ```
 
@@ -121,6 +124,23 @@ interface SessionRefreshResponse {
   expiresAt: string;
 }
 ```
+
+## Shared auth-boundary helpers
+
+### `evaluateProtectedRouteGuard`
+
+Returns the shared `ProtectedRouteGuard` result for a stored session.
+This keeps protected-route checks aligned across app surfaces.
+
+### `continueSessionAfterRefresh`
+
+Applies a `SessionRefreshResponse` to a stored `AuthSession` while preserving
+user ownership and wallet bootstrap metadata.
+
+### `isSupportedStellarSessionToken`
+
+Documents the current auth-to-Stellar token handoff accepted by the starter:
+local development tokens (`local.*`) and JWT-shaped tokens (`eyJ...`).
 
 ## API Endpoints
 

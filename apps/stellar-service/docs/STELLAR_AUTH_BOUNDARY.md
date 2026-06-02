@@ -16,6 +16,13 @@ The API proxies these routes at `/api/v1/stellar/auth/*` using `STELLAR_SERVICE_
 
 ## Shared contracts
 
+The boundary helpers live in `@themixmatch/types` so auth and wallet-facing workspaces reuse the same contract vocabulary:
+
+- `evaluateProtectedRouteGuard`
+- `continueSessionAfterRefresh`
+- `isSupportedStellarSessionToken`
+
+
 | Type | Purpose |
 |------|---------|
 | `StellarServiceHandshake` | Handshake metadata |
@@ -35,6 +42,16 @@ The API proxies these routes at `/api/v1/stellar/auth/*` using `STELLAR_SERVICE_
 - Challenge verify currently checks token format and key shape only
 - On-chain signature validation is a follow-up milestone
 - Wallet linking status flows through `SessionBootstrap.wallet` on login/register
+
+## Verification
+
+From this package, contributors can run:
+
+```bash
+pnpm test
+```
+
+The regression coverage lives in `src/index.test.ts` and focuses on one happy path and one failure path for `/api/v1/stellar/auth/verify`.
 
 ## Related docs
 

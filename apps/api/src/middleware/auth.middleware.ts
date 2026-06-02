@@ -5,31 +5,19 @@ import {
   TokenExpiredError,
   verifyToken,
 } from '../services/jwt.service';
+import { extractBearerToken } from '../utils/session-guard';
+import { jwtUnauthorizedError } from '../utils/session-errors';
 
 export interface AuthenticatedRequestUser {
   userId: string;
   role: UserRole;
 }
 
-const extractBearerToken = (authorizationHeader?: string): string | null => {
-  if (!authorizationHeader) {
-    return null;
-  }
-
-  const [scheme, token] = authorizationHeader.split(' ');
-
-  if (scheme !== 'Bearer' || !token) {
-    return null;
-  }
-
-  return token;
-};
-
 export const requireAuth = (req: Request, res: Response, next: NextFunction): void => {
   const token = extractBearerToken(req.header('authorization'));
 
   if (!token) {
-    res.status(401).json({ message: 'Unauthorized: missing or invalid token' });
+    next(jwtUnauthorizedError());
     return;
   }
 
@@ -44,18 +32,18 @@ export const requireAuth = (req: Request, res: Response, next: NextFunction): vo
     next();
   } catch (error) {
     if (error instanceof TokenExpiredError || error instanceof JsonWebTokenError) {
-      res.status(401).json({ message: 'Unauthorized: missing or invalid token' });
+      next(jwtUnauthorizedError());
       return;
     }
 
-    res.status(500).json({ message: 'Internal server error' });
+    next(error);
   }
 };
 
 export const requireRole = (roles: UserRole[]) => {
   return (req: Request, res: Response, next: NextFunction): void => {
     if (!req.user) {
-      res.status(401).json({ message: 'Unauthorized: missing or invalid token' });
+      next(jwtUnauthorizedError());
       return;
     }
 

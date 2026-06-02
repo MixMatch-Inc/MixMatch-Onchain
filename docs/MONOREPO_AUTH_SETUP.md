@@ -9,6 +9,8 @@ The MixMatch Onchain monorepo implements authentication across four workspaces w
 3. **Mobile app** (`apps/mobile`) — Expo client with the same session seam
 4. **Stellar service** (`apps/stellar-service`) — wallet challenge/verify boundary
 
+Assigned web-auth issues `#392` through `#395` all reduce to the same contributor question: how does a stored session become valid, refreshed, expired, or route-safe without inventing one-off logic per workspace?
+
 See [Session Lifecycle](./SESSION_LIFECYCLE.md) for the full contributor guide.
 
 ## Shared Contracts (`packages/types`)
@@ -114,3 +116,4 @@ pnpm typecheck
 - [ ] Client auth methods updated in web/mobile
 - [ ] Session continuity tests pass
 - [ ] Docs updated in `docs/` and per-app `docs/`
+- [ ] The web auth slice clearly explains refresh, introspection, and protected-route behavior for contributors

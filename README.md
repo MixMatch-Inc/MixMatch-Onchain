@@ -76,3 +76,10 @@ See:
 apps/api/docs/AUTHENTICATION.md
 apps/api/docs/REGISTRATION_FLOW.md
 apps/api/docs/LOCAL_AUTH_SETUP.md
+
+For the web auth slice that backs the assigned Stellar Wave issues, see:
+
+- [Session Lifecycle](docs/SESSION_LIFECYCLE.md)
+- [Monorepo Auth Setup](docs/MONOREPO_AUTH_SETUP.md)
+- [Web Auth Surface Setup](apps/web/docs/WEB_AUTH_SETUP.md)
+- [Web Session Auth Baseline](apps/web/SESSION_AUTH_BASELINE.md)

@@ -1,15 +1,40 @@
 import cors from "cors";
-import express, { type Application, type Request, type Response, type NextFunction } from "express";
+import express, {
+  type Application,
+  type Request,
+  type Response,
+  type NextFunction,
+} from "express";
 import helmet from "helmet";
 
 import type { ApiHealthResponse } from "@themixmatch/types";
 import { loginHandler } from "./domains/identity/login.handler.js";
 import { signupHandler } from "./domains/identity/signup.handler.js";
-import { stellarAuthVerifyHandler, stellarAuthChallengeHandler } from "./domains/identity/stellar-auth.handler.js";
-import { refreshHandler, introspectHandler, validateHandler, logoutHandler } from "./domains/identity/session.handler.js";
+import {
+  stellarAuthVerifyHandler,
+  stellarAuthChallengeHandler,
+} from "./domains/identity/stellar-auth.handler.js";
+import {
+  refreshHandler,
+  introspectHandler,
+  validateHandler,
+  logoutHandler,
+} from "./domains/identity/session.handler.js";
+import {
+  accountRecoveryConfirmHandler,
+  accountRecoveryRequestHandler,
+  emailVerificationConfirmHandler,
+  emailVerificationRequestHandler,
+  ownershipProofConfirmHandler,
+  ownershipProofRequestHandler,
+  passwordRecoveryResetHandler,
+} from "./domains/identity/recovery.handler.js";
 import { stellarHandshakeHandler } from "./domains/identity/stellar.handler.js";
 import { requireAuth } from "./middleware/require-auth.js";
-import { authRateLimit, stellarAuthRateLimit } from "./middleware/rate-limit.js";
+import {
+  authRateLimit,
+  stellarAuthRateLimit,
+} from "./middleware/rate-limit.js";
 import { sendError } from "./utils/api-response.js";
 
 export function createApiApp(): Application {
@@ -42,6 +67,13 @@ export function createApiApp(): Application {
         validate: "POST /api/v1/auth/validate",
         logout: "POST /api/v1/auth/logout",
         handshake: "GET /api/v1/auth/handshake",
+        emailVerificationRequest: "POST /api/v1/auth/email/verify/request",
+        emailVerificationConfirm: "POST /api/v1/auth/email/verify/confirm",
+        recoveryRequest: "POST /api/v1/auth/recovery/request",
+        recoveryConfirm: "POST /api/v1/auth/recovery/confirm",
+        recoveryResetPassword: "POST /api/v1/auth/recovery/reset-password",
+        ownershipProofRequest: "POST /api/v1/auth/ownership-proof/request",
+        ownershipProofConfirm: "POST /api/v1/auth/ownership-proof/confirm",
       },
     });
   });
@@ -53,20 +85,63 @@ export function createApiApp(): Application {
   app.post("/api/v1/auth/validate", validateHandler);
   app.post("/api/v1/auth/logout", logoutHandler);
   app.get("/api/v1/auth/handshake", stellarHandshakeHandler);
+  app.post(
+    "/api/v1/auth/email/verify/request",
+    emailVerificationRequestHandler,
+  );
+  app.post(
+    "/api/v1/auth/email/verify/confirm",
+    emailVerificationConfirmHandler,
+  );
+  app.post("/api/v1/auth/recovery/request", accountRecoveryRequestHandler);
+  app.post("/api/v1/auth/recovery/confirm", accountRecoveryConfirmHandler);
+  app.post(
+    "/api/v1/auth/recovery/reset-password",
+    passwordRecoveryResetHandler,
+  );
+  app.post(
+    "/api/v1/auth/ownership-proof/request",
+    ownershipProofRequestHandler,
+  );
+  app.post(
+    "/api/v1/auth/ownership-proof/confirm",
+    ownershipProofConfirmHandler,
+  );
 
   // Stellar-boundary auth routes (auth-to-Stellar handoff)
-  app.post("/api/v1/stellar/auth/challenge", stellarAuthRateLimit, stellarAuthChallengeHandler);
-  app.post("/api/v1/stellar/auth/verify", stellarAuthRateLimit, stellarAuthVerifyHandler);
+  app.post(
+    "/api/v1/stellar/auth/challenge",
+    stellarAuthRateLimit,
+    stellarAuthChallengeHandler,
+  );
+  app.post(
+    "/api/v1/stellar/auth/verify",
+    stellarAuthRateLimit,
+    stellarAuthVerifyHandler,
+  );
 
   // ── Auth — protected (requires valid access token) ──────────────────────────
   app.get("/api/v1/auth/introspect", requireAuth, introspectHandler);
 
   // ── Global error handler ────────────────────────────────────────────────────
   app.use((err: unknown, _req: Request, res: Response, _next: NextFunction) => {
-    if (err && typeof err === "object" && "code" in err && "message" in err && "statusCode" in err) {
-      sendError(res, err as { code: string; message: string; statusCode: number });
+    if (
+      err &&
+      typeof err === "object" &&
+      "code" in err &&
+      "message" in err &&
+      "statusCode" in err
+    ) {
+      sendError(
+        res,
+        err as { code: string; message: string; statusCode: number },
+      );
     } else {
-      sendError(res, { code: "INTERNAL_ERROR", message: "An unexpected error occurred", statusCode: 500 });
+      sendError(res, {
+        code: "INTERNAL_ERROR",
+        message: "An unexpected error occurred",
+        statusCode: 500,
+      });
     }
   });
 

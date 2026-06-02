@@ -10,7 +10,12 @@
  *  - Emit session events (audit log, analytics)
  */
 
-import type { SessionRefreshResponse, IntrospectResponse, ProtectedSession, ValidateSessionRequest } from "@themixmatch/types";
+import type {
+  SessionRefreshResponse,
+  IntrospectResponse,
+  ProtectedSession,
+  ValidateSessionRequest,
+} from "@themixmatch/types";
 import { container } from "../../config/di.js";
 import {
   verifyRefreshToken,
@@ -29,7 +34,9 @@ import { AuthError } from "../../utils/errors.js";
  *
  * Throws AUTH_UNAUTHORIZED for any invalid / expired / revoked token.
  */
-export async function refreshSession(rawToken: string): Promise<SessionRefreshResponse> {
+export async function refreshSession(
+  rawToken: string,
+): Promise<SessionRefreshResponse> {
   // 1. Verify JWT signature and expiry
   let payload: ReturnType<typeof verifyRefreshToken>;
   try {
@@ -44,6 +51,12 @@ export async function refreshSession(rawToken: string): Promise<SessionRefreshRe
     throw AuthError.unauthorized();
   }
 
+  // Ownership boundary: the JWT claim and stored refresh-token owner must agree.
+  if (record.userId !== payload.userId) {
+    await container.refreshTokenRepository.revoke(payload.jti);
+    throw AuthError.unauthorized();
+  }
+
   // 3. Confirm the stored record hasn't expired (belt-and-suspenders)
   if (new Date(record.expiresAt) < new Date()) {
     await container.refreshTokenRepository.revoke(payload.jti);
@@ -55,7 +68,10 @@ export async function refreshSession(rawToken: string): Promise<SessionRefreshRe
 
   // 5. Issue a new pair
   const accessToken = generateAccessToken(payload.userId, payload.role);
-  const { token: newRefreshToken, jti: newJti } = generateRefreshToken(payload.userId, payload.role);
+  const { token: newRefreshToken, jti: newJti } = generateRefreshToken(
+    payload.userId,
+    payload.role,
+  );
 
   const REFRESH_TTL_MS = 7 * 24 * 60 * 60 * 1000;
   await container.refreshTokenRepository.save({
@@ -76,7 +92,9 @@ export async function refreshSession(rawToken: string): Promise<SessionRefreshRe
  * Revokes the refresh token associated with a logout request.
  * Idempotent — unknown or already-revoked tokens still return success.
  */
-export async function logoutSession(rawToken: string): Promise<{ loggedOut: boolean }> {
+export async function logoutSession(
+  rawToken: string,
+): Promise<{ loggedOut: boolean }> {
   try {
     const payload = verifyRefreshToken(rawToken);
     await container.refreshTokenRepository.revoke(payload.jti);
@@ -112,7 +130,9 @@ export function introspectSession(rawToken: string): IntrospectResponse {
  * Validates a stored session and determines if it needs refresh.
  * This is the entry point for guarded session checks from clients.
  */
-export function validateSession(input: ValidateSessionRequest): ProtectedSession {
+export function validateSession(
+  input: ValidateSessionRequest,
+): ProtectedSession {
   try {
     const payload = verifyAccessToken(input.accessToken);
     return {

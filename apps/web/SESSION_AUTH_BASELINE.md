@@ -17,3 +17,4 @@ Covers: #392, #393, #394, #395
 - Protected route blocks anonymous access.
 - Valid session reaches protected route.
 - Expired session redirects and clears stale auth state.
+- Session refresh path restores the previous route without duplicating route-specific auth logic.

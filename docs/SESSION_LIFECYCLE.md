@@ -2,6 +2,8 @@
 
 This guide maps how protected sessions flow across the monorepo auth stack. It reflects the reset starter structure and the shared contracts in `@themixmatch/types`.
 
+This page is the contributor-facing answer for issues `#392`, `#393`, `#394`, and `#395`: refresh, introspection, route gating, and session continuity are all described here as one flow instead of four disconnected tasks.
+
 ## Shared contracts
 
 | Contract | Source | Purpose |
@@ -131,6 +133,7 @@ These are intentional seams, not missing pieces contributors should guess around
 - **Stellar verify stub**: stellar-service validates token format and key shape only — on-chain signature verification is a follow-up milestone.
 - **Role-based UI gating**: `requireRole()` exists on API; web/mobile should compose role checks on top of `ProtectedRouteGuard`.
 - **Device fingerprinting**: Not yet attached to refresh records — extension point in `session.service.ts`.
+- **Issue scope**: the current PR only sharpens the auth documentation and web-facing contract notes. Runtime auth behavior stays in the existing starter boundary for now.
 
 ## Related docs
 

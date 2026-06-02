@@ -4,6 +4,8 @@
 
 The web app uses shared auth contracts from `@themixmatch/types` and the same session continuity seam as mobile. Protected routes evaluate the shared `ProtectedRouteGuard` contract rather than ad-hoc checks.
 
+For the four assigned issues, treat this page as the web-specific companion to `docs/SESSION_LIFECYCLE.md`: it keeps the route restore, expiry, and refresh story in one place for contributors.
+
 See [Session Lifecycle](../../../docs/SESSION_LIFECYCLE.md) for the full lifecycle guide.
 
 ## Contracts & Routes
@@ -66,3 +68,4 @@ pnpm test
 
 - Token storage is localStorage — production should use httpOnly cookies
 - No Next.js middleware yet — guards are client-side via shared contract
+- The current starter documents the contract shape before adding new runtime orchestration, which keeps follow-up PRs small and focused

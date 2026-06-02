@@ -1,5 +1,34 @@
 # Local Authentication Setup — Full Stack Verification and Recovery
 
+This guide is for contributors working on the reset starter auth slice. It covers the current auth/session seam between `apps/api`, `apps/stellar-service`, and the shared contracts in `packages/types`.
+
+## What matters in this slice
+
+### Shared contracts to know
+
+- `AuthSession`
+- `SessionBootstrap`
+- `ProtectedSession`
+- `SessionRefreshResponse`
+- `SessionContinuityOutcome`
+- `ProtectedRouteGuard`
+- `StellarServiceHandshake`
+- `StellarAuthChallengeRequest/Response`
+- `StellarAuthVerifyRequest/Response`
+- `evaluateProtectedRouteGuard()`
+- `continueSessionAfterRefresh()`
+- `isSupportedStellarSessionToken()`
+
+### Routes contributors usually touch
+
+- `POST /api/v1/auth/login`
+- `POST /api/v1/auth/refresh`
+- `GET /api/v1/auth/introspect`
+- `POST /api/v1/auth/logout`
+- `GET /api/v1/auth/handshake`
+- `POST /api/v1/stellar/auth/challenge`
+- `POST /api/v1/stellar/auth/verify`
+
 ## Quick start
 
 ### 1. Install dependencies
@@ -50,8 +79,11 @@ JWT_SECRET=dev-secret-key-change-in-production
 # Stellar service URL for challenge/verify proxying
 STELLAR_SERVICE_URL=http://localhost:3002
 
-# Access token lifetime (JWT_EXPIRES_IN is used by jwt.service.ts)
+# Access token lifetime (used by jwt.service.ts)
 JWT_EXPIRES_IN=15m
+
+# API listen port
+PORT=3001
 
 # Database connection (optional — in-memory store is default)
 DATABASE_URL=postgresql://user:password@localhost:5432/mixmatch
@@ -71,6 +103,19 @@ NEXT_PUBLIC_API_BASE_URL=http://localhost:3001
 EXPO_PUBLIC_API_BASE_URL=http://localhost:3001
 ```
 
+### Stellar service (`apps/stellar-service/.env.local`)
+
+```bash
+# Stellar service listen port
+STELLAR_SERVICE_PORT=3002
+
+# Testnet passphrase returned in handshake and challenge flows
+STELLAR_NETWORK_PASSPHRASE=Test SDF Network ; September 2015
+
+# Horizon endpoint surfaced to clients via wallet bootstrap metadata
+STELLAR_HORIZON_URL=https://horizon-testnet.stellar.org
+```
+
 ## Test the verification and recovery flows
 
 ### Exercise 1: Basic session verification
@@ -78,19 +123,20 @@ EXPO_PUBLIC_API_BASE_URL=http://localhost:3001
 **Goal:** Verify that introspection validates tokens and ownership.
 
 1. **Sign up** at `http://localhost:3000/signup`
-   - Creates account and issues `{ accessToken, refreshToken, user }`
+   - Creates account and issues `{ token, refreshToken, user, session }`
    - Web client stores tokens in localStorage
    
 2. **Open DevTools** → Application → Local Storage → `http://localhost:3000`
-   - See `auth_session` with stored `{ accessToken, refreshToken, user }`
+   - See `auth_session` with stored `AuthSession` data (`token`, `refreshToken`, `user`, `session`)
 
 3. **Visit `/dashboard`** (protected route)
    - Web calls `ensureSessionContinuity()` → calls `GET /api/v1/auth/introspect`
    - API verifies access token is valid and returns `{ valid: true, userId, role }`
    - Route guard allows access because `userId` matches stored session
 
-4. **Verify API audit trail**
-   - API logs: `[introspect] userId=user-123 role=PLANNER`
+4. **Verify session metadata**
+   - `session.userId` matches `user.id`
+   - `session.wallet` includes Stellar network metadata for future wallet-link flows
 
 ### Exercise 2: Token recovery after expiry
 
@@ -102,7 +148,7 @@ EXPO_PUBLIC_API_BASE_URL=http://localhost:3001
    ```javascript
    // In DevTools console:
    const session = JSON.parse(localStorage.getItem('auth_session'));
-   session.accessToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.invalid.invalid';
+   session.token = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.invalid.invalid';
    localStorage.setItem('auth_session', JSON.stringify(session));
    ```
 
@@ -115,7 +161,7 @@ EXPO_PUBLIC_API_BASE_URL=http://localhost:3001
 
 4. **Verify recovery preserves ownership**
    - Stored `userId` before reload: `user-123`
-   - API returns same `userId` in refresh response
+   - Client preserves the same `user` and `session.wallet` metadata after refresh
    - Route guard allows access with matching `userId`
 
 5. **Verify single-use refresh**:
@@ -146,41 +192,31 @@ EXPO_PUBLIC_API_BASE_URL=http://localhost:3001
    - Original `session.userId` from storage matches API response
    - Role and metadata are in sync
 
-### Exercise 4: Cross-user ownership isolation
+### Exercise 4: Auth-to-Stellar handshake and verify seam
 
-**Goal:** Verify that one user's refresh token cannot be used to claim another user's session.
+**Goal:** Verify the boundary contributors will extend for future wallet-linked identity.
 
-**Setup:** Two browser tabs, two separate sign-ins
+1. **Fetch handshake metadata**
+   - Call `GET /api/v1/auth/handshake`
+   - Response should include Stellar network metadata from `apps/stellar-service`
 
-1. **Tab A:** Sign in as `alice@example.com`
-   - Stores `{ accessToken: A1, refreshToken: A2, userId: alice-id }`
+2. **Generate a challenge**
+   - Call `POST /api/v1/stellar/auth/challenge`
+   - Provide a plausible Stellar public key
+   - Response should include `transactionXdr`, `networkPassphrase`, and `expiresAt`
 
-2. **Tab B:** Sign in as `bob@example.com`
-   - Stores `{ accessToken: B1, refreshToken: B2, userId: bob-id }`
+3. **Verify a supported session token format**
+   - Call `POST /api/v1/stellar/auth/verify`
+   - Use a session token that matches the current starter rule (`local.*` or JWT-shaped `eyJ...`)
+   - Response should return `verified: true` and the normalized Stellar account id
 
-3. **Tab A (malicious attempt):** Copy Bob's refresh token
-   ```javascript
-   // In Tab A console:
-   const bobSession = // ... copy from Tab B's storage
-   const session = JSON.parse(localStorage.getItem('auth_session'));
-   session.refreshToken = bobSession.refreshToken; // Replace with Bob's token
-   localStorage.setItem('auth_session', JSON.stringify(session));
-   ```
+4. **Verify a failure path**
+   - Repeat with an unsupported session token like `garbage-token`
+   - Response should fail with `AUTH_INVALID_SESSION`
 
-4. **Tab A:** Reload and mock expired access token
-   ```javascript
-   // Force recovery attempt:
-   const session = JSON.parse(localStorage.getItem('auth_session'));
-   session.accessToken = 'invalid-token';
-   localStorage.setItem('auth_session', JSON.stringify(session));
-   location.reload();
-   ```
-
-5. **Verify rejection:**
-   - Web calls `POST /api/v1/auth/refresh` with Bob's token
-   - API extracts `jti` from Bob's refresh token (maps to `bob-id`)
-   - API compares stored `userId: bob-id` with inferred user context (Alice)
-   - **Rejection:** "Refresh token is invalid or expired" (API logs: `[refresh-rejected] token_jti=bob-xyz userId=bob-id does_not_match_context`)
+5. **Contributor note**
+   - This seam intentionally stops at token-format + key-shape checks
+   - On-chain proof and wallet custody belong to later milestones
 
 ### Exercise 5: Protected route guarding
 
@@ -190,13 +226,13 @@ EXPO_PUBLIC_API_BASE_URL=http://localhost:3001
 
 2. **Visit `/dashboard` directly** (without signing in)
    - Web calls `evaluateProtectedRouteGuard(null)`
-   - Returns `{ authorized: false, reason: 'missing_session' }`
+   - Returns `{ allowed: false, reason: 'missing_session' }`
    - Next.js redirects to `/login`
 
 3. **Sign in**
    - Stored session has `userId: user-123`
    - Visit `/dashboard` again
-   - Guard returns `{ authorized: true, userId: 'user-123', role: 'PLANNER' }`
+   - Guard returns `{ allowed: true, userId: 'user-123', role: 'PLANNER' }`
    - Route renders protected content
 
 4. **Manually clear userId from stored session**:
@@ -209,7 +245,7 @@ EXPO_PUBLIC_API_BASE_URL=http://localhost:3001
 
 5. **Verify guard detects mismatch**
    - Guard evaluation finds `userId: null` in guard result
-   - Returns `{ authorized: false, reason: 'missing_session' }`
+   - Returns `{ allowed: false, reason: 'missing_session' }`
    - Redirects to login
 
 ## Run the test suites
@@ -278,6 +314,6 @@ pnpm typecheck
 
 ## Related documentation
 
-- [Verification and Recovery Setup](../../docs/VERIFICATION_AND_RECOVERY_SETUP.md) — Deep dive into verification and recovery patterns
-- [Session Lifecycle](../../docs/SESSION_LIFECYCLE.md) — Full bootstrap and refresh flow
-- [Ownership and Recovery Implementation](../../docs/OWNERSHIP_AND_RECOVERY_IMPLEMENTATION.md) — Test coverage summary
+- [Authentication](./AUTHENTICATION.md) — API routes, contracts, env values, and extension notes
+- [Session Lifecycle](../../docs/SESSION_LIFECYCLE.md) — Cross-workspace bootstrap, refresh, logout, and Stellar seam
+- [Stellar auth safety](./STELLAR_AUTH_SAFETY.md) — Boundary and abuse-control notes for wallet-facing flows

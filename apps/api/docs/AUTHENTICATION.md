@@ -8,14 +8,17 @@ For the full cross-workspace session lifecycle, see [Session Lifecycle](../../..
 
 ## Shared contracts
 
-Source: `packages/types/src/auth.ts`, `packages/types/src/session.types.ts`
+Source: `packages/types/src/auth.ts`, `packages/types/src/session.types.ts`, `packages/types/src/auth-boundary.ts`
 
-- `SignupRequest`, `LoginRequest`, `AuthSession`
-- `SessionRefreshRequest`, `SessionRefreshResponse`
+- `SignupRequest`, `LoginRequest`, `AuthSession`, `SessionBootstrap`
+- `ValidateSessionRequest`, `ProtectedSession`
+- `SessionRefreshRequest`, `SessionRefreshResponse`, `SessionContinuityOutcome`
 - `IntrospectResponse`
 - `SessionLogoutRequest`, `SessionLogoutResponse`
+- `StellarServiceHandshake`
 - `StellarAuthChallengeRequest/Response`, `StellarAuthVerifyRequest/Response`
 - `ProtectedRouteGuard`, `RefreshTokenRecord`
+- `evaluateProtectedRouteGuard()`, `continueSessionAfterRefresh()`, `isSupportedStellarSessionToken()`
 
 ## API routes
 
@@ -27,6 +30,8 @@ Source: `packages/types/src/auth.ts`, `packages/types/src/session.types.ts`
 | GET | `/api/v1/auth/introspect` | Protected | Validate access token |
 | POST | `/api/v1/auth/logout` | Public | Revoke refresh token |
 | GET | `/api/v1/auth/handshake` | Public | Stellar handshake metadata |
+| POST | `/api/v1/stellar/auth/challenge` | Public | Proxy challenge generation to `apps/stellar-service` |
+| POST | `/api/v1/stellar/auth/verify` | Public | Proxy session-token + Stellar-key verification to `apps/stellar-service` |
 
 ## Key runtime files
 
@@ -69,8 +74,23 @@ Error:
 | Variable | Default | Notes |
 |----------|---------|-------|
 | `JWT_SECRET` | dev secret | Required in production |
+| `JWT_EXPIRES_IN` | `15m` | Access-token TTL consumed by `jwt.service.ts` |
 | `STELLAR_SERVICE_URL` | http://localhost:3002 | Stellar proxy target |
 | `PORT` | 3001 | API listen port |
+
+## Contributor extension notes
+
+- Keep auth/session ownership decisions in `src/domains/identity/session.service.ts`; avoid re-implementing refresh logic in route handlers.
+- Keep protected-route vocabulary aligned to `ProtectedRouteGuard` and `evaluateProtectedRouteGuard()`.
+- Keep wallet-link metadata under `SessionBootstrap.wallet`; do not introduce app-local copies of Stellar network config.
+- Extend `src/middleware/require-auth.ts` / `requireRole()` for API-only authorization, not for app boot session continuity.
+- When changing the auth-to-Stellar handoff, update both `apps/api/docs/AUTHENTICATION.md` and `apps/stellar-service/docs/STELLAR_AUTH_BOUNDARY.md` so contributors see one coherent boundary.
+
+## Current tradeoffs
+
+- Refresh-token storage is in-memory today.
+- `POST /api/v1/stellar/auth/verify` currently enforces token shape and Stellar key shape, not on-chain signature proof.
+- The starter deliberately avoids wallet custody and secret management in this milestone.
 
 ## Run tests
 

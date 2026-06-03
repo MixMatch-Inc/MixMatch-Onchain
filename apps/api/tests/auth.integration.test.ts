@@ -109,4 +109,6 @@ test('expired/invalid session token returns 401 contract', async () => {
     .get('/auth/me')
     .set('Authorization', 'Bearer invalid-or-expired-token');
   assert.equal(res.status, 401);
+  assert.equal(res.body.success, false);
+  assert.equal(typeof res.body.error?.code, 'string');
 });

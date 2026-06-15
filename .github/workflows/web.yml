@@ -30,10 +30,10 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Lint
-        run: pnpm --filter @mixmatch/web lint
+        run: pnpm exec turbo run lint --filter=@mixmatch/web
 
       - name: Test
-        run: pnpm --filter @mixmatch/web test
+        run: pnpm exec turbo run test --filter=@mixmatch/web
 
       - name: Build
-        run: pnpm --filter @mixmatch/web... build
+        run: pnpm exec turbo run build --filter=@mixmatch/web

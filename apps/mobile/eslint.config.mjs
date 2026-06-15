@@ -9,4 +9,13 @@ export default [
       },
     },
   },
+  {
+    files: ['babel.config.js', 'jest.config.js'],
+    languageOptions: {
+      globals: {
+        module: 'readonly',
+        require: 'readonly',
+      },
+    },
+  },
 ];

@@ -121,20 +121,25 @@ TheMixMatch Onchain is built with a modern full-stack TypeScript architecture.
 
 # Repository Structure
 
+This repository is currently a **foundation release**: monorepo tooling plus
+authentication only. Everything else described in the Product Vision below
+is future scope and is intentionally not implemented yet.
+
 ```text
 themixmatch-onchain/
 │
 ├── apps/
-│   ├── api/                # Backend API service
-│   ├── web/                # Web application
-│   ├── mobile/             # Mobile application
-│   └── stellar-service/    # Stellar integration layer
+│   ├── api/        # Express modular monolith — authentication backend
+│   ├── web/        # Next.js web app — login & signup
+│   └── mobile/     # Expo/React Native foundation (no screens yet)
 │
 ├── packages/
-│   ├── config/             # Shared configuration
-│   └── types/              # Shared TypeScript contracts
+│   ├── shared/     # Shared TypeScript types & validation schemas
+│   └── stellar/    # Placeholder scaffold for future Stellar integration
 │
-└── docs/
+├── docs/           # Environment, testing, and contributor documentation
+└── .github/
+    └── workflows/  # Per-package CI (install, lint, test, build)
 ```
 
 ---
@@ -145,17 +150,14 @@ themixmatch-onchain/
 
 `apps/api`
 
-The backend provides the core application logic.
+A modular-monolith Express + TypeScript backend. Currently implements only
+the **auth** and **users** modules:
 
-Responsibilities include:
+* registration (`POST /api/auth/register`)
+* login (`POST /api/auth/login`)
+* current user (`GET /api/auth/me`, requires a bearer token)
 
-* authentication,
-* user management,
-* creator profiles,
-* discovery APIs,
-* collaboration workflows,
-* community features,
-* communication with Stellar services.
+Data is persisted to PostgreSQL via Prisma. See [apps/api/README.md](apps/api/README.md).
 
 ---
 
@@ -163,18 +165,9 @@ Responsibilities include:
 
 `apps/web`
 
-The web platform provides the full browser experience.
-
-It is designed for:
-
-* creator onboarding,
-* profile management,
-* community experiences,
-* dashboards,
-* discovery features,
-* operational tools.
-
-The web app provides a richer interface for creators and platform management.
+A Next.js (App Router) app with two pages: `/login` and `/signup`. Shares
+validation schemas and types with the API via `@mixmatch/shared`. See
+[apps/web/README.md](apps/web/README.md).
 
 ---
 
@@ -182,47 +175,19 @@ The web app provides a richer interface for creators and platform management.
 
 `apps/mobile`
 
-The mobile app is designed around everyday music interactions.
-
-Core experiences include:
-
-* creator discovery,
-* community engagement,
-* profile exploration,
-* fan interactions,
-* mobile-first creator workflows.
+An Expo/React Native + TypeScript foundation: project structure, linting,
+formatting, and testing setup only. No screens, navigation, or
+authentication yet. See [apps/mobile/README.md](apps/mobile/README.md).
 
 ---
 
-## Stellar Service
+## Stellar Package
 
-`apps/stellar-service`
+`packages/stellar`
 
-The Stellar service isolates blockchain-related functionality.
-
-Responsibilities include:
-
-* wallet operations,
-* Stellar network communication,
-* transaction handling,
-* payment workflows,
-* blockchain-based receipts.
-
-Keeping Stellar separate allows the platform to evolve while maintaining a clean application architecture.
-
----
-
-# Development Roadmap
-
-The MVP development approach follows these stages:
-
-1. Authentication and account foundations.
-2. User and creator profiles.
-3. Stellar wallet integration.
-4. Core music discovery workflows.
-5. Creator and fan engagement features.
-6. Blockchain-powered experiences.
-7. Testing, observability, and production readiness.
+A scaffold-only package establishing the future Stellar integration
+boundary (placeholder types and interfaces, no blockchain logic). See
+[packages/stellar/README.md](packages/stellar/README.md).
 
 ---
 
@@ -249,33 +214,40 @@ pnpm install
 
 # Running the Platform
 
-Start all applications:
+Copy each app's `.env.example` to `.env` first (see
+[docs/ENVIRONMENT.md](docs/ENVIRONMENT.md)). The API requires a local
+PostgreSQL database.
+
+Start everything:
 
 ```bash
 pnpm dev
 ```
 
-Individual services:
+Individual apps:
 
 ```bash
-pnpm dev:api
-pnpm dev:web
-pnpm dev:mobile
-pnpm dev:stellar
+pnpm --filter @mixmatch/api dev
+pnpm --filter @mixmatch/web dev
+pnpm --filter @mixmatch/mobile dev
 ```
 
 Default ports:
 
 ```text
-Web:
-http://localhost:3000
-
-API:
-http://localhost:3001
-
-Stellar Service:
-http://localhost:3002
+Web: http://localhost:3000
+API: http://localhost:3001
 ```
+
+---
+
+# Running Tests
+
+```bash
+pnpm test
+```
+
+See [docs/TESTING.md](docs/TESTING.md) for per-package details.
 
 ---
 
@@ -299,10 +271,11 @@ Each application provides its own environment template:
 apps/api/.env.example
 apps/web/.env.example
 apps/mobile/.env.example
-apps/stellar-service/.env.example
 ```
 
-Copy the required environment file before running locally.
+Copy the required environment file before running locally. See
+[docs/ENVIRONMENT.md](docs/ENVIRONMENT.md) for variable descriptions and
+secrets handling.
 
 ---
 
@@ -311,6 +284,13 @@ Copy the required environment file before running locally.
 TheMixMatch Onchain aims to become a platform where music creators and fans can discover, collaborate, and engage in new ways.
 
 The long-term vision is to combine music culture with accessible blockchain technology, enabling stronger creator communities, better discovery, and new opportunities for participation.
+
+---
+
+# Contributing
+
+See [docs/CONTRIBUTING.md](docs/CONTRIBUTING.md) for coding standards,
+project structure, and the development workflow.
 
 ---
 

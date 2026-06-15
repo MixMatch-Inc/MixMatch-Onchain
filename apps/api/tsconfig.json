@@ -1,16 +1,11 @@
 {
-  "extends": "../../packages/config/tsconfig.base.json",
+  "extends": "../../tsconfig.base.json",
   "compilerOptions": {
-    "composite": true,
-    "rootDir": "src",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
     "outDir": "dist",
-    "baseUrl": ".",
-    "paths": {
-      "@themixmatch/*": ["../../packages/*/src"]
-    }
+    "rootDir": "src",
+    "types": ["node"]
   },
-  "references": [
-    { "path": "../../packages/types" }
-  ],
-  "include": ["src/**/*.ts"]
+  "include": ["src"]
 }

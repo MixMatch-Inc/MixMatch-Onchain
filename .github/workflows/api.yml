@@ -1,0 +1,42 @@
+name: API
+
+on:
+  pull_request:
+    paths:
+      - "apps/api/**"
+      - "packages/**"
+      - "pnpm-workspace.yaml"
+      - ".github/workflows/api.yml"
+  push:
+    branches: [dev, main]
+    paths:
+      - "apps/api/**"
+      - "packages/**"
+
+jobs:
+  api:
+    runs-on: ubuntu-latest
+    env:
+      JWT_SECRET: test-secret
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/mixmatch?schema=public
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: ".nvmrc"
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        run: pnpm --filter @mixmatch/api lint
+
+      - name: Test
+        run: pnpm --filter @mixmatch/api test
+
+      - name: Build
+        run: pnpm --filter @mixmatch/api... build

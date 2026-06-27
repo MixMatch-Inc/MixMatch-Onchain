@@ -11,6 +11,8 @@
     "typecheck": "turbo run typecheck",
     "lint": "turbo run lint",
     "test": "turbo run test",
+    "test:e2e": "jest --config apps/api/test/jest-e2e.json --runInBand",
+    "test:e2e:cov": "jest --config apps/api/test/jest-e2e.json --coverage --runInBand",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "clean": "turbo run clean"

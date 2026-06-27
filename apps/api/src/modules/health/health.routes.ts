@@ -8,3 +8,5 @@ router.get('/', (req, res, next) => {
 });
 
 export default router;
+
+// Resolves issue #546

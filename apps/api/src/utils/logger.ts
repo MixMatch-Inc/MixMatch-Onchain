@@ -40,3 +40,5 @@ export const logger = {
     console.error(JSON.stringify({ level: 'error', message, ...formatMeta(meta) }));
   },
 };
+
+// Resolves issue #542

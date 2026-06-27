@@ -1,5 +1,6 @@
 import dotenv from 'dotenv';
 import { apiManifest, validateServiceEnv, formatValidationErrors } from '@mixmatch/env-manifest';
+import { logger } from '../utils/logger';
 
 dotenv.config();
 
@@ -8,7 +9,7 @@ const validationResult = validateServiceEnv(apiManifest, process.env);
 
 if (!validationResult.valid) {
   const errorMessage = formatValidationErrors(apiManifest, validationResult);
-  console.error(errorMessage);
+  logger.error('Environment configuration validation failed', { error: new Error(errorMessage) });
   process.exit(1);
 }
 

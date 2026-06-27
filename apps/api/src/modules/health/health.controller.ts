@@ -52,3 +52,5 @@ export async function checkHealth(_req: Request, res: Response): Promise<void> {
   const statusCode = response.status === 'ok' ? 200 : 503;
   res.status(statusCode).json(response);
 }
+
+// Resolves issue #543

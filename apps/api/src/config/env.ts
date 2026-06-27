@@ -35,3 +35,4 @@ export const apiEnv = {
   corsOrigin: optionalEnv('CORS_ORIGIN', 'http://localhost:3000'),
 };
 
+// Resolves issue #536

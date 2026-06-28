@@ -36,4 +36,6 @@ jobs:
         run: pnpm exec turbo run test --filter=@mixmatch/web
 
       - name: Build
+        env:
+          NEXT_PUBLIC_API_URL: http://localhost:3001
         run: pnpm exec turbo run build --filter=@mixmatch/web

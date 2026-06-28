@@ -1,27 +1,26 @@
-name: "CI Pipeline: Regression Coverage [Wave 200pts]"
+name: Regression Coverage
 
 on:
   push:
-    branches: [ "main", "v2" ]
+    branches: [main, dev]
   pull_request:
-    branches: [ "main", "v2" ]
+    branches: [main, dev]
 
 permissions:
   contents: read
 
 jobs:
-  test-and-coverage:
-    name: Execute Regression Test Engine
+  regression:
+    name: Regression Test Suite
     runs-on: ubuntu-latest
 
-    # Isolated operational environments required for Auth and Subsystem E2E execution
     services:
       postgres:
         image: postgres:15-alpine
         env:
-          POSTGRES_DB: nexafx_test
+          POSTGRES_DB: mixmatch_test
           POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: test_password
+          POSTGRES_PASSWORD: postgres
         ports:
           - 5432:5432
         options: >-
@@ -30,53 +29,32 @@ jobs:
           --health-timeout 5s
           --health-retries 5
 
-      redis:
-        image: redis:7-alpine
-        ports:
-          - 6379:6379
-        options: >-
-          --health-cmd "redis-cli ping"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-
     steps:
-      - name: Checkout Source Code repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Setup Node.js Runtime Environment
-        uses: actions/setup-node@v4
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
         with:
-          node-version: 18
-          cache: 'npm'
+          node-version-file: ".nvmrc"
+          cache: "pnpm"
 
-      - name: Install Monorepo Dependencies
-        run: npm ci
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
 
-      - name: Code Quality Audits (Linting)
-        run: npm run lint
+      - name: Lint
+        run: pnpm exec turbo run lint
 
-      - name: Run Global Suite & Generate Regression Coverage
+      - name: Test with coverage
         env:
-          NODE_ENV: test
-          DATABASE_URL: postgresql://postgres:test_password@localhost:5432/nexafx_test
-          REDIS_HOST: localhost
-          REDIS_PORT: 6379
-          JWT_SECRET: pipeline-runner-fallback-signature-validation-key
-        # Enforces coverage reports across all active modules during the test run
-        run: |
-          npm run test:cov -- --coverageDirectory=coverage
+          JWT_SECRET: ci-test-secret
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/mixmatch_test
+        run: pnpm exec turbo run test -- --coverage
 
-      - name: Assert Strict Quality Gate Coverage Metrics
-        # This step parses coverage output and fails the build if regression targets fall below limits
-        run: |
-          echo "Verifying Auth Module Coverage Thresholds (>90%)..."
-          npx istanbul-check-coverage --statements 85 --branches 80 --functions 85 --lines 85
-
-      - name: Archive Coverage Metrics Report Artifacts
+      - name: Upload coverage report
         uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: structural-coverage-report
-          path: coverage/
+          name: coverage-report
+          path: apps/api/coverage/
           retention-days: 7

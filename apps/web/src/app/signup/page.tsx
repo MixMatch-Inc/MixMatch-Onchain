@@ -3,7 +3,7 @@
 import { registerSchema } from '@mixmatch/shared';
 import Link from 'next/link';
 import { AuthForm, type AuthFormValues } from '@/components/AuthForm';
-import { registerUser } from '@/lib/api-client';
+import { registerUser, ApiError } from '@/lib/api-client';
 import { useAuth } from '@/lib/auth-context';
 
 export default function SignupPage() {
@@ -31,7 +31,12 @@ export default function SignupPage() {
 
   return (
     <main>
-      <AuthForm title="Create account" submitLabel="Create account" onSubmit={handleSubmit} />
+      <AuthForm
+        title="Create account"
+        submitLabel="Create account"
+        onSubmit={handleSubmit}
+        passwordAutoComplete="new-password"
+      />
       <p>
         Already have an account? <Link href="/login">Log in</Link>
       </p>

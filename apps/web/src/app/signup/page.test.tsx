@@ -1,8 +1,14 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { AuthProvider } from '@/lib/auth-context';
+import { registerUser } from '@/lib/api-client';
 import SignupPage from './page';
+
+vi.mock('@/lib/api-client', () => ({
+  registerUser: vi.fn(),
+}));
 
 function renderSignupPage() {
   return render(
@@ -14,6 +20,7 @@ function renderSignupPage() {
 
 describe('SignupPage', () => {
   beforeEach(() => {
+    vi.clearAllMocks();
     window.localStorage.clear();
   });
 

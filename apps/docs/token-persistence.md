@@ -1,137 +1,92 @@
 # Token Persistence
 
-## Overview
+## Scope
 
-The auth flow uses a two-token strategy:
+Token persistence covers how authentication tokens are stored, retrieved, and
+validated on the client side after a successful login or registration.
 
-| Token          | Lifetime        | Storage                  | Purpose                              |
-|----------------|-----------------|--------------------------|--------------------------------------|
-| Access token   | 1 hour (JWT)    | `localStorage` (browser) | Authenticates API requests           |
-| Refresh token  | 7 days (opaque) | `localStorage` (browser) | Obtains new access tokens when they expire |
+## Storage Strategy
 
-Both tokens are returned from `POST /api/auth/register` and
-`POST /api/auth/login`. The refresh token is also rotated on every
-successful refresh (old token is revoked, a new one is issued).
+| Concern | Decision |
+|---------|----------|
+| Storage backend | `localStorage` (browser) — survives page reloads and tab closes |
+| Storage key | `mixmatch.auth` |
+| Stored shape | `{ user: AuthUser, accessToken: string }` |
+| Serialization | `JSON.stringify` on write, `JSON.parse` on read |
+| Corruption handling | Parse failure causes automatic removal from localStorage |
+| Expiry handling | Not enforced client-side — token expiry is detected at the API via /me |
 
----
-
-## Data Flow
-
-### Login / Registration
-
-```
-Client (login/register page)
-  → POST /api/auth/login (or /register)
-  → AuthService.login → SessionService.createSession
-    → JWT access token (1h) + opaque refresh token (7d)
-  → Response: { user, accessToken, refreshToken }
-  → AuthContext.setAuth stores in localStorage under "mixmatch.auth"
-```
-
-### Authenticated Request
+## Data Lifecycle
 
 ```
-Client (any page)
-  → fetchWithAuth('/api/auth/me')
-  → Checks access token expiry (decodes JWT locally)
-  → If valid: GET /api/auth/me with Authorization: Bearer <accessToken>
-  → If expired: refreshes tokens first, then retries
+Register/Login
+     │
+     ▼
+api-client returns { user, accessToken }
+     │
+     ▼
+setAuth({ user, accessToken })
+     ├── localStorage.setItem('mixmatch.auth', JSON.stringify(...))
+     └── React context update (user + accessToken state)
+     │
+     ├── Subsequent page loads
+     │   ├── AuthProvider mounts
+     │   ├── localStorage.getItem('mixmatch.auth')
+     │   ├── Parse → setUser / setAccessToken
+     │   └── App sees logged-in state immediately
+     │
+     ├── getMe(accessToken)
+     │   ├── GET /api/auth/me with Bearer token
+     │   ├── 200 → user profile (session valid)
+     │   ├── 401 → token expired/invalid → redirect to login
+     │   └── 404 → user deleted → redirect to login
+     │
+     └── logout()
+         ├── localStorage.removeItem('mixmatch.auth')
+         └── React context clear (user → null, accessToken → null)
 ```
 
-### Token Refresh
+## Me Endpoint Integration
 
-```
-Client
-  → access token is expired or returns 401
-  → POST /api/auth/refresh { refreshToken }
-  → SessionService.refreshSession
-    → Validates refresh token, revokes old session, creates new one
-  → Response: { user, accessToken, refreshToken }
-  → AuthContext updates localStorage with new tokens
-  → Original request retried with fresh access token
-```
+The `getMe()` function in `apps/web/src/lib/api-client.ts` validates the
+persisted session against the server:
 
-### Logout
+```typescript
+import { getMe } from '@/lib/api-client';
 
-```
-Client
-  → AuthContext.logout()
-  → localStorage.removeItem('mixmatch.auth')
-  → Tokens are discarded client-side
-  → Refresh token remains valid server-side until TTL expiry (7 days)
-```
-
----
-
-## Token Storage
-
-### Browser (`localStorage`)
-
-The web app stores tokens in `window.localStorage` under the key
-`mixmatch.auth`. The stored value is a JSON object:
-
-```json
-{
-  "user": { "id": "...", "email": "user@example.com", "role": "user" },
-  "accessToken": "eyJhbGciOiJIUzI1NiIs...",
-  "refreshToken": "550e8400-e29b-41d4-a716-446655440000"
+// After rehydrating auth from localStorage on page load:
+try {
+  const { user } = await getMe(stored.accessToken);
+  // session is still valid — user profile matches server
+} catch (err) {
+  if (err.code === 'TOKEN_EXPIRED' || err.code === 'INVALID_TOKEN') {
+    // token no longer valid — redirect to login
+  }
 }
 ```
 
-### Security considerations
+**Contract**
 
-- `localStorage` is accessible to any JavaScript on the same origin, making it
-  vulnerable to XSS. Sanitise all user-rendered content to mitigate this.
-- The access token is short-lived (1h), limiting the window of exposure.
-- The refresh token is opaque (a UUID) and is rotated on each use, so even if
-  stolen, it can only be used once before rotation.
-- Server-side session revocation (when implemented as an endpoint) will
-  invalidate refresh tokens immediately.
+| | |
+|-|-|
+| **Endpoint** | `GET /api/auth/me` |
+| **Auth** | `Authorization: Bearer <accessToken>` |
+| **Success** | `200 { user: AuthUser }` |
+| **Errors** | `401 INVALID_TOKEN`, `401 TOKEN_EXPIRED`, `404 NOT_FOUND` |
 
----
+## Edge Cases
 
-## Edge Cases & Hardening
+| Scenario | Behaviour |
+|----------|-----------|
+| localStorage corrupted (invalid JSON) | AuthProvider silently removes the key, treats user as logged out |
+| Token expired between page loads | getMe() returns 401 TOKEN_EXPIRED — app should redirect to login |
+| User deleted by admin | getMe() returns 404 NOT_FOUND — app should clear auth and redirect |
+| Multiple tabs | Each tab has its own AuthProvider; setAuth in one tab is not reflected in others without a storage event listener |
+| Private browsing | localStorage is available but cleared when the last private tab closes |
 
-### Expired token on page load
+## Testing
 
-When the app mounts, the `AuthProvider` reads `localStorage` and checks the
-access token's JWT `exp` claim. If expired, it attempts a background refresh:
-
-- **Refresh succeeds**: tokens are replaced in localStorage, user stays logged in.
-- **Refresh fails**: localStorage is cleared, user is logged out.
-
-### Concurrent refresh requests
-
-If multiple authenticated API calls are made simultaneously while the token
-is expired, only one refresh request is sent. Subsequent calls wait for the
-same in-flight refresh promise rather than triggering duplicate refreshes.
-
-### Corrupted localStorage
-
-If `localStorage` data cannot be parsed (invalid JSON, missing fields), the
-entry is removed and the user is treated as unauthenticated.
-
-### 401 after refresh
-
-If a request returns 401 even after a successful token refresh (e.g., the user
-was deleted or banned), the client clears localStorage and throws a
-`SESSION_EXPIRED` error. The calling code should redirect to the login page.
-
-### Network failure during refresh
-
-If the refresh endpoint is unreachable, the client throws an error. The
-calling code should handle this gracefully (e.g., show a "connection lost"
-message rather than immediately logging the user out).
-
----
-
-## Integration points
-
-- **Auth context**: `apps/web/src/lib/auth-context.tsx` (manages tokens in state
-  and localStorage, exposes `fetchWithAuth`)
-- **API client**: `apps/web/src/lib/api-client.ts` (`refreshAccessToken`,
-  `fetchAuthenticated`)
-- **Backend refresh endpoint**: `POST /api/auth/refresh`
-- **Session service**: `apps/api/src/modules/auth/session.service.ts`
-- **Session store**: `apps/api/src/modules/auth/session.store.ts`
-- **Shared types**: `packages/shared/src/types/auth.ts` (`AuthTokenResponse`)
+| File | Scope |
+|------|-------|
+| `apps/web/src/lib/__tests__/auth-context.test.tsx` | AuthProvider localStorage hydration, setAuth, logout (6 tests) |
+| `apps/api/src/modules/auth/tests/me.test.ts` | API-level me endpoint: token validation, expiry, not found (6 tests) |

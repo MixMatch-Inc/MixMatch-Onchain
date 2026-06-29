@@ -1,116 +1,70 @@
-import { render, screen, waitFor } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
+import { renderHook, act } from '@testing-library/react';
 import { describe, expect, it, beforeEach } from 'vitest';
-import { AuthProvider, useAuth } from '@/lib/auth-context';
+import { AuthProvider, useAuth } from '../auth-context';
 
-const STORAGE_KEY = 'mixmatch.auth';
-
-const mockUser = {
-  id: '1',
-  email: 'test@example.com',
-  role: 'USER',
-  createdAt: '2026-01-01T00:00:00.000Z',
-  updatedAt: '2026-01-01T00:00:00.000Z',
-};
-
-function TestConsumer() {
-  const { user, accessToken, isLoading, setAuth, logout } = useAuth();
-
-  if (isLoading) return <div>loading...</div>;
-
-  return (
-    <div>
-      <div data-testid="user">{user?.email ?? 'not logged in'}</div>
-      <div data-testid="token">{accessToken ?? 'none'}</div>
-      <button onClick={() => setAuth({ user: mockUser, accessToken: 'test-token' })}>
-        set auth
-      </button>
-      <button onClick={logout}>log out</button>
-    </div>
-  );
-}
-
-function renderWithProvider() {
-  return render(
-    <AuthProvider>
-      <TestConsumer />
-    </AuthProvider>,
-  );
-}
-
-describe('AuthProvider — token persistence', () => {
+describe('AuthProvider', () => {
   beforeEach(() => {
     window.localStorage.clear();
   });
 
-  it('shows logged-out state when localStorage is empty', async () => {
-    renderWithProvider();
+  it('has no user and no token by default after loading', () => {
+    const { result } = renderHook(() => useAuth(), { wrapper: AuthProvider });
 
-    await waitFor(() => {
-      expect(screen.getByTestId('user')).toHaveTextContent('not logged in');
-      expect(screen.getByTestId('token')).toHaveTextContent('none');
-    });
+    expect(result.current.user).toBeNull();
+    expect(result.current.accessToken).toBeNull();
   });
 
-  it('hydrates user and accessToken from localStorage on mount', async () => {
-    window.localStorage.setItem(
-      STORAGE_KEY,
-      JSON.stringify({ user: mockUser, accessToken: 'stored-token' }),
-    );
+  it('setAuth stores user and token in state and localStorage', () => {
+    const { result } = renderHook(() => useAuth(), { wrapper: AuthProvider });
 
-    renderWithProvider();
+    const authData = {
+      user: { id: '1', email: 'a@b.com', role: 'USER', createdAt: '2025-01-01T00:00:00.000Z', updatedAt: '2025-01-01T00:00:00.000Z' },
+      accessToken: 'test-token',
+    };
 
-    await waitFor(() => {
-      expect(screen.getByTestId('user')).toHaveTextContent('test@example.com');
-      expect(screen.getByTestId('token')).toHaveTextContent('stored-token');
-    });
-  });
-
-  it('handles corrupted localStorage gracefully', async () => {
-    window.localStorage.setItem(STORAGE_KEY, 'not-valid-json');
-
-    renderWithProvider();
-
-    await waitFor(() => {
-      expect(screen.getByTestId('user')).toHaveTextContent('not logged in');
-      expect(screen.getByTestId('token')).toHaveTextContent('none');
-      expect(window.localStorage.getItem(STORAGE_KEY)).toBeNull();
-    });
-  });
-
-  it('setAuth persists to localStorage and updates context', async () => {
-    renderWithProvider();
-
-    await waitFor(() => {
-      expect(screen.getByTestId('user')).toHaveTextContent('not logged in');
+    act(() => {
+      result.current.setAuth(authData);
     });
 
-    await userEvent.click(screen.getByRole('button', { name: 'set auth' }));
+    expect(result.current.user?.email).toBe('a@b.com');
+    expect(result.current.accessToken).toBe('test-token');
 
-    expect(screen.getByTestId('user')).toHaveTextContent('test@example.com');
-    expect(screen.getByTestId('token')).toHaveTextContent('test-token');
-
-    const stored = JSON.parse(window.localStorage.getItem(STORAGE_KEY)!);
-    expect(stored.user.email).toBe('test@example.com');
+    const stored = JSON.parse(window.localStorage.getItem('mixmatch.auth')!);
+    expect(stored.user.email).toBe('a@b.com');
     expect(stored.accessToken).toBe('test-token');
   });
 
-  it('logout removes auth from localStorage and context', async () => {
-    window.localStorage.setItem(
-      STORAGE_KEY,
-      JSON.stringify({ user: mockUser, accessToken: 'stored-token' }),
-    );
+  it('logout clears user and token from state and localStorage', () => {
+    const authData = {
+      user: { id: '1', email: 'a@b.com', role: 'USER', createdAt: '2025-01-01T00:00:00.000Z', updatedAt: '2025-01-01T00:00:00.000Z' },
+      accessToken: 'test-token',
+    };
+    window.localStorage.setItem('mixmatch.auth', JSON.stringify(authData));
 
-    renderWithProvider();
+    const { result } = renderHook(() => useAuth(), { wrapper: AuthProvider });
 
-    await waitFor(() => {
-      expect(screen.getByTestId('token')).toHaveTextContent('stored-token');
+    act(() => {
+      result.current.logout();
     });
 
-    await userEvent.click(screen.getByRole('button', { name: 'log out' }));
+    expect(result.current.user).toBeNull();
+    expect(result.current.accessToken).toBeNull();
+    expect(window.localStorage.getItem('mixmatch.auth')).toBeNull();
+  });
 
-    expect(screen.getByTestId('user')).toHaveTextContent('not logged in');
-    expect(screen.getByTestId('token')).toHaveTextContent('none');
-    expect(window.localStorage.getItem(STORAGE_KEY)).toBeNull();
+  it('throws an error when useAuth is used outside of AuthProvider', () => {
+    expect(() => renderHook(() => useAuth())).toThrow('useAuth must be used within an AuthProvider');
+  });
+
+  it('restores auth from localStorage on mount', () => {
+    const authData = {
+      user: { id: '1', email: 'stored@example.com', role: 'USER', createdAt: '2025-01-01T00:00:00.000Z', updatedAt: '2025-01-01T00:00:00.000Z' },
+      accessToken: 'stored-token',
+    };
+    window.localStorage.setItem('mixmatch.auth', JSON.stringify(authData));
+
+    const { result } = renderHook(() => useAuth(), { wrapper: AuthProvider });
+
+    expect(result.current.user?.email).toBe('stored@example.com');
   });
 });

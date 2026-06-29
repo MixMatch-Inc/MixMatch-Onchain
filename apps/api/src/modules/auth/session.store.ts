@@ -1,3 +1,4 @@
+import { PrismaClient } from '@prisma/client';
 import type { Session } from './session.types.js';
 
 export interface SessionStore {
@@ -63,5 +64,57 @@ export class InMemorySessionStore implements SessionStore {
     for (const id of toDelete) {
       await this.delete(id);
     }
+  }
+}
+
+export class PrismaSessionStore implements SessionStore {
+  constructor(private readonly prisma: PrismaClient) {}
+
+  async create(session: Session): Promise<void> {
+    await this.prisma.session.create({
+      data: {
+        id: session.id,
+        userId: session.userId,
+        refreshToken: session.refreshToken,
+        expiresAt: new Date(session.expiresAt),
+        createdAt: new Date(session.createdAt),
+      },
+    });
+  }
+
+  async findByRefreshTokenHash(hash: string): Promise<Session | null> {
+    const record = await this.prisma.session.findUnique({
+      where: { refreshToken: hash },
+    });
+    if (!record) return null;
+    return {
+      id: record.id,
+      userId: record.userId,
+      refreshToken: record.refreshToken,
+      expiresAt: record.expiresAt.toISOString(),
+      createdAt: record.createdAt.toISOString(),
+    };
+  }
+
+  async delete(id: string): Promise<void> {
+    try {
+      await this.prisma.session.delete({ where: { id } });
+    } catch {
+      // record already removed — idempotent by design
+    }
+  }
+
+  async deleteAllByUserId(userId: string): Promise<void> {
+    await this.prisma.session.deleteMany({ where: { userId } });
+  }
+
+  async countByUserId(userId: string): Promise<number> {
+    return this.prisma.session.count({ where: { userId } });
+  }
+
+  async cleanupExpired(): Promise<void> {
+    await this.prisma.session.deleteMany({
+      where: { expiresAt: { lt: new Date() } },
+    });
   }
 }

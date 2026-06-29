@@ -3,9 +3,12 @@ import type { AuthTokenResponse, AuthUser, LoginInput, RegisterInput } from '@mi
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
 
 export class ApiError extends Error {
-  constructor(message: string) {
+  code?: string;
+
+  constructor(message: string, code?: string) {
     super(message);
     this.name = 'ApiError';
+    this.code = code;
   }
 }
 
@@ -15,10 +18,11 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
     ...options,
   });
 
-  const data = await response.json();
+  const data: unknown = await response.json();
 
   if (!response.ok) {
-    throw new ApiError(data?.error?.message ?? 'Something went wrong');
+    const err = data as { error?: { message?: string; code?: string } };
+    throw new ApiError(err?.error?.message ?? 'Something went wrong', err?.error?.code);
   }
 
   return data as T;

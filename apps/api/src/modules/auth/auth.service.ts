@@ -113,7 +113,7 @@ export class AuthService {
   }
 
   private async buildTokenResponse(user: User): Promise<AuthTokenResponse> {
-    const { accessToken } = await this.sessionService.createSession(user.id);
-    return { user: toAuthUser(user), accessToken };
+    const { accessToken, refreshToken } = await this.sessionService.createSession(user.id);
+    return { user: toAuthUser(user), accessToken, refreshToken };
   }
 }

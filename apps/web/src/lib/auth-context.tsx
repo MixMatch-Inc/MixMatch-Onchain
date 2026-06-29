@@ -9,14 +9,17 @@ const STORAGE_KEY = 'mixmatch.auth';
 interface StoredAuth {
   user: AuthUser;
   accessToken: string;
+  refreshToken: string;
 }
 
 interface AuthContextValue {
   user: AuthUser | null;
   accessToken: string | null;
   isLoading: boolean;
+  isRefreshing: boolean;
   setAuth: (auth: StoredAuth) => void;
   logout: () => void;
+  fetchWithAuth: <T>(path: string, options?: RequestInit) => Promise<T>;
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -44,7 +47,10 @@ function safelyParseStoredAuth(raw: string): StoredAuth | null {
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [accessToken, setAccessToken] = useState<string | null>(null);
+  const [refreshTokenValue, setRefreshTokenValue] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const refreshPromiseRef = useRef<Promise<StoredAuth> | null>(null);
 
   useEffect(() => {
     const raw = window.localStorage.getItem(STORAGE_KEY);
@@ -90,7 +96,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, accessToken, isLoading, setAuth, logout }}>
+    <AuthContext.Provider value={{ user, accessToken, isLoading, isRefreshing, setAuth, logout, fetchWithAuth }}>
       {children}
     </AuthContext.Provider>
   );

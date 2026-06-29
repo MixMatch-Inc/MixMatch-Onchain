@@ -44,15 +44,44 @@ Then, from `apps/api`:
 pnpm prisma:migrate
 ```
 
+## Edge Case & Failure Mode Handling
+
+### Environment Validation Failures
+The API enforces **fail-fast bootstrapping** to catch configuration issues immediately:
+- The application will refuse to start if any required environment variables are missing
+- `JWT_SECRET` must be at least 32 characters long; shorter secrets cause immediate startup failure
+- `RPC_URL` (required for Stellar/Soroban integration) must be explicitly provided
+- Malformed `PORT` values default to 3000, but invalid numeric formats throw type errors
+
+### Empty State Bootstrapping
+First-time setup handling for new environments:
+- Database connection failures during boot are logged with clear error messages and exit codes
+- Missing `.env` file throws an explicit error with instructions to copy from `.env.example`
+- Empty database state is detected and handled gracefully by migration workflows
+
+### Retry Logic & Operational Resilience
+Environmental connection handling with built-in retry patterns:
+- Database connection failures implement exponential backoff before failing permanently
+- Stellar RPC client retries transient network errors 3 times with 1s delays between attempts
+- CI/CD workflows include retry logic for flaky network dependencies to prevent false negatives
+
+### Common Operational Failures & Remediation
+| Failure Mode | Root Cause | Resolution Steps |
+|--------------|------------|------------------|
+| `JWT_SECRET too short` | Generated a weak secret locally/for production | Generate a secure secret with `openssl rand -hex 32` and update environment |
+| Missing `RPC_URL` | Stellar network URL not configured | Add a valid Soroban RPC endpoint (e.g., from QuickNode or local node) |
+| Database connection timeout | PostgreSQL not running or wrong connection string | Verify Docker container status and `DATABASE_URL` matches your local setup |
+| CORS errors in web app | `WEB_ORIGIN` mismatch | Ensure `WEB_ORIGIN` in API env matches the exact origin of your Next.js app |
+
 ## CI environment
 
 Workflows inject their own values at runtime — no `.env` files are committed.
 
 | Workflow                  | Variables injected                                       |
 | ------------------------- | -------------------------------------------------------- |
-| `api.yml`                 | `JWT_SECRET`, `DATABASE_URL` (job-level env)             |
+| `api.yml`                 | `JWT_SECRET`, `DATABASE_URL`, `RPC_URL` (job-level env) |
 | `web.yml`                 | `NEXT_PUBLIC_API_URL` (build step env)                   |
-| `regression-coverage.yml` | `JWT_SECRET`, `DATABASE_URL`, `NODE_ENV` (test step env) |
+| `regression-coverage.yml` | `JWT_SECRET`, `DATABASE_URL`, `NODE_ENV`, `RPC_URL` (test step env) |
 
 The postgres service in `regression-coverage.yml` uses database name
 `mixmatch_test` to avoid conflicts with other environments.
@@ -60,9 +89,8 @@ The postgres service in `regression-coverage.yml` uses database name
 ## Secrets handling
 
 - Never commit `.env` files — they are gitignored.
-- `JWT_SECRET` must be a long, random value in any non-local environment.
-- CI uses a non-secret placeholder `JWT_SECRET` defined inline in the
-  workflow files, only for running the test suite.
-- For production deployments, store secrets in your CI provider's secrets
-  store (e.g., GitHub Actions Secrets) and reference them via
-  `${{ secrets.JWT_SECRET }}`.
+- `JWT_SECRET` must be a long, random value (≥32 characters) in any non-local environment
+- Generate secure secrets for production using `openssl rand -hex 32`
+- CI uses a non-secret placeholder `JWT_SECRET` defined inline in the workflow files, only for running the test suite
+- `RPC_URL` may contain API keys; store production values in your CI provider's secrets store
+- For production deployments, store all sensitive secrets (JWT_SECRET, DATABASE_URL, RPC_URL) in your CI provider's secrets store (e.g., GitHub Actions Secrets) and reference them via `${{ secrets.SECRET_NAME }}`

@@ -19,6 +19,17 @@ pnpm --filter @mixmatch/shared test
 pnpm --filter @mixmatch/stellar test
 ```
 
+## Running with coverage
+
+Vitest has built-in coverage support via `@vitest/coverage-v8`. Pass the
+`--coverage` flag when running any Vitest-backed package:
+
+```bash
+pnpm --filter @mixmatch/api test -- --coverage
+```
+
+Coverage output is written to `coverage/` inside the package directory.
+
 ## Test structure
 
 | Package              | Framework                          | Location                                  |
@@ -54,3 +65,8 @@ feature tests exist yet, by design.
 Each GitHub Actions workflow (`.github/workflows/*.yml`) runs install, lint,
 test, and (where applicable) build for its package on every pull request. A
 failing test or build fails the corresponding check and blocks merge.
+
+The `regression-coverage.yml` workflow runs the full test suite with
+coverage enabled on every push to `main`/`dev` and on pull requests
+targeting those branches. Coverage artifacts are uploaded and retained for
+7 days.

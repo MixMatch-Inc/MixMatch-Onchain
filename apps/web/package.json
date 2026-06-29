@@ -1,33 +1,33 @@
 {
-  "name": "web",
+  "name": "@mixmatch/web",
   "version": "0.1.0",
   "private": true,
+  "type": "module",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint",
-    "typecheck": "tsc --noEmit",
-    "test": "playwright test"
+    "lint": "eslint .",
+    "test": "vitest run",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "clean": "rm -rf .next"
   },
   "dependencies": {
-    "@mixmatch/env-manifest": "workspace:*",
-    "next": "16.1.4",
-    "react": "19.2.3",
-    "react-dom": "19.2.3",
-    "zustand": "^5.0.8"
+    "@mixmatch/shared": "workspace:*",
+    "next": "15.1.4",
+    "react": "19.0.0",
+    "react-dom": "19.0.0"
   },
   "devDependencies": {
-    "@mixmatch/config": "workspace:^",
-    "@mixmatch/types": "workspace:^",
-    "@playwright/test": "^1.58.2",
-    "@tailwindcss/postcss": "^4",
-    "@types/node": "^20",
-    "@types/react": "^19",
-    "@types/react-dom": "^19",
-    "eslint": "^9",
-    "eslint-config-next": "16.1.4",
-    "tailwindcss": "^4",
-    "typescript": "^5"
+    "@testing-library/jest-dom": "^6.6.3",
+    "@testing-library/react": "^16.1.0",
+    "@testing-library/user-event": "^14.5.2",
+    "@types/node": "^20.17.10",
+    "@types/react": "19.0.2",
+    "@types/react-dom": "19.0.2",
+    "@vitejs/plugin-react": "^4.3.4",
+    "jsdom": "^25.0.1",
+    "typescript": "^5.9.2",
+    "vitest": "^2.1.8"
   }
 }

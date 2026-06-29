@@ -1,258 +1,299 @@
-# MixMatch
+# TheMixMatch Onchain
 
-Welcome to the MixMatch codebase! This is a **monorepo** managing the frontend, backend API, and Stellar/Web3 services for the MixMatch platform.
+**TheMixMatch Onchain** is a music-focused platform designed to connect DJs, artists, creators, and fans through discovery, collaboration, and blockchain-powered experiences.
 
-We use **[pnpm workspaces](https://pnpm.io/workspaces)** for dependency management and **[TurboRepo](https://turbo.build/)** for high-performance build orchestration.
+The platform combines web, mobile, API, and Stellar infrastructure to create a modern ecosystem where music communities can interact, discover talent, collaborate, and participate in new creator-driven experiences.
 
-## 🚀 Tech Stack
-
-- **Monorepo Manager:** pnpm workspaces + TurboRepo
-- **Frontend:** Next.js 14+ (App Router), TailwindCSS
-- **Backend:** Node.js, Express, TypeScript
-- **Web3:** Stellar SDK (Soroban)
-- **Language:** TypeScript (Strict Mode)
+TheMixMatch Onchain uses Stellar to introduce fast, affordable, and transparent blockchain interactions while keeping the user experience simple and accessible.
 
 ---
 
-[MIXMATCH FIGMA](https://www.figma.com/design/wYIPrjvmHc1UuR2kFgXdao/Mixmatch?node-id=0-1&t=YGbg33TLval6HRoP-1)
+# Overview
 
-## 🛠 Prerequisites
+The music industry is built around communities, creators, and shared experiences. However, many independent artists and DJs still struggle with discovery, collaboration opportunities, fan engagement, and direct monetization.
 
-Before you start, ensure you have the following installed:
+TheMixMatch Onchain aims to improve this by creating a platform where:
 
-1. **Node.js** (v18 or higher recommended)
-2. **pnpm** (We use this instead of npm/yarn)
+* DJs can build their presence and connect with opportunities.
+* Artists and creators can discover collaborators.
+* Fans can engage with creators in meaningful ways.
+* Communities can participate in music experiences.
+* Blockchain technology enables new forms of ownership, support, and interaction.
+
+The platform combines familiar music community features with Stellar-powered infrastructure.
+
+---
+
+# Core Features
+
+## Creator Profiles
+
+Creators can establish their presence on TheMixMatch Onchain through dedicated profiles.
+
+Profiles can include:
+
+* DJ or artist information,
+* music preferences,
+* portfolio details,
+* social links,
+* performance history,
+* community activity.
+
+The goal is to create a central identity layer for music creators.
+
+---
+
+## Music Discovery
+
+TheMixMatch Onchain focuses on helping users discover creators and music experiences.
+
+Discovery experiences may include:
+
+* finding DJs and artists,
+* exploring music communities,
+* matching creators with similar interests,
+* discovering events and collaborations,
+* personalized music experiences.
+
+---
+
+## Creator Collaboration
+
+Music creation is highly collaborative.
+
+The platform supports workflows around:
+
+* DJ discovery,
+* artist matching,
+* collaboration opportunities,
+* community-driven connections,
+* creator networking.
+
+The goal is to make it easier for creators to find and work with each other.
+
+---
+
+## Fan Engagement
+
+Fans are an important part of the music ecosystem.
+
+The platform enables future fan-focused experiences such as:
+
+* following creators,
+* supporting artists,
+* joining communities,
+* participating in exclusive experiences,
+* interacting with creator content.
+
+---
+
+## Stellar Integration
+
+TheMixMatch Onchain uses Stellar as the blockchain infrastructure powering creator and community interactions.
+
+Potential Stellar-powered features include:
+
+* wallet connections,
+* creator support payments,
+* digital rewards,
+* transaction receipts,
+* transparent ownership records,
+* blockchain-based engagement features.
+
+Stellar provides the speed and low transaction costs needed for consumer-facing experiences without adding unnecessary complexity for users.
+
+---
+
+# Technology Stack
+
+TheMixMatch Onchain is built with a modern full-stack TypeScript architecture.
+
+| Area               | Technology                       |
+| ------------------ | -------------------------------- |
+| Web Application    | Next.js + React + TypeScript     |
+| Mobile Application | Expo + React Native + TypeScript |
+| Backend API        | Express.js + TypeScript          |
+| Blockchain Layer   | Stellar                          |
+| Package Manager    | pnpm                             |
+| Architecture       | Monorepo                         |
+
+---
+
+# Repository Structure
+
+This repository is currently a **foundation release**: monorepo tooling plus
+authentication only. Everything else described in the Product Vision below
+is future scope and is intentionally not implemented yet.
+
+```text
+themixmatch-onchain/
+│
+├── apps/
+│   ├── api/        # Express modular monolith — authentication backend
+│   ├── web/        # Next.js web app — login & signup
+│   └── mobile/     # Expo/React Native foundation (no screens yet)
+│
+├── packages/
+│   ├── shared/     # Shared TypeScript types & validation schemas
+│   └── stellar/    # Placeholder scaffold for future Stellar integration
+│
+├── docs/           # Environment, testing, and contributor documentation
+└── .github/
+    └── workflows/  # Per-package CI (install, lint, test, build)
+```
+
+---
+
+# Applications
+
+## API
+
+`apps/api`
+
+A modular-monolith Express + TypeScript backend. Currently implements only
+the **auth** and **users** modules:
+
+* registration (`POST /api/auth/register`)
+* login (`POST /api/auth/login`)
+* current user (`GET /api/auth/me`, requires a bearer token)
+
+Data is persisted to PostgreSQL via Prisma. See [apps/api/README.md](apps/api/README.md).
+
+---
+
+## Web Application
+
+`apps/web`
+
+A Next.js (App Router) app with two pages: `/login` and `/signup`. Shares
+validation schemas and types with the API via `@mixmatch/shared`. See
+[apps/web/README.md](apps/web/README.md).
+
+---
+
+## Mobile Application
+
+`apps/mobile`
+
+An Expo/React Native + TypeScript foundation: project structure, linting,
+formatting, and testing setup only. No screens, navigation, or
+authentication yet. See [apps/mobile/README.md](apps/mobile/README.md).
+
+---
+
+## Stellar Package
+
+`packages/stellar`
+
+A scaffold-only package establishing the future Stellar integration
+boundary (placeholder types and interfaces, no blockchain logic). See
+[packages/stellar/README.md](packages/stellar/README.md).
+
+---
+
+# Getting Started
+
+## Requirements
+
+* Node.js 20+
+* pnpm 10+
+
+Enable pnpm:
 
 ```bash
 corepack enable
-# OR
-npm install -g pnpm
+```
 
+Install dependencies:
+
+```bash
+pnpm install
 ```
 
 ---
 
-## ⚡️ Getting Started
+# Running the Platform
 
-Follow these steps to get the entire platform running locally.
+Copy each app's `.env.example` to `.env` first (see
+[docs/ENVIRONMENT.md](docs/ENVIRONMENT.md)). The API requires a local
+PostgreSQL database.
 
-### 1. Clone & Install
-
-```bash
-git clone <your-repo-url>
-cd MixMatch-Onchain
-
-# Install all dependencies for all apps and packages
-pnpm install
-
-```
-
-### 1.5 Configure Environment Variables
-
-Copy each checked-in example file before starting the services:
-
-```bash
-cp .env.example .env
-cp apps/api/.env.example apps/api/.env
-cp apps/web/.env.example apps/web/.env.local
-cp apps/stellar-service/.env.example apps/stellar-service/.env
-```
-
-To see all required environment variables for a service:
-
-```bash
-pnpm --filter @mixmatch/env-manifest env:list api
-pnpm --filter @mixmatch/env-manifest env:list web
-pnpm --filter @mixmatch/env-manifest env:list stellar-service
-```
-
-To validate environment variables for all services:
-
-```bash
-pnpm --filter @mixmatch/env-manifest env:check
-```
-
-Required values:
-
-- `apps/api/.env`
-  - `MONGO_URI`
-  - `JWT_SECRET`
-- `apps/web/.env.local`
-  - `NEXT_PUBLIC_API_URL`
-- `apps/stellar-service/.env`
-  - `STELLAR_SEC_KEY`
-  - `STELLAR_NETWORK`
-  - `STELLAR_HORIZON_URL`
-
-The API and Stellar service now fail fast during startup when required
-environment variables are missing. The validation uses a shared manifest
-that defines required, optional, and secret variables for each service.
-
-### 2. Run Development Server
-
-This command starts **all** applications (Web, API, and Stellar Service) in parallel.
-
-If you need MongoDB locally, start it first:
-
-```bash
-docker compose up -d mongo
-docker compose ps
-```
-
-The API will use `mongodb://127.0.0.1:27017/mixmatch` by default when `MONGO_URI`
-is not set, which matches the local Docker Compose service.
+Start everything:
 
 ```bash
 pnpm dev
-
 ```
 
-You will see output from all services in your terminal. They are available at:
+Individual apps:
 
-- **Web App:** [http://localhost:3000](https://www.google.com/search?q=http://localhost:3000)
-- **Backend API:** [http://localhost:3001](https://www.google.com/search?q=http://localhost:3001)
-- **Stellar Service:** [http://localhost:3002](https://www.google.com/search?q=http://localhost:3002)
+```bash
+pnpm --filter @mixmatch/api dev
+pnpm --filter @mixmatch/web dev
+pnpm --filter @mixmatch/mobile dev
+```
 
----
-
-## 📂 Project Structure
+Default ports:
 
 ```text
-mixmatch/
-├── apps/
-│   ├── web/               # Next.js Frontend (User & Admin Interface)
-│   ├── api/               # Core Backend API (Express + Node.js)
-│   └── stellar-service/   # Isolated Service for Blockchain/Payments
-│
-├── packages/
-│   ├── types/             # Shared TypeScript interfaces & DTOs
-│   ├── config/            # Shared configurations (TSConfig, ESLint)
-│   └── ui/                # Shared React UI components (Tailwind)
-│
-└── turbo.json             # Build pipeline configuration
-
+Web: http://localhost:3000
+API: http://localhost:3001
 ```
 
 ---
 
-## 📜 Available Scripts
-
-Run these from the **root** folder:
-
-| Command      | Description                                  |
-| ------------ | -------------------------------------------- |
-| `pnpm dev`   | Starts all apps in development mode.         |
-| `pnpm build` | Builds all apps and packages for production. |
-| `pnpm lint`  | Runs ESLint across the entire monorepo.      |
-| `pnpm test`  | Runs package tests when a workspace exposes them. |
-| `pnpm clean` | (Optional) Clears Turbo cache and artifacts. |
-
-Demo data:
+# Running Tests
 
 ```bash
-pnpm --filter api seed:demo
+pnpm test
 ```
 
-Seeded credentials:
-
-- `dj.demo@mixmatch.io` / `mixmatch123`
-- `planner.demo@mixmatch.io` / `mixmatch123`
-- `fan.demo@mixmatch.io` / `mixmatch123`
+See [docs/TESTING.md](docs/TESTING.md) for per-package details.
 
 ---
 
-## 🧩 Adding Dependencies
+# Quality Checks
 
-Since we use a monorepo, you must specify **where** to install a package.
-
-**To add a library to the Frontend (`apps/web`):**
+Run:
 
 ```bash
-# Example: Adding Framer Motion to the web app
-cd apps/web
-pnpm add framer-motion
-
-```
-
-**To add a library to the Backend (`apps/api`):**
-
-```bash
-cd apps/api
-pnpm add mongoose
-
-```
-
-**To use a shared package (e.g., using Types in API):**
-_Note: This is already set up, but for reference:_
-
-```bash
-cd apps/api
-pnpm add "@mixmatch/types@workspace:*" -D
-
+pnpm build
+pnpm typecheck
+pnpm lint
 ```
 
 ---
 
-## ⚠️ Troubleshooting
+# Environment Configuration
 
-**"Module not found" or Type Errors**
-If you just pulled fresh code or switched branches:
+Each application provides its own environment template:
 
-```bash
-pnpm install
-# If issues persist, force a clean install
-rm -rf node_modules
-pnpm install
-
+```text
+apps/api/.env.example
+apps/web/.env.example
+apps/mobile/.env.example
 ```
 
-**Local MongoDB is not ready**
-
-```bash
-docker compose up -d mongo
-docker compose logs mongo
-docker compose down
-```
-
-The MongoDB container includes a healthcheck so `docker compose ps` shows when it
-is actually ready to accept connections.
-
-**Git is ignoring files I want to commit**
-We strictly ignore `node_modules` and build artifacts (`.next`, `dist`).
-
-- **Do not** force commit `node_modules`.
-- If your `node_modules` are showing up in Git, run:
-
-```bash
-git rm -r --cached .
-git add .
-git commit -m "fix: clear cached node_modules"
-
-```
+Copy the required environment file before running locally. See
+[docs/ENVIRONMENT.md](docs/ENVIRONMENT.md) for variable descriptions and
+secrets handling.
 
 ---
 
-## 🤝 Contribution Guidelines
+# Product Vision
 
-1. Always run `pnpm lint` before pushing.
-2. Keep shared logic (types, configs) in `packages/`.
-3. Do not edit `apps/*/node_modules` manually.
-4. For significant architectural changes, follow the [RFC workflow](docs/rfcs/README.md).
-5. Architecture decisions are documented in [ADRs](docs/adr/README.md).
+TheMixMatch Onchain aims to become a platform where music creators and fans can discover, collaborate, and engage in new ways.
 
-### Architectural Changes
+The long-term vision is to combine music culture with accessible blockchain technology, enabling stronger creator communities, better discovery, and new opportunities for participation.
 
-For larger proposals that affect multiple domains or introduce significant complexity:
+---
 
-1. Read the [RFC contribution guide](docs/rfcs/README.md)
-2. Create an RFC following the template
-3. Submit for team review
-4. Once accepted, create ADR(s) to document key decisions
-5. Implement according to the approved RFC
+# Contributing
 
-See [docs/adr/README.md](docs/adr/README.md) for the ADR process.
+See [docs/CONTRIBUTING.md](docs/CONTRIBUTING.md) for coding standards,
+project structure, and the development workflow.
 
-## Phase 1 References
+---
 
-- Architecture: `docs/phase-1-architecture.md`
-- Demo script: `docs/phase-1-demo.md`
+# License
+
+MIT

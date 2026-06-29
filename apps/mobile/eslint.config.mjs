@@ -1,11 +1,21 @@
-import tsParser from '@typescript-eslint/parser';
+import { baseConfig } from '../../eslint.config.base.mjs';
 
 export default [
+  ...baseConfig,
   {
-    files: ['src/**/*.{ts,tsx}'],
-    languageOptions: { parser: tsParser },
-    rules: {
-      'no-console': 'warn',
+    languageOptions: {
+      globals: {
+        __DEV__: 'readonly',
+      },
+    },
+  },
+  {
+    files: ['babel.config.js', 'jest.config.js'],
+    languageOptions: {
+      globals: {
+        module: 'readonly',
+        require: 'readonly',
+      },
     },
   },
 ];

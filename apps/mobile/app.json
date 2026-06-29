@@ -1,0 +1,18 @@
+{
+  "expo": {
+    "name": "MixMatch Onchain",
+    "slug": "mixmatch-onchain",
+    "scheme": "mixmatch",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {},
+    "web": {
+      "bundler": "metro"
+    }
+  }
+}

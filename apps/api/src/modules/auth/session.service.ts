@@ -35,6 +35,13 @@ export class SessionService {
       expiresIn: env.jwtExpiresIn,
     } as jwt.SignOptions);
 
+    logger.info('New session created successfully', {
+      module: 'auth',
+      userId,
+      sessionId: id,
+      expiresAt: expiresAt.toISOString(),
+    });
+
     return { accessToken, refreshToken };
   }
 

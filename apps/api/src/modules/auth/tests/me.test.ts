@@ -11,7 +11,7 @@ describe('GET /api/auth/me — route protection (#610)', () => {
     const response = await request(app).get('/api/auth/me');
 
     expect(response.status).toBe(401);
-    expect(response.body.error.code).toBe('UNAUTHORIZED');
+    expect(response.body.error.code).toBe('INVALID_TOKEN');
   });
 
   it('returns 401 with a malformed Authorization header', async () => {
@@ -21,7 +21,7 @@ describe('GET /api/auth/me — route protection (#610)', () => {
       .set('Authorization', 'NotBearer abc');
 
     expect(response.status).toBe(401);
-    expect(response.body.error.code).toBe('UNAUTHORIZED');
+    expect(response.body.error.code).toBe('INVALID_TOKEN');
   });
 
   it('returns 401 with an invalid token', async () => {
@@ -31,7 +31,7 @@ describe('GET /api/auth/me — route protection (#610)', () => {
       .set('Authorization', 'Bearer this.is.not.a.valid.token');
 
     expect(response.status).toBe(401);
-    expect(response.body.error.code).toBe('UNAUTHORIZED');
+    expect(response.body.error.code).toBe('INVALID_TOKEN');
   });
 
   it('returns 401 with an expired token', async () => {
@@ -42,7 +42,7 @@ describe('GET /api/auth/me — route protection (#610)', () => {
       .set('Authorization', `Bearer ${token}`);
 
     expect(response.status).toBe(401);
-    expect(response.body.error.code).toBe('UNAUTHORIZED');
+    expect(response.body.error.code).toBe('TOKEN_EXPIRED');
   });
 
   it('returns 200 with user data for a valid token', async () => {

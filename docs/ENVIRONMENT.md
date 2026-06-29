@@ -10,9 +10,11 @@ before running the app locally.
 | `PORT`            | Port the API listens on                                 | `3001`                                                           |
 | `NODE_ENV`        | Runtime environment                                     | `development`                                                    |
 | `DATABASE_URL`    | PostgreSQL connection string (used by Prisma)           | `postgresql://postgres:postgres@localhost:5432/mixmatch?schema=public` |
-| `JWT_SECRET`      | Secret used to sign access tokens                       | a long random string                                             |
+| `JWT_SECRET`      | Secret used to sign access tokens (must be ≥32 chars)    | generate with `openssl rand -hex 32`                             |
 | `JWT_EXPIRES_IN`  | Access token lifetime                                   | `1h`                                                              |
 | `WEB_ORIGIN`      | Allowed CORS origin for the web app                     | `http://localhost:3000`                                          |
+| `STELLAR_NETWORK` | Stellar network to connect to (testnet/public)          | `testnet`                                                        |
+| `RPC_URL`         | Soroban RPC endpoint URL (required for blockchain)      | `https://soroban-testnet.stellar.org`                             |
 
 ## apps/web/.env
 

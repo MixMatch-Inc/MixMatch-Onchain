@@ -28,6 +28,51 @@ describe('registerSchema', () => {
 
     expect(result.success).toBe(false);
   });
+
+  it('accepts a password at exactly 8 characters', () => {
+    const result = registerSchema.safeParse({
+      email: 'user@example.com',
+      password: '12345678',
+    });
+
+    expect(result.success).toBe(true);
+  });
+
+  it('accepts a password at exactly 128 characters', () => {
+    const result = registerSchema.safeParse({
+      email: 'user@example.com',
+      password: 'x'.repeat(128),
+    });
+
+    expect(result.success).toBe(true);
+  });
+
+  it('rejects a password longer than 128 characters', () => {
+    const result = registerSchema.safeParse({
+      email: 'user@example.com',
+      password: 'x'.repeat(129),
+    });
+
+    expect(result.success).toBe(false);
+  });
+
+  it('accepts a password with unicode characters', () => {
+    const result = registerSchema.safeParse({
+      email: 'user@example.com',
+      password: 'pässwörd🔑123',
+    });
+
+    expect(result.success).toBe(true);
+  });
+
+  it('accepts a password with special characters', () => {
+    const result = registerSchema.safeParse({
+      email: 'user@example.com',
+      password: 'P@ssw0rd!#$%&*()',
+    });
+
+    expect(result.success).toBe(true);
+  });
 });
 
 describe('loginSchema', () => {
@@ -47,5 +92,41 @@ describe('loginSchema', () => {
     });
 
     expect(result.success).toBe(false);
+  });
+
+  it('accepts a single-character password', () => {
+    const result = loginSchema.safeParse({
+      email: 'user@example.com',
+      password: 'a',
+    });
+
+    expect(result.success).toBe(true);
+  });
+
+  it('accepts a password at exactly 128 characters', () => {
+    const result = loginSchema.safeParse({
+      email: 'user@example.com',
+      password: 'x'.repeat(128),
+    });
+
+    expect(result.success).toBe(true);
+  });
+
+  it('rejects a password longer than 128 characters', () => {
+    const result = loginSchema.safeParse({
+      email: 'user@example.com',
+      password: 'x'.repeat(129),
+    });
+
+    expect(result.success).toBe(false);
+  });
+
+  it('accepts a password with only whitespace', () => {
+    const result = loginSchema.safeParse({
+      email: 'user@example.com',
+      password: '   ',
+    });
+
+    expect(result.success).toBe(true);
   });
 });

@@ -1,7 +1,8 @@
 'use client';
 
 import type { AuthUser } from '@mixmatch/shared';
-import { createContext, useContext, useEffect, useState, useCallback, type ReactNode } from 'react';
+import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
+import { getCurrentUser } from './api-client';
 
 const STORAGE_KEY = 'mixmatch.auth';
 
@@ -46,21 +47,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    try {
-      const raw = window.localStorage.getItem(STORAGE_KEY);
-      if (raw) {
-        const stored = safelyParseStoredAuth(raw);
-        if (stored && !isExpiredToken(stored.accessToken)) {
-          setUser(stored.user);
-          setAccessToken(stored.accessToken);
-        } else {
-          window.localStorage.removeItem(STORAGE_KEY);
-        }
+    const raw = window.localStorage.getItem(STORAGE_KEY);
+    if (raw) {
+      try {
+        const stored = JSON.parse(raw) as StoredAuth;
+        getCurrentUser(stored.accessToken)
+          .then((res) => {
+            setUser(res.user);
+            setAccessToken(stored.accessToken);
+          })
+          .catch(() => {
+            window.localStorage.removeItem(STORAGE_KEY);
+          })
+          .finally(() => setIsLoading(false));
+      } catch {
+        window.localStorage.removeItem(STORAGE_KEY);
+        setIsLoading(false);
       }
-    } catch {
-      window.localStorage.removeItem(STORAGE_KEY);
+    } else {
+      setIsLoading(false);
     }
-    setIsLoading(false);
   }, []);
 
   const setAuth = useCallback((auth: StoredAuth) => {

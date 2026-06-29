@@ -10,10 +10,7 @@ export function errorMiddleware(
   _next: NextFunction,
 ): void {
   if (err instanceof AppError) {
-<<<<<<< HEAD
-    res.status(err.statusCode).json({ error: { code: err.code, message: err.message } });
-const body: { error: AuthErrorResponse } = {
-const body: { error: AuthErrorResponse } = {
+    const body: { error: AuthErrorResponse } = {
       error: { code: err.code as AuthErrorResponse['code'], message: err.message },
     };
     if ('retryAfter' in err && typeof (err as Record<string, unknown>).retryAfter === 'number') {

@@ -100,7 +100,7 @@ Client                          Express API
 | `auth.middleware.ts` | `requireAuth` — JWT verification          |
 | `auth.service.ts`   | `getCurrentUser` — fetches user from DB    |
 | `users.repository.ts` | `findById` — data access               |
-| `api-client.ts` (web) | Not yet exposed; web calls API directly |
+| `api-client.ts` (web) | `getMe()` — calls GET /api/auth/me with Bearer token |
 | `@mixmatch/shared` | `AuthUser`, `MeResponse` type contracts    |
 
 ## Edge Cases
@@ -117,4 +117,5 @@ Client                          Express API
 ## Testing
 
 See `apps/api/src/modules/auth/tests/me.test.ts` — covers all error scenarios
-and a successful flow.
+(no auth, malformed, invalid, expired, non-existent user) and a successful
+flow (6 tests).

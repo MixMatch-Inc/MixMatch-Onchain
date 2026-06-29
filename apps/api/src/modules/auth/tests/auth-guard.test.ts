@@ -3,7 +3,7 @@ import request from 'supertest';
 import { describe, expect, it } from 'vitest';
 import { createTestApp } from './test-app.js';
 
-const JWT_SECRET = process.env.JWT_SECRET ?? 'dev-secret-change-me';
+const JWT_SECRET = process.env.JWT_SECRET ?? 'dev-secret-change-me-abcdefghijklmnopqrstuvwxyz123';
 
 describe('Auth guard — role-based access & ownership (#514)', () => {
   describe('requireRole', () => {

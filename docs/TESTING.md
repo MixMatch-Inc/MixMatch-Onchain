@@ -19,6 +19,17 @@ pnpm --filter @mixmatch/shared test
 pnpm --filter @mixmatch/stellar test
 ```
 
+## Running with coverage
+
+Vitest has built-in coverage support via `@vitest/coverage-v8`. Pass the
+`--coverage` flag when running any Vitest-backed package:
+
+```bash
+pnpm --filter @mixmatch/api test -- --coverage
+```
+
+Coverage output is written to `coverage/` inside the package directory.
+
 ## Test structure
 
 | Package              | Framework                          | Location                                  |

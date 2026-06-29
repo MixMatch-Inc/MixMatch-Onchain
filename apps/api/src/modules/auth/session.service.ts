@@ -15,6 +15,12 @@ export class SessionService {
   async createSession(userId: string) {
     const activeCount = await this.sessionStore.countByUserId(userId);
     if (activeCount >= MAX_ACTIVE_SESSIONS) {
+      logger.warn('Maximum active sessions reached, rejecting new session', {
+        module: 'auth',
+        userId,
+        activeSessionCount: activeCount,
+        maxAllowed: MAX_ACTIVE_SESSIONS,
+      });
       throw new InvalidRefreshTokenError('Maximum active sessions reached');
     }
 

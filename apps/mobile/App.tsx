@@ -1,26 +1,35 @@
-import { StyleSheet, Text, View } from 'react-native';
+import { SafeAreaView, Text, StyleSheet } from 'react-native';
+import AuthShell from './src/components/AuthShell';
 
-/**
- * Placeholder root component. This establishes the project foundation only;
- * screens, navigation, and features are intentionally not implemented yet.
- */
 export default function App() {
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>TheMixMatch Onchain</Text>
-      <Text>Mobile foundation</Text>
-    </View>
+    <SafeAreaView style={styles.container}>
+      <AuthShell>
+        <Text style={styles.title}>MixMatch Onchain</Text>
+        <Text style={styles.description}>
+          Welcome aboard! You are now authenticated via the mobile auth shell.
+        </Text>
+      </AuthShell>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    alignItems: 'center',
     justifyContent: 'center',
+    paddingHorizontal: 24,
+    backgroundColor: '#fff',
   },
   title: {
-    fontSize: 20,
-    fontWeight: '600',
+    fontSize: 28,
+    fontWeight: '700',
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  description: {
+    fontSize: 16,
+    textAlign: 'center',
+    color: '#666',
   },
 });

@@ -1,9 +1,7 @@
 import type { NextFunction, Request, Response } from 'express';
 import { AppError } from '../errors/AppError.js';
 import { logger } from '../logger/logger.js';
-=======
 import type { AuthErrorResponse } from '@mixmatch/shared';
->>>>>>> pr647/feat/phertyameen-issues
 
 export function errorMiddleware(
   err: unknown,
@@ -14,6 +12,7 @@ export function errorMiddleware(
   if (err instanceof AppError) {
 <<<<<<< HEAD
     res.status(err.statusCode).json({ error: { code: err.code, message: err.message } });
+const body: { error: AuthErrorResponse } = {
 const body: { error: AuthErrorResponse } = {
       error: { code: err.code as AuthErrorResponse['code'], message: err.message },
     };

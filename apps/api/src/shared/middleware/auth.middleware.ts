@@ -1,7 +1,7 @@
 import type { NextFunction, Request, Response } from 'express';
 import jwt from 'jsonwebtoken';
 import { env } from '../config/env.js';
-import { UnauthorizedError } from '../errors/AppError.js';
+import { InvalidTokenError, TokenExpiredError } from '../errors/AuthErrors.js';
 
 export interface AuthenticatedRequest extends Request {
   userId?: string;
@@ -9,14 +9,18 @@ import { InvalidTokenError, TokenExpiredError } from '../errors/AuthErrors.js';
 
 export interface AuthenticatedRequest extends Request {
   userId?: string;
+>>>>>>> pr648/feat/Maryermarh-issues
   role?: string;
 }
 
 interface AccessTokenPayload {
   sub: string;
+<<<<<<< HEAD
 =======
   role?: string;
->>>>>>> pr647/feat/phertyameen-issues
+=======
+  role?: string;
+>>>>>>> pr648/feat/Maryermarh-issues
 }
 
 /**
@@ -31,6 +35,7 @@ export function requireAuth(req: AuthenticatedRequest, _res: Response, next: Nex
 <<<<<<< HEAD
     throw new UnauthorizedError('Missing or invalid Authorization header');
 throw new InvalidTokenError('Missing or invalid Authorization header');
+throw new InvalidTokenError('Missing or invalid Authorization header');
   }
 
   const token = header.slice('Bearer '.length);
@@ -41,6 +46,7 @@ throw new InvalidTokenError('Missing or invalid Authorization header');
 next();
   } catch {
     throw new UnauthorizedError('Invalid or expired token');
+req.role = payload.role ?? 'USER';
 req.role = payload.role ?? 'USER';
     next();
   } catch (err) {

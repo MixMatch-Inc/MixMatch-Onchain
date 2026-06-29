@@ -3,6 +3,7 @@ import { NotFoundError } from '../../shared/errors/AppError.js';
 import type { AuthenticatedRequest } from '../../shared/middleware/auth.middleware.js';
 import type { AuthService } from './auth.service.js';
 import { parseLoginInput, parseRegisterInput } from './auth.validators.js';
+>>>>>>> pr648/feat/Maryermarh-issues
 import { parseLoginInput, parseRefreshInput, parseRegisterInput } from './auth.validators.js';
 
 export class AuthController {
@@ -28,6 +29,8 @@ export class AuthController {
     res.status(200).json({ user });
   };
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
 =======
 
   updateProfile = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
@@ -40,5 +43,8 @@ export class AuthController {
     const result = await this.authService.refreshSession(refreshToken);
     res.status(200).json(result);
   };
+<<<<<<< HEAD
 >>>>>>> pr647/feat/phertyameen-issues
+=======
+>>>>>>> pr648/feat/Maryermarh-issues
 }

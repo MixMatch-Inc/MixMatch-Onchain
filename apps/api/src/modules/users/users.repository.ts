@@ -8,12 +8,15 @@ export interface CreateUserInput {
 }
 
 =======
+>>>>>>> pr648/feat/Maryermarh-issues
 export interface UpdateUserInput {
   email?: string;
   passwordHash?: string;
 }
 
->>>>>>> pr647/feat/phertyameen-issues
+<<<<<<< HEAD
+=======
+>>>>>>> pr648/feat/Maryermarh-issues
 /**
  * Data access for the `users` table. The auth module is the only consumer
  * of this repository for now; it exists in `modules/users` because the
@@ -24,6 +27,7 @@ export interface UserRepository {
   findById(id: string): Promise<User | null>;
   create(input: CreateUserInput): Promise<User>;
 <<<<<<< HEAD
+update(id: string, data: UpdateUserInput): Promise<User>;
 update(id: string, data: UpdateUserInput): Promise<User>;
 }
 
@@ -38,6 +42,7 @@ export class PrismaUserRepository implements UserRepository {
 
   async create(input: CreateUserInput): Promise<User> {
 return prisma.user.create({ data: input });
+return prisma.user.create({ data: { ...input, role: 'USER' } });
 return prisma.user.create({ data: { ...input, role: 'USER' } });
   }
 
@@ -70,6 +75,7 @@ export class InMemoryUserRepository implements UserRepository {
 =======
       role: 'USER',
 >>>>>>> pr647/feat/phertyameen-issues
+role: 'USER',
       createdAt: now,
       updatedAt: now,
     };
@@ -77,6 +83,7 @@ export class InMemoryUserRepository implements UserRepository {
     return user;
   }
 <<<<<<< HEAD
+async update(id: string, data: UpdateUserInput): Promise<User> {
 async update(id: string, data: UpdateUserInput): Promise<User> {
     const user = this.users.get(id);
     if (!user) {

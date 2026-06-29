@@ -18,6 +18,12 @@ import { allowOwnership, requireRole } from '../auth.guard.js';
 import { UserRole } from '../auth.guard.types.js';
 
 export function createTestApp(): Express {
+import { InMemorySessionStore } from '../session.store.js';
+import { SessionService } from '../session.service.js';
+import { allowOwnership, requireRole } from '../auth.guard.js';
+import { UserRole } from '../auth.guard.types.js';
+
+export function createTestApp(): Express {
   const sessionStore = new InMemorySessionStore();
   const sessionService = new SessionService(sessionStore);
   const authService = new AuthService(new InMemoryUserRepository(), sessionService);
@@ -34,7 +40,10 @@ export function createTestApp(): Express {
   router.get('/admin', requireAuth, requireRole(UserRole.ADMIN), asyncHandler<AuthenticatedRequest>(async (_req, res) => {
     res.status(200).json({ ok: true });
   }));
+<<<<<<< HEAD
 >>>>>>> pr647/feat/phertyameen-issues
+=======
+>>>>>>> pr648/feat/Maryermarh-issues
 
   const app = express();
   app.use(cors());

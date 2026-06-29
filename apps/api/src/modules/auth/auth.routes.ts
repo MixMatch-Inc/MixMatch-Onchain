@@ -12,6 +12,12 @@ import { UserRole } from '@mixmatch/shared';
 import { allowOwnership, requireRole } from './auth.guard.js';
 
 export function createAuthRouter(): Router {
+import { InMemorySessionStore } from './session.store.js';
+import { SessionService } from './session.service.js';
+import { UserRole } from '@mixmatch/shared';
+import { allowOwnership, requireRole } from './auth.guard.js';
+
+export function createAuthRouter(): Router {
   const sessionStore = new InMemorySessionStore();
   const sessionService = new SessionService(sessionStore);
   const authService = new AuthService(new PrismaUserRepository(), sessionService);
@@ -34,7 +40,10 @@ export function createAuthRouter(): Router {
       res.status(200).json({ users: [] });
     }),
   );
+<<<<<<< HEAD
 >>>>>>> pr647/feat/phertyameen-issues
+=======
+>>>>>>> pr648/feat/Maryermarh-issues
 
   return router;
 }

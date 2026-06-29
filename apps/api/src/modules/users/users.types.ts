@@ -3,9 +3,10 @@ export interface User {
   email: string;
   passwordHash: string;
 <<<<<<< HEAD
+role: string;
 =======
   role: string;
->>>>>>> pr647/feat/phertyameen-issues
+>>>>>>> pr648/feat/Maryermarh-issues
   createdAt: Date;
   updatedAt: Date;
 }

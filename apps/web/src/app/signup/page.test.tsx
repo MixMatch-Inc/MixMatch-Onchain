@@ -1,8 +1,14 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi, beforeEach } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 import { AuthProvider } from '@/lib/auth-context';
+import { registerUser } from '@/lib/api-client';
 import SignupPage from './page';
+
+vi.mock('@/lib/api-client', () => ({
+  registerUser: vi.fn(),
+}));
 
 function renderSignupPage() {
   return render(
@@ -13,6 +19,11 @@ function renderSignupPage() {
 }
 
 describe('SignupPage', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    window.localStorage.clear();
+  });
+
   it('renders the signup form', () => {
     renderSignupPage();
 
@@ -32,5 +43,21 @@ describe('SignupPage', () => {
     await waitFor(() => {
       expect(screen.getByRole('alert')).toHaveTextContent(/at least 8 characters/i);
     });
+  });
+
+  it('renders the login link', () => {
+    renderSignupPage();
+
+    expect(screen.getByRole('link', { name: /log in/i })).toHaveAttribute('href', '/login');
+  });
+
+  it('renders account-created state when user is authenticated', () => {
+    const auth = { user: { id: '1', email: 'new@example.com', role: 'USER', createdAt: '2025-01-01T00:00:00.000Z', updatedAt: '2025-01-01T00:00:00.000Z' }, accessToken: 'token' };
+    window.localStorage.setItem('mixmatch.auth', JSON.stringify(auth));
+
+    renderSignupPage();
+
+    expect(screen.getByText('Account created')).toBeInTheDocument();
+    expect(screen.getByText(/signed in as new@example.com/i)).toBeInTheDocument();
   });
 });

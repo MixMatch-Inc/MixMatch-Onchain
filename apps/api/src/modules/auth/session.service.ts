@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import jwt from 'jsonwebtoken';
 import { env } from '../../shared/config/env.js';
 import { InvalidRefreshTokenError } from '../../shared/errors/AuthErrors.js';
+import { logger } from '../../utils/logger.js';
 import type { SessionStore } from './session.store.js';
 import { SESSION_CONFIG } from './session.types.js';
 

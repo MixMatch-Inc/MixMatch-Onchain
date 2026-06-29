@@ -12,7 +12,8 @@ export const emailSchema = z.string().trim().toLowerCase().email('Enter a valid 
  */
 export const passwordSchema = z
   .string()
-  .min(8, 'Password must be at least 8 characters long');
+  .min(8, 'Password must be at least 8 characters long')
+  .max(128, 'Password must be at most 128 characters');
 
 /**
  * Registration payload schema - validates user registration requests.
@@ -29,7 +30,7 @@ export const registerSchema = z.object({
  */
 export const loginSchema = z.object({
   email: emailSchema,
-  password: z.string().min(1, 'Password is required'),
+  password: z.string().min(1, 'Password is required').max(128, 'Password must be at most 128 characters'),
 });
 
 export type RegisterSchema = z.infer<typeof registerSchema>;

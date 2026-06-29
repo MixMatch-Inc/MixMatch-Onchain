@@ -51,6 +51,33 @@ describe('Auth edge cases (#586)', () => {
       expect(response.status).toBe(201);
       expect(response.body.user.passwordHash).toBeUndefined();
     });
+
+    it('rejects registration with a very long password', async () => {
+      const app = createTestApp();
+      const response = await request(app)
+        .post('/api/auth/register')
+        .send({ email: 'longpass@example.com', password: 'x'.repeat(100000) });
+
+      expect(response.status).toBe(400);
+    });
+
+    it('accepts registration with a unicode password', async () => {
+      const app = createTestApp();
+      const response = await request(app)
+        .post('/api/auth/register')
+        .send({ email: 'unicode@example.com', password: 'pässwörd🔑123' });
+
+      expect(response.status).toBe(201);
+    });
+
+    it('accepts registration with a password containing special characters', async () => {
+      const app = createTestApp();
+      const response = await request(app)
+        .post('/api/auth/register')
+        .send({ email: 'special@example.com', password: 'P@ssw0rd!#$%&*()' });
+
+      expect(response.status).toBe(201);
+    });
   });
 
   describe('Login edge cases', () => {
@@ -72,7 +99,16 @@ describe('Auth edge cases (#586)', () => {
       expect(response.body.error.code).toBe('VALIDATION_ERROR');
     });
 
-    it('returns the same error for wrong email and wrong password (no enumeration)', async () => {
+    it('rejects login with a very long password', async () => {
+      const app = createTestApp();
+      const response = await request(app)
+        .post('/api/auth/login')
+        .send({ email: 'user@example.com', password: 'x'.repeat(100000) });
+
+      expect(response.status).toBe(400);
+    });
+
+  it('returns the same error for wrong email and wrong password (no enumeration)', async () => {
       const app = createTestApp();
       await request(app)
         .post('/api/auth/register')

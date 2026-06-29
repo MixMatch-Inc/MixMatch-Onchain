@@ -46,6 +46,32 @@ Then, from `apps/api`:
 pnpm prisma:migrate
 ```
 
+## Web Auth Shell Environment
+
+The web auth shell runs entirely client-side and does not require server-side environment variables beyond the API base URL.
+
+| Variable              | Description                  | Example                  |
+| --------------------- | ----------------------------- | -------------------------- |
+| `NEXT_PUBLIC_API_URL` | Base URL of the API           | `http://localhost:3001`    |
+
+### Auth State Persistence
+- The web auth shell stores the authenticated user and access token in `localStorage` under the key `mixmatch.auth`.
+- On app load, the stored token is verified by calling `GET /api/auth/me`.
+- If the token is expired or invalid, the stored auth is cleared and the user is treated as unauthenticated.
+- No environment variables are needed for the auth persistence layer.
+
+## Web App Environment Variables
+
+| Variable              | Required | Default                  | Description                  |
+| --------------------- | -------- | ------------------------ | ----------------------------- |
+| `NEXT_PUBLIC_API_URL` | No       | `http://localhost:3001`   | Base URL of the API           |
+
+## Mobile App Environment Variables
+
+| Variable              | Required | Default                  | Description                  |
+| --------------------- | -------- | ------------------------ | ----------------------------- |
+| `EXPO_PUBLIC_API_URL` | No       | `http://localhost:3001`   | Base URL of the API           |
+
 ## Edge Case & Failure Mode Handling
 
 ### Environment Validation Failures
@@ -53,7 +79,7 @@ The API enforces **fail-fast bootstrapping** to catch configuration issues immed
 - The application will refuse to start if any required environment variables are missing
 - `JWT_SECRET` must be at least 32 characters long; shorter secrets cause immediate startup failure
 - `RPC_URL` (required for Stellar/Soroban integration) must be explicitly provided
-- Malformed `PORT` values default to 3000, but invalid numeric formats throw type errors
+- Malformed `PORT` values default to 3001, but invalid numeric formats throw type errors
 
 ### Empty State Bootstrapping
 First-time setup handling for new environments:
@@ -74,6 +100,7 @@ Environmental connection handling with built-in retry patterns:
 | Missing `RPC_URL` | Stellar network URL not configured | Add a valid Soroban RPC endpoint (e.g., from QuickNode or local node) |
 | Database connection timeout | PostgreSQL not running or wrong connection string | Verify Docker container status and `DATABASE_URL` matches your local setup |
 | CORS errors in web app | `WEB_ORIGIN` mismatch | Ensure `WEB_ORIGIN` in API env matches the exact origin of your Next.js app |
+| Token rejected on page load | Stored access token is expired or invalid | User is automatically logged out; re-login required |
 
 ## CI environment
 

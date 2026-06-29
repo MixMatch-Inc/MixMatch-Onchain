@@ -2,77 +2,94 @@
 
 ## Purpose
 
-The web auth shell is the client-side authentication boundary for the Next.js web app. It provides a consistent auth wrapper, loading state management, and integrates `AuthProvider` with the component tree.
+The web auth shell is the client-side authentication boundary for the Next.js web app. It wraps all authenticated pages and provides a consistent auth context to the component tree.
 
-## Components
+## Boundaries
 
-### AuthShell
+### What the shell owns
+- Auth state management (current user, access token, loading state)
+- Token persistence (localStorage read/write)
+- Token validation on app load (`GET /api/auth/me`)
+- Login / register / logout flows
+- Auth API client functions
 
-The `AuthShell` component wraps authenticated page content and handles the auth loading state:
+### What the shell delegates
+- Form rendering → `AuthForm` component
+- Page-level routing → Next.js App Router pages
+- API communication → `api-client.ts`
+- Shared schemas and types → `@mixmatch/shared`
 
-```tsx
-<AuthShell fallback={<LoadingSpinner />}>
-  <AuthenticatedContent />
-</AuthShell>
-```
+## Interfaces
 
-**Props:**
-
-| Prop       | Type        | Default  | Description                              |
-| ---------- | ----------- | -------- | ---------------------------------------- |
-| `children` | `ReactNode` | Required | Content to render when auth is loaded    |
-| `fallback` | `ReactNode` | Loading text | Content to render while auth is loading |
-
-### AuthProvider
-
-Wraps the entire app in `RootLayout` to provide auth context globally:
-
-```tsx
-// apps/web/src/app/layout.tsx
-<AuthProvider>
-  {children}
-</AuthProvider>
-```
-
-### useAuth Hook
-
-Available to any component within `AuthProvider`:
+### AuthContextValue
 
 ```ts
-const { user, accessToken, isLoading, setAuth, logout } = useAuth();
+interface AuthContextValue {
+  user: AuthUser | null;
+  accessToken: string | null;
+  isLoading: boolean;
+  setAuth: (auth: StoredAuth) => void;
+  logout: () => void;
+}
 ```
 
-## Integration Points
+### StoredAuth (localStorage shape)
 
-### Root Layout (`app/layout.tsx`)
-- `AuthProvider` wraps the entire app
-- No page-level configuration needed
+```ts
+interface StoredAuth {
+  user: AuthUser;
+  accessToken: string;
+}
+```
 
-### Login Page (`app/login/page.tsx`)
-- Uses `loginSchema` for client-side validation
-- Calls `loginUser()` API client
-- Stores auth via `setAuth()`
+### API Client Contract
 
-### Signup Page (`app/signup/page.tsx`)
-- Uses `registerSchema` for client-side validation
-- Calls `registerUser()` API client
-- Stores auth via `setAuth()`
+```ts
+registerUser(input: RegisterInput): Promise<AuthTokenResponse>
+loginUser(input: LoginInput): Promise<AuthTokenResponse>
+getCurrentUser(accessToken: string): Promise<{ user: AuthUser }>
+```
 
-## State Machine
+## Contracts
+
+### Initialisation Flow
+1. On app load, `AuthProvider` reads `mixmatch.auth` from localStorage.
+2. If found, it calls `GET /api/auth/me` with the stored token to verify it is still valid.
+3. On success → user and token are set in context, `isLoading` becomes `false`.
+4. On failure (expired/invalid token) → localStorage is cleared, `isLoading` becomes `false`.
+5. If no stored auth → `isLoading` becomes `false` immediately.
+
+### Login Flow
+1. User submits email/password on login page.
+2. `POST /api/auth/login` is called.
+3. On success → response (user + tokens) is stored via `setAuth`.
+4. On failure → error is surfaced to the user via `AuthForm`.
+
+### Logout Flow
+1. `logout()` clears localStorage and resets context state to `null`.
+2. No server-side session revocation is performed (tokens expire naturally).
+
+### Registration Flow
+1. User submits email/password on signup page.
+2. `POST /api/auth/register` is called.
+3. On success → response (user + tokens) is stored via `setAuth`.
+4. On failure → error is surfaced to the user via `AuthForm`.
+
+## Storage Key
 
 ```
-INITIAL -> LOADING (reading localStorage)
-LOADING -> AUTHENTICATED (valid token found)
-LOADING -> UNAUTHENTICATED (no token or invalid)
-AUTHENTICATED -> UNAUTHENTICATED (logout / token expiry)
-UNAUTHENTICATED -> AUTHENTICATED (login / register success)
+mixmatch.auth
 ```
+
+## Error Handling
+
+All API errors are surfaced as `ApiError` instances with a `message` string. The `AuthForm` component displays the error in a `role="alert"` element.
 
 ## Edge Cases
 
 | Scenario | Behaviour |
 |---|---|
 | localStorage corrupted | Removed silently, user treated as unauthenticated |
-| Multiple rapid login calls | Last response wins (React state overwrite) |
-| AuthShell rendered before AuthProvider | `useAuth` throws clear error message |
-| isLoading never resolves | Fallback UI shown indefinitely (rare) |
+| Token expired between loads | Cleared silently, user redirected to login |
+| API unreachable on initial load | Token cleared, user sees logged-out state |
+| Multiple rapid login/setAuth calls | Last write wins (simple state overwrite) |

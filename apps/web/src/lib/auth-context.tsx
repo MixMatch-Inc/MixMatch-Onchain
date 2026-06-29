@@ -2,6 +2,7 @@
 
 import type { AuthUser } from '@mixmatch/shared';
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
+import { getCurrentUser } from './api-client';
 
 const STORAGE_KEY = 'mixmatch.auth';
 
@@ -30,13 +31,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (raw) {
       try {
         const stored = JSON.parse(raw) as StoredAuth;
-        setUser(stored.user);
-        setAccessToken(stored.accessToken);
+        getCurrentUser(stored.accessToken)
+          .then((res) => {
+            setUser(res.user);
+            setAccessToken(stored.accessToken);
+          })
+          .catch(() => {
+            window.localStorage.removeItem(STORAGE_KEY);
+          })
+          .finally(() => setIsLoading(false));
       } catch {
         window.localStorage.removeItem(STORAGE_KEY);
+        setIsLoading(false);
       }
+    } else {
+      setIsLoading(false);
     }
-    setIsLoading(false);
   }, []);
 
   const setAuth = (auth: StoredAuth) => {

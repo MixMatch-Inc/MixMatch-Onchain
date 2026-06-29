@@ -1,5 +1,51 @@
 # Password Handling
 
+## Scope & Contracts
+
+### Boundary
+
+Password handling covers the full lifecycle: user registration (password
+creation), login (password verification), and any future password reset or
+update flows. It does **not** cover session management, token issuance, or
+rate limiting (those are separate concerns documented in their own docs).
+
+### Input contracts
+
+```typescript
+// Register — validated by registerSchema
+{ email: string, password: string }
+// password: 8–128 characters, no complexity requirements
+
+// Login — validated by loginSchema
+{ email: string, password: string }
+// password: 1–128 characters, non-empty
+```
+
+### Output contracts
+
+```typescript
+// Success (register, login)
+{ user: AuthUser, accessToken: string, refreshToken: string }
+
+// Validation failure — 400
+{ error: { code: "VALIDATION_ERROR", message: string } }
+
+// Auth failure (login) — 401
+{ error: { code: "UNAUTHORIZED", message: "Invalid email or password" } }
+
+// Duplicate email (register) — 409
+{ error: { code: "CONFLICT", message: string } }
+```
+
+### Schema contract
+
+The password schemas in `packages/shared/src/validation/auth.schema.ts` are
+the **single source of truth**. The API uses them for server-side validation;
+the frontend uses them for client-side validation before submitting. Both
+sides must always use the same schema — never duplicate validation logic.
+
+---
+
 ## Password Policy
 
 The API enforces the following password rules:
@@ -65,4 +111,6 @@ entry point.
 - **Schema tests**: `packages/shared/src/__tests__/auth.schema.test.ts`
 - **Service layer**: `apps/api/src/modules/auth/auth.service.ts` (hashing, lookup)
 - **Endpoint tests**: `apps/api/src/modules/auth/tests/`
-- **Frontend forms**: `apps/web/src/app/(auth)/register/page.tsx`, `apps/web/src/app/(auth)/login/page.tsx`
+- **Frontend forms**: `apps/web/src/app/signup/page.tsx`, `apps/web/src/app/login/page.tsx`
+- **Frontend validation**: `apps/web/src/lib/api-client.ts` (calls the schemas before submitting)
+- **Password hashing**: `apps/api/src/modules/auth/auth.service.ts` (bcryptjs, 10 rounds)

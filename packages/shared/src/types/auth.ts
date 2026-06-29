@@ -5,10 +5,7 @@
 export interface AuthUser {
   id: string;
   email: string;
-<<<<<<< HEAD
-=======
   role: string;
->>>>>>> pr647/feat/phertyameen-issues
   createdAt: string;
   updatedAt: string;
 }

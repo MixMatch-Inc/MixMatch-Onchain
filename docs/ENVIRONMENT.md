@@ -88,6 +88,42 @@ Workflows inject their own values at runtime — no `.env` files are committed.
 The postgres service in `regression-coverage.yml` uses database name
 `mixmatch_test` to avoid conflicts with other environments.
 
+## API endpoints
+
+### `/api/auth/me`
+
+Protected endpoint that returns the currently authenticated user's profile.
+
+```
+GET /api/auth/me
+Authorization: Bearer <access_token>
+```
+
+Response: `{ user: { id, email, role, createdAt, updatedAt } }`
+
+Error codes: `INVALID_TOKEN` (401), `TOKEN_EXPIRED` (401).
+
+### `/api/auth/refresh`
+
+Exchanges a valid refresh token for a new token pair (access + refresh).
+
+```
+POST /api/auth/refresh
+Content-Type: application/json
+
+{ "refreshToken": "<refresh_token>" }
+```
+
+Response: `{ accessToken, refreshToken }`
+
+### `/api/auth/register` & `/api/auth/login`
+
+Registration and login return `{ user: AuthUser, accessToken }`.
+
+## Web auth shell
+
+See [`docs/WEB-AUTH-SHELL.md`](./WEB-AUTH-SHELL.md) for the full scope and contracts.
+
 ## Secrets handling
 
 - Never commit `.env` files — they are gitignored.

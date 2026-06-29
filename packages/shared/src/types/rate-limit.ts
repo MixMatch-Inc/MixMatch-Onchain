@@ -3,7 +3,7 @@ export interface RateLimitConfig {
   maxRequests: number;
   message?: string;
   statusCode?: number;
-  keyGenerator?: (req: any) => string;
+  keyGenerator?: (req: Record<string, unknown>) => string;
 }
 
 export interface RateLimitInfo {

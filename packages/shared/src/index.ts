@@ -8,3 +8,4 @@ export * from './types/session.js';
 export * from './types/validation.js';
 export * from './validation/auth.schema.js';
 export * from './validation/session.schema.js';
+export * from './validation/validators.js';

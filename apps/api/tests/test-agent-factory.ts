@@ -6,6 +6,13 @@ import { JwtService } from '@nestjs/jwt';
 import * as request from 'supertest';
 import Redis from 'ioredis';
 
+const RETRY_DELAY_MS = 200;
+const MAX_RETRIES = 3;
+
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 export class TestHarness {
   public app: INestApplication;
   public dataSource: DataSource;
@@ -21,13 +28,11 @@ export class TestHarness {
     })
       .overrideProvider('STELLAR_VERIFICATION_SERVICE')
       .useValue({
-        verifySignature: () => true, // Bypasses live chain computations globally within this harness
+        verifySignature: () => true,
       })
       .compile();
 
     this.app = moduleFixture.createNestApplication();
-    
-    // Bind exact global constraints to match actual platform behavior
     this.app.useGlobalPipes(new ValidationPipe({ transform: true, whitelist: true }));
     await this.app.init();
 
@@ -36,34 +41,59 @@ export class TestHarness {
     this.jwtService = moduleFixture.get<JwtService>(JwtService);
   }
 
-  /**
-   * Generates a supertest agent pre-loaded with a legitimate authorization bearer payload 
-   * without calling the signature login flow endpoints.
-   */
   createAuthenticatedAgent(userPayload: { id: string; email: string; role: string }) {
     const token = this.jwtService.sign(
       { sub: userPayload.id, email: userPayload.email, role: userPayload.role },
-      { secret: 'pipeline-runner-fallback-signature-validation-key', expiresIn: '15m' }
+      { secret: 'pipeline-runner-fallback-signature-validation-key', expiresIn: '15m' },
     );
 
     const httpServer = this.app.getHttpServer();
     const agent = request.agent(httpServer);
-    
-    // Attach authentication context parameters globally to all downstream requests
     agent.set('Authorization', `Bearer ${token}`);
-    
+
     return agent;
   }
 
   async close(): Promise<void> {
-    if (this.dataSource?.isInitialized) {
-      await this.dataSource.destroy();
+    const closeOne = async <T>(label: string, target: { close?: () => Promise<T>; quit?: () => Promise<T>; destroy?: () => Promise<T> } | null | undefined) => {
+      if (!target) return;
+      for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+        try {
+          if (typeof (target as any).destroy === 'function') {
+            await (target as any).destroy();
+          } else if (typeof target.close === 'function') {
+            await target.close();
+          } else if (typeof target.quit === 'function') {
+            await target.quit();
+          }
+          return;
+        } catch (err) {
+          if (attempt === MAX_RETRIES) {
+            console.warn(`[TestHarness] failed to close ${label} after ${MAX_RETRIES} attempts:`, err);
+          } else {
+            await delay(RETRY_DELAY_MS);
+          }
+        }
+      }
+    };
+
+    await Promise.all([
+      closeOne('DataSource', this.dataSource),
+      closeOne('Redis', this.redisClient),
+      closeOne('App', this.app),
+    ]);
+  }
+
+  async withRetry<T>(fn: () => Promise<T>): Promise<T> {
+    let lastError: Error | null = null;
+    for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+      try {
+        return await fn();
+      } catch (err) {
+        lastError = err instanceof Error ? err : new Error(String(err));
+        if (attempt < MAX_RETRIES) await delay(RETRY_DELAY_MS);
+      }
     }
-    if (this.redisClient) {
-      await this.redisClient.quit();
-    }
-    if (this.app) {
-      await this.app.close();
-    }
+    throw lastError!;
   }
 }

@@ -2,30 +2,31 @@ import { DataSource } from 'typeorm';
 import Redis from 'ioredis';
 
 export class DbTestUtils {
-  /**
-   * Drops transactional row states safely across all tables by executing a cascading truncation sequence
-   */
   static async clearDatabase(dataSource: DataSource): Promise<void> {
-    if (!dataSource.isInitialized) {
-      return;
-    }
+    if (!dataSource?.isInitialized) return;
 
-    const entities = dataSource.entityMetadatas;
-    const tableNames = entities
-      .map((entity) => `"${entity.tableName}"`)
-      .join(', ');
+    try {
+      const entities = dataSource.entityMetadatas;
+      if (!entities?.length) return;
 
-    if (tableNames.length > 0) {
-      await dataSource.query(`TRUNCATE TABLE ${tableNames} CASCADE;`);
+      const tableNames = entities.map((entity) => `"${entity.tableName}"`).join(', ');
+      if (tableNames) {
+        await dataSource.query(`TRUNCATE TABLE ${tableNames} CASCADE;`);
+      }
+    } catch (err) {
+      console.warn('[DbTestUtils] clearDatabase failed:', err instanceof Error ? err.message : err);
     }
   }
 
-  /**
-   * Resets active Redis caches to prevent cross-contamination of rate limit indices or blacklisted sessions
-   */
   static async clearRedis(redisClient: Redis): Promise<void> {
-    if (redisClient && redisClient.status === 'ready') {
-      await redisClient.flushall();
+    if (!redisClient) return;
+
+    try {
+      if (redisClient.status === 'ready') {
+        await redisClient.flushall();
+      }
+    } catch (err) {
+      console.warn('[DbTestUtils] clearRedis failed:', err instanceof Error ? err.message : err);
     }
   }
 }

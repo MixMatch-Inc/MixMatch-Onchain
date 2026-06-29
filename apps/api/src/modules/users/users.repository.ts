@@ -7,16 +7,11 @@ export interface CreateUserInput {
   passwordHash: string;
 }
 
-=======
->>>>>>> pr648/feat/Maryermarh-issues
 export interface UpdateUserInput {
   email?: string;
   passwordHash?: string;
 }
 
-<<<<<<< HEAD
-=======
->>>>>>> pr648/feat/Maryermarh-issues
 /**
  * Data access for the `users` table. The auth module is the only consumer
  * of this repository for now; it exists in `modules/users` because the
@@ -26,9 +21,7 @@ export interface UserRepository {
   findByEmail(email: string): Promise<User | null>;
   findById(id: string): Promise<User | null>;
   create(input: CreateUserInput): Promise<User>;
-<<<<<<< HEAD
-update(id: string, data: UpdateUserInput): Promise<User>;
-update(id: string, data: UpdateUserInput): Promise<User>;
+  update(id: string, data: UpdateUserInput): Promise<User>;
 }
 
 export class PrismaUserRepository implements UserRepository {
@@ -41,9 +34,7 @@ export class PrismaUserRepository implements UserRepository {
   }
 
   async create(input: CreateUserInput): Promise<User> {
-return prisma.user.create({ data: input });
-return prisma.user.create({ data: { ...input, role: 'USER' } });
-return prisma.user.create({ data: { ...input, role: 'USER' } });
+    return prisma.user.create({ data: { ...input, role: 'USER' } });
   }
 
   async update(id: string, data: UpdateUserInput): Promise<User> {
@@ -72,19 +63,15 @@ export class InMemoryUserRepository implements UserRepository {
       id: randomUUID(),
       email: input.email,
       passwordHash: input.passwordHash,
-=======
       role: 'USER',
->>>>>>> pr647/feat/phertyameen-issues
-role: 'USER',
       createdAt: now,
       updatedAt: now,
     };
     this.users.set(user.id, user);
     return user;
   }
-<<<<<<< HEAD
-async update(id: string, data: UpdateUserInput): Promise<User> {
-async update(id: string, data: UpdateUserInput): Promise<User> {
+
+  async update(id: string, data: UpdateUserInput): Promise<User> {
     const user = this.users.get(id);
     if (!user) {
       throw new Error('User not found');

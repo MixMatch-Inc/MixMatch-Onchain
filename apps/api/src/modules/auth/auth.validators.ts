@@ -17,8 +17,6 @@ export function parseLoginInput(input: unknown): LoginDto {
   }
   return result.data;
 }
-<<<<<<< HEAD
-=======
 
 export function parseRefreshInput(input: unknown): { refreshToken: string } {
   if (!input || typeof input !== 'object' || !('refreshToken' in (input as Record<string, unknown>))) {
@@ -30,7 +28,3 @@ export function parseRefreshInput(input: unknown): { refreshToken: string } {
   }
   return { refreshToken };
 }
-<<<<<<< HEAD
->>>>>>> pr647/feat/phertyameen-issues
-=======
->>>>>>> pr648/feat/Maryermarh-issues

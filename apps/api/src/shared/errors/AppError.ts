@@ -42,9 +42,5 @@ export class NotFoundError extends AppError {
     this.name = 'NotFoundError';
   }
 }
-<<<<<<< HEAD
-
-=======
 
 
->>>>>>> pr648/feat/Maryermarh-issues

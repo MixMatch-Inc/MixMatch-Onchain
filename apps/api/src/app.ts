@@ -1,18 +1,28 @@
-import express from 'express';
 import cors from 'cors';
-import authRouter from './modules/auth/auth.routes';
-import healthRouter from './modules/health/health.routes';
-import { requestLogger } from './middleware/logger.middleware';
+import express, { type Express } from 'express';
+import { env } from './shared/config/env.js';
+import { errorMiddleware } from './shared/middleware/error.middleware.js';
+import { createAuthRouter } from './modules/auth/auth.routes.js';
 
-export const createApp = () => {
+export function createApp(): Express {
   const app = express();
 
-  app.use(cors());
+  app.use(cors({ origin: env.webOrigin }));
   app.use(express.json());
-  app.use(requestLogger);
 
-  app.use('/auth', authRouter);
-  app.use('/health', healthRouter);
+  app.get('/health', (_req, res) => {
+    res.status(200).json({ status: 'ok' });
+  });
+
+  /*
+   * Auth routes — see apps/docs/auth-guard.md for details on:
+   *   - Role-based access control  (AuthGuard.requireRoles)
+   *   - Self-ownership checks      (AuthGuard.requireOwnership)
+   *   - Token verification         (requireAuth middleware)
+   */
+  app.use('/api/auth', createAuthRouter());
+
+  app.use(errorMiddleware);
 
   return app;
-};
+}

@@ -1,14 +1,16 @@
 import type { NextFunction, Request, Response } from 'express';
 import jwt from 'jsonwebtoken';
 import { env } from '../config/env.js';
-import { UnauthorizedError } from '../errors/AppError.js';
+import { InvalidTokenError, TokenExpiredError } from '../errors/AuthErrors.js';
 
 export interface AuthenticatedRequest extends Request {
   userId?: string;
+  role?: string;
 }
 
 interface AccessTokenPayload {
   sub: string;
+  role?: string;
 }
 
 /**
@@ -20,7 +22,7 @@ export function requireAuth(req: AuthenticatedRequest, _res: Response, next: Nex
   const header = req.headers.authorization;
 
   if (!header?.startsWith('Bearer ')) {
-    throw new UnauthorizedError('Missing or invalid Authorization header');
+    throw new InvalidTokenError('Missing or invalid Authorization header');
   }
 
   const token = header.slice('Bearer '.length);
@@ -28,8 +30,12 @@ export function requireAuth(req: AuthenticatedRequest, _res: Response, next: Nex
   try {
     const payload = jwt.verify(token, env.jwtSecret) as AccessTokenPayload;
     req.userId = payload.sub;
+    req.role = payload.role ?? 'USER';
     next();
-  } catch {
-    throw new UnauthorizedError('Invalid or expired token');
+  } catch (err) {
+    if (err instanceof jwt.TokenExpiredError) {
+      throw new TokenExpiredError();
+    }
+    throw new InvalidTokenError();
   }
 }

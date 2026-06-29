@@ -16,6 +16,7 @@ const reactNativePackages = [
 
 module.exports = {
   preset: 'jest-expo',
+  setupFiles: ['./jest.setup.js'],
   transformIgnorePatterns: [
     `node_modules/(?!.*(${reactNativePackages.join('|')}))`,
   ],

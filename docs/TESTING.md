@@ -42,10 +42,11 @@ Coverage output is written to `coverage/` inside the package directory.
 
 ### apps/api
 
-The auth module's tests run against an **in-memory user repository**
+The API tests run against an **in-memory user repository**
 (`InMemoryUserRepository`), so they require no database connection and are
 runnable immediately after `pnpm install`. Tests cover:
 
+- Health check: `GET /health` returns `{ status: "ok" }` with HTTP 200
 - Registration: success, duplicate email, invalid input
 - Login: success, invalid password, non-existent account
 
@@ -66,7 +67,16 @@ Each GitHub Actions workflow (`.github/workflows/*.yml`) runs install, lint,
 test, and (where applicable) build for its package on every pull request. A
 failing test or build fails the corresponding check and blocks merge.
 
-The `regression-coverage.yml` workflow runs the full test suite with
-coverage enabled on every push to `main`/`dev` and on pull requests
-targeting those branches. Coverage artifacts are uploaded and retained for
-7 days.
+### Regression coverage workflow
+
+`.github/workflows/regression-coverage.yml` runs the full test suite with
+coverage on every push and pull request to `main` or `dev`. It:
+
+1. Starts a PostgreSQL service container for integration tests that need a database.
+2. Installs dependencies with `pnpm install --frozen-lockfile`.
+3. Runs `turbo lint` across all packages.
+4. Runs `turbo test -- --coverage` to collect coverage reports.
+5. Uploads the `apps/api/coverage/` directory as an artifact retained for 7 days.
+
+The API tests use an in-memory repository, so they run without the database.
+The PostgreSQL service is available for future integration tests that require it.

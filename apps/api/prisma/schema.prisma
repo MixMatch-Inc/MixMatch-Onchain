@@ -11,6 +11,10 @@ model User {
   id           String   @id @default(uuid())
   email        String   @unique
   passwordHash String
+<<<<<<< HEAD
+=======
+  role         String   @default("USER")
+>>>>>>> pr647/feat/phertyameen-issues
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 

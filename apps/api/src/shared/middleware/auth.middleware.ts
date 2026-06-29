@@ -5,10 +5,18 @@ import { UnauthorizedError } from '../errors/AppError.js';
 
 export interface AuthenticatedRequest extends Request {
   userId?: string;
+import { InvalidTokenError, TokenExpiredError } from '../errors/AuthErrors.js';
+
+export interface AuthenticatedRequest extends Request {
+  userId?: string;
+  role?: string;
 }
 
 interface AccessTokenPayload {
   sub: string;
+=======
+  role?: string;
+>>>>>>> pr647/feat/phertyameen-issues
 }
 
 /**
@@ -20,7 +28,9 @@ export function requireAuth(req: AuthenticatedRequest, _res: Response, next: Nex
   const header = req.headers.authorization;
 
   if (!header?.startsWith('Bearer ')) {
+<<<<<<< HEAD
     throw new UnauthorizedError('Missing or invalid Authorization header');
+throw new InvalidTokenError('Missing or invalid Authorization header');
   }
 
   const token = header.slice('Bearer '.length);
@@ -28,8 +38,15 @@ export function requireAuth(req: AuthenticatedRequest, _res: Response, next: Nex
   try {
     const payload = jwt.verify(token, env.jwtSecret) as AccessTokenPayload;
     req.userId = payload.sub;
-    next();
+next();
   } catch {
     throw new UnauthorizedError('Invalid or expired token');
+req.role = payload.role ?? 'USER';
+    next();
+  } catch (err) {
+    if (err instanceof jwt.TokenExpiredError) {
+      throw new TokenExpiredError();
+    }
+    throw new InvalidTokenError();
   }
 }

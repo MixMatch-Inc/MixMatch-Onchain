@@ -16,7 +16,7 @@ export interface LogContext {
   userId?: string;       // Traceability for authenticated operations
   correlationId?: string;// Unique request identifier passed through middleware
   module: string;        // Component/Domain boundary name (e.g., "auth", "billing")
-  [key: string]: any;    // Extensible properties for supplementary diagnostic variables
+  [key: string]: unknown; // Extensible properties for supplementary diagnostic variables
 }
 
 /**

@@ -2,9 +2,11 @@ import type { Request, Response, NextFunction } from 'express';
 import { randomUUID } from 'node:crypto';
 import { logger } from '../utils/logger.js';
 import type { LogContext } from '../common/logger/logger.interface.js';
+import type { AuthenticatedRequest } from '../shared/middleware/auth.middleware.js';
 
 // Extend Express Request to include our correlationId
 declare global {
+  // eslint-disable-next-line @typescript-eslint/no-namespace -- required by Express's own type-augmentation pattern
   namespace Express {
     interface Request {
       correlationId: string;
@@ -22,7 +24,7 @@ export function requestLogger(req: Request, res: Response, next: NextFunction): 
     const duration = Date.now() - start;
     
     // Extract auth context from request if available (set by auth middleware)
-    const userId = (req as any).user?.id;
+    const userId = (req as AuthenticatedRequest).userId;
     
     const logContext: LogContext = {
       module: 'http',

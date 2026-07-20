@@ -8,7 +8,7 @@ interface Props {
 }
 
 export default function AuthShell({ children }: Props) {
-  const { user, isLoading, setAuth, logout } = useAuth();
+  const { user, isLoading, setAuth } = useAuth();
   const [isRegistering, setIsRegistering] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');

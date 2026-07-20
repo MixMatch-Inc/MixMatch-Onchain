@@ -15,7 +15,7 @@ describe('AuditService', () => {
     await service.record('USER_REGISTERED', { actorId: 'user-1' });
     const entries = await service.findByActor('user-1');
     expect(entries).toHaveLength(1);
-    expect(entries[0].action).toBe('USER_REGISTERED');
+    expect(entries[0]!.action).toBe('USER_REGISTERED');
   });
 
   it('records audit entry with full context', async () => {
@@ -27,8 +27,8 @@ describe('AuditService', () => {
       metadata: { field: 'email' },
     });
     const entries = await service.findByActor('user-2');
-    expect(entries[0].ip).toBe('127.0.0.1');
-    expect(entries[0].metadata).toEqual({ field: 'email' });
+    expect(entries[0]!.ip).toBe('127.0.0.1');
+    expect(entries[0]!.metadata).toEqual({ field: 'email' });
   });
 
   it('finds entries by resource', async () => {

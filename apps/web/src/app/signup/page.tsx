@@ -3,7 +3,7 @@
 import { registerSchema } from '@mixmatch/shared';
 import Link from 'next/link';
 import { AuthForm, type AuthFormValues } from '@/components/AuthForm';
-import { registerUser, ApiError } from '@/lib/api-client';
+import { registerUser } from '@/lib/api-client';
 import { useAuth } from '@/lib/auth-context';
 
 export default function SignupPage() {

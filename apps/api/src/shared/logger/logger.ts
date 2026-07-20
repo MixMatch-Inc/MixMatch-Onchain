@@ -1,4 +1,4 @@
-import { IAppLogger, LogContext, LogLevel } from '../../common/logger/logger.interface';
+import { IAppLogger, LogContext, LogLevel } from '../../common/logger/logger.interface.js';
 
 /**
  * Structured logger that implements the IAppLogger interface, adhering to the auth-first foundation.

@@ -5,5 +5,5 @@ import { logger } from './shared/logger/logger.js';
 const app = createApp();
 
 app.listen(env.port, () => {
-  logger.info(`API server listening on port ${env.port}`);
+  logger.info(`API server listening on port ${env.port}`, { module: 'server' });
 });

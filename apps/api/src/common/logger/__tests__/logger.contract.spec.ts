@@ -1,4 +1,5 @@
-import { IAppLogger, LogContext, LogLevel } from '../logger.interface';
+import { describe, expect, it } from 'vitest';
+import { IAppLogger, LogContext, LogLevel } from '../logger.interface.js';
 
 describe('Issue #538: Logger Contract Verification Suite', () => {
   // A minimal mock implementation to prove the contract boundary works as intended
@@ -24,7 +25,7 @@ describe('Issue #538: Logger Contract Verification Suite', () => {
     
     const mockInstance = logger as MockLogger;
     expect(mockInstance.logs.length).toBe(1);
-    expect(mockInstance.logs[0].level).toBe(LogLevel.INFO);
-    expect(mockInstance.logs[0].ctx.module).toBe('auth');
+    expect(mockInstance.logs[0]!.level).toBe(LogLevel.INFO);
+    expect(mockInstance.logs[0]!.ctx.module).toBe('auth');
   });
 });

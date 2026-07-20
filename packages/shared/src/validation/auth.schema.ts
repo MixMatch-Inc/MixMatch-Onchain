@@ -42,7 +42,8 @@ export const loginSchema = z.object({
   email: emailSchema,
   password: z
     .string({ invalid_type_error: 'Password must be a string', required_error: 'Password is required' })
-    .min(1, 'Password is required'),
+    .min(1, 'Password is required')
+    .max(PASSWORD_MAX_LENGTH, `Password must not exceed ${PASSWORD_MAX_LENGTH} characters`),
 }).strict('Login payload contains unexpected fields');
 
 export type RegisterSchema = z.infer<typeof registerSchema>;

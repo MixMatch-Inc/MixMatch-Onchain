@@ -91,7 +91,7 @@ describe('SessionService', () => {
 
     it('does not affect sessions of other users', async () => {
       const service = createSessionService();
-      const user1Session = await service.createSession('user-1');
+      await service.createSession('user-1');
       const user2Session = await service.createSession('user-2');
 
       await service.revokeAllUserSessions('user-1');
@@ -128,7 +128,7 @@ describe('SessionService', () => {
         sessions.push(await service.createSession('user-1'));
       }
 
-      await service.revokeSession(sessions[0].refreshToken);
+      await service.revokeSession(sessions[0]!.refreshToken);
       const result = await service.createSession('user-1');
 
       expect(typeof result.accessToken).toBe('string');

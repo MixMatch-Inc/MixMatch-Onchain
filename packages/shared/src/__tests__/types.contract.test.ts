@@ -54,6 +54,7 @@ describe('type contracts', () => {
     const response: AuthTokenResponse = {
       user: { id: '1', email: 'a@b.com', role: 'USER', createdAt: '2025-01-01T00:00:00.000Z', updatedAt: '2025-01-01T00:00:00.000Z' },
       accessToken: 'token-123',
+      refreshToken: 'refresh-123',
     };
 
     expect(response.user.email).toBe('a@b.com');
@@ -132,7 +133,7 @@ describe('type contracts', () => {
   });
 
   it('RateLimitInfo has limit, remaining, resetAt', () => {
-    const info: RateLimitInfo = { limit: 20, remaining: 15, resetAt: new Date(), retryAfterMs: 0 };
+    const info: RateLimitInfo = { limit: 20, remaining: 15, resetAt: new Date(), retryAfterMs: 0, allowed: true };
 
     expect(info.remaining).toBe(15);
   });

@@ -128,7 +128,7 @@ describe('SessionService', () => {
         sessions.push(await service.createSession('user-1'));
       }
 
-      await service.revokeSession(sessions[0].refreshToken);
+      await service.revokeSession(sessions[0]!.refreshToken);
       const result = await service.createSession('user-1');
 
       expect(typeof result.accessToken).toBe('string');

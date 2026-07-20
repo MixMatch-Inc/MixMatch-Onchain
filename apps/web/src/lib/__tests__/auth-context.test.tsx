@@ -20,6 +20,7 @@ describe('AuthProvider', () => {
     const authData = {
       user: { id: '1', email: 'a@b.com', role: 'USER', createdAt: '2025-01-01T00:00:00.000Z', updatedAt: '2025-01-01T00:00:00.000Z' },
       accessToken: 'test-token',
+      refreshToken: 'test-refresh-token',
     };
 
     act(() => {
@@ -38,6 +39,7 @@ describe('AuthProvider', () => {
     const authData = {
       user: { id: '1', email: 'a@b.com', role: 'USER', createdAt: '2025-01-01T00:00:00.000Z', updatedAt: '2025-01-01T00:00:00.000Z' },
       accessToken: 'test-token',
+      refreshToken: 'test-refresh-token',
     };
     window.localStorage.setItem('mixmatch.auth', JSON.stringify(authData));
 
@@ -57,9 +59,11 @@ describe('AuthProvider', () => {
   });
 
   it('restores auth from localStorage on mount', () => {
+    const payload = btoa(JSON.stringify({ sub: '1', exp: Date.now() / 1000 + 3600 }));
     const authData = {
       user: { id: '1', email: 'stored@example.com', role: 'USER', createdAt: '2025-01-01T00:00:00.000Z', updatedAt: '2025-01-01T00:00:00.000Z' },
-      accessToken: 'stored-token',
+      accessToken: `header.${payload}.sig`,
+      refreshToken: 'stored-refresh-token',
     };
     window.localStorage.setItem('mixmatch.auth', JSON.stringify(authData));
 

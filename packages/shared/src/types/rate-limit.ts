@@ -11,6 +11,7 @@ export interface RateLimitInfo {
   remaining: number;
   resetAt: Date;
   retryAfterMs: number;
+  allowed: boolean;
 }
 
 export interface RateLimitStore {

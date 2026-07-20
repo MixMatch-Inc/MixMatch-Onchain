@@ -1,4 +1,5 @@
 import { render, screen, act } from '@testing-library/react';
+import { beforeEach, describe, expect, it } from 'vitest';
 import { AuthProvider, useAuth } from '../lib/auth-context';
 import { type ReactNode } from 'react';
 

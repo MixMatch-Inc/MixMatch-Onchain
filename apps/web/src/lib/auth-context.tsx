@@ -1,8 +1,7 @@
 'use client';
 
 import type { AuthUser } from '@mixmatch/shared';
-import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
-import { getCurrentUser } from './api-client';
+import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react';
 
 const STORAGE_KEY = 'mixmatch.auth';
 
@@ -16,7 +15,6 @@ interface AuthContextValue {
   user: AuthUser | null;
   accessToken: string | null;
   isLoading: boolean;
-  isRefreshing: boolean;
   setAuth: (auth: StoredAuth) => void;
   logout: () => void;
   fetchWithAuth: <T>(path: string, options?: RequestInit) => Promise<T>;
@@ -25,11 +23,14 @@ interface AuthContextValue {
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
 function isExpiredToken(token: string): boolean {
+  const segment = token.split('.')[1];
+  if (!segment) return false;
   try {
-    const payload = JSON.parse(atob(token.split('.')[1]));
+    const payload = JSON.parse(atob(segment));
+    if (typeof payload.exp !== 'number') return false;
     return payload.exp * 1000 < Date.now();
   } catch {
-    return true;
+    return false;
   }
 }
 
@@ -47,32 +48,25 @@ function safelyParseStoredAuth(raw: string): StoredAuth | null {
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [accessToken, setAccessToken] = useState<string | null>(null);
-  const [refreshTokenValue, setRefreshTokenValue] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [isRefreshing, setIsRefreshing] = useState(false);
-  const refreshPromiseRef = useRef<Promise<StoredAuth> | null>(null);
 
   useEffect(() => {
     const raw = window.localStorage.getItem(STORAGE_KEY);
-    if (raw) {
-      try {
-        const stored = JSON.parse(raw) as StoredAuth;
-        getCurrentUser(stored.accessToken)
-          .then((res) => {
-            setUser(res.user);
-            setAccessToken(stored.accessToken);
-          })
-          .catch(() => {
-            window.localStorage.removeItem(STORAGE_KEY);
-          })
-          .finally(() => setIsLoading(false));
-      } catch {
-        window.localStorage.removeItem(STORAGE_KEY);
-        setIsLoading(false);
-      }
-    } else {
+    if (!raw) {
       setIsLoading(false);
+      return;
     }
+
+    const stored = safelyParseStoredAuth(raw);
+    if (!stored || isExpiredToken(stored.accessToken)) {
+      window.localStorage.removeItem(STORAGE_KEY);
+      setIsLoading(false);
+      return;
+    }
+
+    setUser(stored.user);
+    setAccessToken(stored.accessToken);
+    setIsLoading(false);
   }, []);
 
   const setAuth = useCallback((auth: StoredAuth) => {
@@ -95,8 +89,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setAccessToken(null);
   }, []);
 
+  const fetchWithAuth = useCallback(
+    async <T,>(path: string, options: RequestInit = {}): Promise<T> => {
+      const headers = new Headers(options.headers);
+      if (accessToken) {
+        headers.set('Authorization', `Bearer ${accessToken}`);
+      }
+      const response = await fetch(path, { ...options, headers });
+      if (!response.ok) {
+        throw new Error(`Request failed: ${response.status}`);
+      }
+      return response.json() as Promise<T>;
+    },
+    [accessToken],
+  );
+
   return (
-    <AuthContext.Provider value={{ user, accessToken, isLoading, isRefreshing, setAuth, logout, fetchWithAuth }}>
+    <AuthContext.Provider value={{ user, accessToken, isLoading, setAuth, logout, fetchWithAuth }}>
       {children}
     </AuthContext.Provider>
   );

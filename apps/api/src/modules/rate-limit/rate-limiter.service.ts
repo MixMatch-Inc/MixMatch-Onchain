@@ -55,11 +55,12 @@ export class RateLimiter {
       remaining,
       resetAt: result.resetAt,
       retryAfterMs,
+      allowed: result.count <= this.config.maxRequests,
     };
   }
 
   isAllowed(info: RateLimitInfo): boolean {
-    return info.remaining > 0;
+    return info.allowed;
   }
 }
 

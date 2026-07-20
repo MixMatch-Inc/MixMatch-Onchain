@@ -1,7 +1,7 @@
 import type { Request, Response, NextFunction } from 'express';
 import { randomUUID } from 'node:crypto';
 import { logger } from '../utils/logger.js';
-import type { LogContext } from '../common/logger/logger.interface';
+import type { LogContext } from '../common/logger/logger.interface.js';
 
 // Extend Express Request to include our correlationId
 declare global {

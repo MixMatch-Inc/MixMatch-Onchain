@@ -1,5 +1,5 @@
 import { renderHook, act } from '@testing-library/react-native';
-import { useAuth } from '../hooks/use-auth';
+import { useAuth } from '../hooks/useAuth';
 
 beforeEach(() => {
   localStorage.clear();
@@ -14,7 +14,7 @@ describe('useAuth (mobile auth shell)', () => {
 
   it('recovers a stored session from localStorage', () => {
     const stored = {
-      user: { id: '1', email: 'alice@test.com', role: 'USER' },
+      user: { id: '1', email: 'alice@test.com', role: 'USER', createdAt: '2025-01-01T00:00:00.000Z', updatedAt: '2025-01-01T00:00:00.000Z' },
       accessToken: 'eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxIn0.test',
     };
     localStorage.setItem('mixmatch.auth', JSON.stringify(stored));
@@ -35,8 +35,8 @@ describe('useAuth (mobile auth shell)', () => {
   it('setAuth persists and exposes the auth state', () => {
     const { result } = renderHook(() => useAuth());
 
-    const auth: any = {
-      user: { id: '2', email: 'bob@test.com', role: 'USER' },
+    const auth = {
+      user: { id: '2', email: 'bob@test.com', role: 'USER', createdAt: '2025-01-01T00:00:00.000Z', updatedAt: '2025-01-01T00:00:00.000Z' },
       accessToken: 'token-abc',
     };
 
@@ -50,7 +50,7 @@ describe('useAuth (mobile auth shell)', () => {
 
     act(() =>
       result.current.setAuth({
-        user: { id: '3', email: 'carol@test.com', role: 'USER' },
+        user: { id: '3', email: 'carol@test.com', role: 'USER', createdAt: '2025-01-01T00:00:00.000Z', updatedAt: '2025-01-01T00:00:00.000Z' },
         accessToken: 'token-xyz',
       }),
     );
@@ -62,15 +62,14 @@ describe('useAuth (mobile auth shell)', () => {
   });
 
   it('handles setAuth when localStorage is full', () => {
-    const originalSetItem = Storage.prototype.setItem;
-    jest.spyOn(Storage.prototype, 'setItem').mockImplementationOnce(() => {
+    jest.spyOn(localStorage, 'setItem').mockImplementationOnce(() => {
       throw new Error('QuotaExceededError');
     });
 
     const { result } = renderHook(() => useAuth());
     act(() =>
       result.current.setAuth({
-        user: { id: '4', email: 'dave@test.com', role: 'USER' },
+        user: { id: '4', email: 'dave@test.com', role: 'USER', createdAt: '2025-01-01T00:00:00.000Z', updatedAt: '2025-01-01T00:00:00.000Z' },
         accessToken: 'token-full',
       }),
     );

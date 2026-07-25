@@ -1,5 +1,18 @@
 # Rate Limiting
 
+## Scope
+
+Rate limiting protects API endpoints from abuse by restricting the number of
+requests a client can make within a given time window. The implementation uses
+a sliding-window algorithm with configurable buckets.
+
+## Why rate limiting matters
+
+Without rate limiting, a single client can overwhelm the API with rapid
+requests, degrading service for all users. Rate limiting provides a first line
+of defence against brute-force attacks, credential stuffing, and accidental
+request storms.
+
 ## Overview
 
 Rate limiting protects API endpoints from abuse by restricting the number of

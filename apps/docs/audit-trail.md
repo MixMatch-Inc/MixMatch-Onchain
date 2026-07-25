@@ -1,5 +1,21 @@
 # Audit Trail
 
+## Scope
+
+The audit trail provides a tamper-evident log of security-relevant events
+for compliance, debugging, and incident response. Every action that mutates
+state or accesses sensitive data is recorded with actor identity and
+context. This document defines what gets logged, the contract for the
+logging interface, and how to extend it for new modules.
+
+## Why this matters
+
+Without a defined audit contract, developers may log events inconsistently,
+omit critical metadata, or block the request path with synchronous writes.
+The audit trail contract ensures uniformity: every entry has a fixed schema,
+every write is async fire-and-forget, and every module uses the same
+`AuditService.record()` interface.
+
 ## Overview
 
 The audit trail captures security-relevant events for compliance, debugging,
@@ -55,3 +71,49 @@ await audit.record('USER_REGISTERED', {
   prevent unbounded growth.
 - **PII**: Avoid logging raw passwords, tokens, or sensitive personal data
   in metadata.
+
+## Contracts
+
+### AuditService interface
+
+```ts
+interface AuditService {
+  record(action: AuditAction, entry: AuditEntryInput): Promise<void>;
+}
+```
+
+Any module that needs to log an event calls `auditService.record()`. The
+service MUST be injected via the module wiring system — never instantiated
+directly in request handlers.
+
+### InMemoryAuditStore
+
+For testing, `InMemoryAuditStore` stores entries in an array. Use it in
+unit tests where you need to assert that a specific action was recorded:
+
+```ts
+const store = new InMemoryAuditStore();
+const audit = new AuditService(store);
+await audit.record('USER_LOGGED_IN', { actorId: user.id });
+expect(store.entries).toHaveLength(1);
+expect(store.entries[0].action).toBe('USER_LOGGED_IN');
+```
+
+### Extending for new modules
+
+To add audit logging to a new module:
+
+1. Inject `AuditService` via the module's `initialize()` function.
+2. Call `audit.record()` after the operation succeeds.
+3. Include `actorId` whenever the user identity is known.
+4. Include `resourceId` for the affected entity.
+5. Never block the response on the audit write.
+
+## Testing
+
+Audit trail tests live in `apps/api/src/modules/audit/` and verify:
+
+- Entry schema compliance
+- Async fire-and-forget semantics
+- InMemoryAuditStore retrieval
+- PII scrubbing (tokens/passwords never stored)

@@ -1,6 +1,18 @@
 # Environment Variable Integration
 
-This document maps each environment variable to the specific code that consumes it.
+## Scope
+
+This document maps each environment variable to the specific code that consumes
+it, showing the exact dependency chain from variable definition to runtime
+behaviour. It serves as the source of truth for adding, modifying, or
+troubleshooting environment configuration.
+
+## Why this mapping matters
+
+Environment variables are the primary mechanism for configuring runtime
+behaviour across environments (development, CI, production). Without a clear
+mapping, developers cannot determine which variables affect which code paths,
+making it difficult to add new variables safely or debug configuration issues.
 
 ## apps/api
 
@@ -61,3 +73,25 @@ NEXT_PUBLIC_API_URL ──► api-client.ts
 2. Document in this file and `docs/ENVIRONMENT.md`
 3. Consume via `env.config.ts` (API) or `process.env` (web/mobile)
 4. Inject into CI workflows in `.github/workflows/*.yml`
+
+## Environment Validation
+
+The API uses `apps/api/src/shared/config/env.ts` to validate environment
+variables at startup. The `requireEnv()` helper ensures that required variables
+are present before the server starts accepting requests.
+
+### Validation Rules
+
+| Variable | Validation |
+|----------|------------|
+| `JWT_SECRET` | Must be >32 characters in non-development environments |
+| `PORT` | Defaults to `3001` if not set |
+| `NODE_ENV` | Defaults to `development` if not set |
+| `DATABASE_URL` | Required by Prisma; fails at connection time if missing |
+| `WEB_ORIGIN` | Used by CORS; if missing, cross-origin requests are blocked |
+
+### Fail-Fast Behaviour
+
+Missing required variables cause the server to crash on startup with a clear
+error message rather than failing silently at runtime. This ensures that
+configuration issues are caught immediately during deployment.

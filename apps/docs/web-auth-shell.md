@@ -1,8 +1,12 @@
 # Web Auth Shell
 
-## Purpose
+## Scope
 
 The web auth shell is the client-side authentication boundary for the Next.js web app. It wraps all authenticated pages and provides a consistent auth context to the component tree.
+
+## Why this boundary exists
+
+Authentication touches multiple concerns: API calls, state management, token storage, error handling, and page routing. Without a single shell, each page would duplicate this logic and risk inconsistent behavior. The auth shell centralises all of these concerns so that individual pages only need to consume `useAuth()` and render their content.
 
 ## Boundaries
 

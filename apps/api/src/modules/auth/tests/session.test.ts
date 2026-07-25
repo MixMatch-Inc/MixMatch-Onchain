@@ -133,5 +133,59 @@ describe('SessionService', () => {
 
       expect(typeof result.accessToken).toBe('string');
     });
+
+    it('concurrent session limits are independent per user', async () => {
+      const service = createSessionService();
+      for (let i = 0; i < 5; i++) {
+        await service.createSession('user-1');
+      }
+      await expect(service.createSession('user-1')).rejects.toThrow(InvalidRefreshTokenError);
+
+      const user2Session = await service.createSession('user-2');
+      expect(typeof user2Session.accessToken).toBe('string');
+    });
+
+    it('refresh rotation produces unique tokens', async () => {
+      const service = createSessionService();
+      const initial = await service.createSession('user-1');
+      const refreshed1 = await service.refreshSession(initial.refreshToken);
+      const refreshed2 = await service.refreshSession(refreshed1.refreshToken);
+
+      expect(refreshed1.refreshToken).not.toBe(initial.refreshToken);
+      expect(refreshed2.refreshToken).not.toBe(refreshed1.refreshToken);
+      expect(refreshed2.refreshToken).not.toBe(initial.refreshToken);
+    });
+
+    it('revokeAllUserSessions does not affect other users sessions', async () => {
+      const service = createSessionService();
+      const user1Sessions = [];
+      for (let i = 0; i < 3; i++) {
+        user1Sessions.push(await service.createSession('user-1'));
+      }
+      const user2Sessions = [];
+      for (let i = 0; i < 3; i++) {
+        user2Sessions.push(await service.createSession('user-2'));
+      }
+
+      await service.revokeAllUserSessions('user-1');
+
+      for (const s of user1Sessions) {
+        await expect(service.refreshSession(s.refreshToken)).rejects.toThrow(InvalidRefreshTokenError);
+      }
+      for (const s of user2Sessions) {
+        const refreshed = await service.refreshSession(s.refreshToken);
+        expect(typeof refreshed.accessToken).toBe('string');
+      }
+    });
+
+    it('revoking a non-existent session throws InvalidRefreshTokenError', async () => {
+      const service = createSessionService();
+      await expect(service.revokeSession('non-existent-token')).rejects.toThrow(InvalidRefreshTokenError);
+    });
+
+    it('refreshing with undefined-like empty string throws InvalidRefreshTokenError', async () => {
+      const service = createSessionService();
+      await expect(service.refreshSession('')).rejects.toThrow(InvalidRefreshTokenError);
+    });
   });
 });

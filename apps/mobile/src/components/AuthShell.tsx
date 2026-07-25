@@ -42,6 +42,14 @@ export default function AuthShell({ children }: Props) {
     }
   };
 
+  const handleToggleMode = () => {
+    if (submitting) return;
+    setError('');
+    setEmail('');
+    setPassword('');
+    setIsRegistering((prev) => !prev);
+  };
+
   return (
     <View style={styles.container}>
       <Text style={styles.title}>MixMatch Onchain</Text>
@@ -73,7 +81,7 @@ export default function AuthShell({ children }: Props) {
         </Text>
       </TouchableOpacity>
 
-      <TouchableOpacity onPress={() => setIsRegistering((prev) => !prev)}>
+      <TouchableOpacity onPress={handleToggleMode} disabled={submitting}>
         <Text style={styles.switchText}>
           {isRegistering ? 'Already have an account? Sign In' : "Don't have an account? Register"}
         </Text>

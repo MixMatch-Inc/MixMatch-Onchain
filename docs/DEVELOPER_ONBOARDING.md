@@ -206,6 +206,50 @@ pnpm install
 pnpm --filter @mixmatch/shared build
 ```
 
+### Node version mismatch
+
+Ensure you are using Node 20+:
+
+```bash
+node --version  # Should show v20.x.x or higher
+```
+
+If using nvm:
+
+```bash
+nvm use 20
+```
+
+The `.nvmrc` file in the repo root specifies the exact version.
+
+### pnpm lockfile conflicts
+
+If you encounter lockfile conflicts after merging:
+
+```bash
+rm pnpm-lock.yaml
+pnpm install
+git add pnpm-lock.yaml
+git commit -m "chore: regenerate lockfile"
+```
+
+### TypeScript errors after pulling new code
+
+TypeScript errors often stem from outdated shared package builds:
+
+```bash
+pnpm install
+pnpm --filter @mixmatch/shared build
+pnpm --filter @mixmatch/stellar build
+```
+
+### Tests pass locally but fail in CI
+
+Common causes:
+1. Missing environment variables — check `.github/workflows/*.yml`
+2. Database not available — CI uses in-memory stores, not PostgreSQL
+3. Flaky tests — check for unhandled promises or timing issues
+
 ---
 
 ## Next Steps

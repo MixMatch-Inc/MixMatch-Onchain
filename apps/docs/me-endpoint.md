@@ -1,5 +1,21 @@
 # Me Endpoint
 
+## Scope
+
+The `/me` endpoint is the primary session validation mechanism. It verifies that
+a bearer token is still valid and returns the authenticated user's profile. It
+is the foundation for all client-side session restoration after page reload.
+
+## Why this endpoint matters
+
+Every authenticated client (web, mobile, future apps) needs a way to check
+whether a previously stored token is still usable. Rather than trusting local
+state alone, the client calls `/me` on app load to confirm the session with the
+server. This catches token revocation, user deletion, and credential rotation
+that local state cannot detect.
+
+---
+
 **Route:** `GET /api/auth/me`
 **Auth:** Required (Bearer token)
 

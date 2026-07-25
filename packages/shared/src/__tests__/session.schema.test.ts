@@ -86,3 +86,83 @@ describe('updateProfileSchema', () => {
     expect(result.success).toBe(false);
   });
 });
+
+describe('refreshTokenSchema — regression coverage', () => {
+  it('accepts a long UUID-style token', () => {
+    const result = refreshTokenSchema.safeParse({
+      refreshToken: '550e8400-e29b-41d4-a716-446655440000',
+    });
+
+    expect(result.success).toBe(true);
+  });
+
+  it('rejects a token exceeding max length', () => {
+    const result = refreshTokenSchema.safeParse({
+      refreshToken: 'x'.repeat(1025),
+    });
+
+    expect(result.success).toBe(false);
+  });
+
+  it('accepts a token at exactly max length', () => {
+    const result = refreshTokenSchema.safeParse({
+      refreshToken: 'x'.repeat(1024),
+    });
+
+    expect(result.success).toBe(true);
+  });
+
+  it('rejects undefined refresh token', () => {
+    const result = refreshTokenSchema.safeParse({ refreshToken: undefined });
+
+    expect(result.success).toBe(false);
+  });
+
+  it('rejects a boolean refresh token', () => {
+    const result = refreshTokenSchema.safeParse({ refreshToken: true });
+
+    expect(result.success).toBe(false);
+  });
+
+  it('rejects an array refresh token', () => {
+    const result = refreshTokenSchema.safeParse({ refreshToken: ['token'] });
+
+    expect(result.success).toBe(false);
+  });
+});
+
+describe('updateProfileSchema — regression coverage', () => {
+  it('accepts a name at exactly 100 characters', () => {
+    const result = updateProfileSchema.safeParse({ name: 'a'.repeat(100) });
+
+    expect(result.success).toBe(true);
+  });
+
+  it('rejects extra fields (strict mode)', () => {
+    const result = updateProfileSchema.safeParse({
+      email: 'user@example.com',
+      name: 'Valid Name',
+      avatar: 'http://example.com/avatar.png',
+    });
+
+    expect(result.success).toBe(false);
+  });
+
+  it('rejects empty string email', () => {
+    const result = updateProfileSchema.safeParse({ email: '' });
+
+    expect(result.success).toBe(false);
+  });
+
+  it('accepts valid email with subdomain', () => {
+    const result = updateProfileSchema.safeParse({ email: 'user@mail.example.com' });
+
+    expect(result.success).toBe(true);
+  });
+
+  it('rejects email with spaces', () => {
+    const result = updateProfileSchema.safeParse({ email: 'user @example.com' });
+
+    expect(result.success).toBe(false);
+  });
+});

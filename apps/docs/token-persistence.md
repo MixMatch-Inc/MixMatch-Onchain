@@ -5,6 +5,14 @@
 Token persistence covers how authentication tokens are stored, retrieved, and
 validated on the client side after a successful login or registration.
 
+## Why this contract matters
+
+Without explicit token persistence rules, each client platform (web, mobile,
+future apps) would implement its own storage strategy, leading to inconsistent
+behaviour when tokens expire, storage is corrupted, or users switch devices.
+The persistence contract ensures that all clients follow the same lifecycle
+and handle edge cases uniformly.
+
 ## Storage Strategy
 
 | Concern | Decision |
@@ -73,6 +81,16 @@ try {
 | **Auth** | `Authorization: Bearer <accessToken>` |
 | **Success** | `200 { user: AuthUser }` |
 | **Errors** | `401 INVALID_TOKEN`, `401 TOKEN_EXPIRED`, `404 NOT_FOUND` |
+
+## Integration Points
+
+| Component | Role |
+|-----------|------|
+| `apps/web/src/lib/auth-context.tsx` | AuthProvider: reads/writes localStorage, validates with /me |
+| `apps/web/src/lib/api-client.ts` | getCurrentUser(): server-side token validation |
+| `apps/mobile/src/hooks/useAuth.ts` | Mobile equivalent of AuthProvider |
+| `apps/api/src/modules/auth/auth.routes.ts` | GET /me endpoint for token validation |
+| `apps/api/src/shared/middleware/auth.middleware.ts` | JWT verification for /me |
 
 ## Edge Cases
 

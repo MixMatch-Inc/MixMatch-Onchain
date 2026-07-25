@@ -1,5 +1,20 @@
 # Route Protection
 
+## Scope
+
+Route protection controls access to API endpoints based on authentication
+status, user role, and resource ownership. The system uses middleware
+functions that can be composed per-route to enforce fine-grained access
+policies.
+
+## Why this layer exists
+
+Without route protection, every endpoint would be either fully public or
+fully protected. Real APIs need a spectrum: some routes require authentication
+but no special role, some require admin privileges, and some require that the
+caller owns the specific resource being accessed. The route protection layer
+provides composable middleware that handles all three patterns.
+
 ## Overview
 
 Route protection controls access to API endpoints based on authentication
@@ -56,3 +71,18 @@ const authRoutes: RouteProtectionContract[] = [
 - **Insufficient role**: Return 403 with `INSUFFICIENT_PERMISSIONS`.
 - **Ownership mismatch**: Return 403 with `INSUFFICIENT_PERMISSIONS`.
 - **Missing resource ID**: Return 400 with `VALIDATION_ERROR`.
+
+## Integration Points
+
+| Component | Role |
+|-----------|------|
+| `auth.middleware.ts` | `requireAuth` — JWT verification, attaches userId/role |
+| `auth.guard.ts` | `requireRole`, `allowOwnership` — composed after requireAuth |
+| `auth.routes.ts` | Wires guards onto specific routes |
+| `@mixmatch/shared` | `UserRole` enum, `RouteProtectionContract` type |
+
+## Testing
+
+See `apps/api/src/modules/auth/tests/route-protection.test.ts` — covers all
+access patterns (public, authenticated, role-based, ownership-based) with
+error response consistency checks.

@@ -1,7 +1,18 @@
 # Testing Integration
 
+## Scope
+
 This document describes how the testing strategy integrates with the
-modular wiring system, auth shells, and CI pipeline.
+modular wiring system, auth shells, and CI pipeline. It serves as the
+single reference for understanding how tests are structured, run, and
+validated across the monorepo.
+
+## Why this document matters
+
+Without a clear testing integration guide, developers cannot determine
+which tests to run before pushing, how to add new tests to the CI pipeline,
+or how the test infrastructure relates to the production code. This document
+bridges that gap.
 
 ## Modular Wiring Tests
 

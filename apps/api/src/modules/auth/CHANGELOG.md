@@ -13,3 +13,13 @@
 
 ### Added
 - Comprehensive regression test suite for `AuthGuard` covering happy paths, missing headers, malformed Bearer schemes, and expired tokens (#690).
+
+# Changelog - Auth Module
+
+## [Unreleased]
+
+### Changed
+- Hardened `AuthGuard` against null byte injections, whitespace edge cases, and malformed header inputs (#691).
+
+### Fixed
+- Added operational fault isolation to throw `503 Service Unavailable` on transient database/service verification failures without leaking internal stack traces (#691).

@@ -73,12 +73,37 @@ pass this ID through log calls to maintain request-level traceability.
 | `apps/api/src/middleware/logger.middleware.ts` | Generates correlationId, logs request timing |
 | `apps/api/src/utils/logger.ts` | Re-exports logger for convenience |
 
+## Log Level Filtering
+
+Use `setLogLevel` to control the minimum severity that gets written:
+
+```typescript
+import { logger, setLogLevel } from '../shared/logger/logger.js';
+import { LogLevel } from '../common/logger/logger.interface.js';
+
+setLogLevel(LogLevel.WARN); // only warn and error are written
+```
+
+Levels are ordered: `debug < info < warn < error`. Setting a minimum level
+suppresses all entries below that threshold.
+
+## Message Truncation
+
+Messages exceeding 10,000 characters are automatically truncated with a
+`...[truncated]` suffix to prevent excessive log output from consuming memory
+or filling up log storage.
+
 ## Edge Cases
 
 | Scenario | Behaviour |
 |----------|-----------|
 | Debug logs in production | Suppressed (log level filtering) |
-| Logger called without context | Context fields default to undefined |
+| Logger called without context | Context fields default to `{ module: 'unknown' }` |
+| Null/undefined context | Falls back to `{ module: 'unknown' }` |
+| Error object with missing stack | `stack` field omitted, `message` defaults to `'Unknown error'` |
+| Error object with missing name | `name` field defaults to `'Error'` |
+| Message > 10,000 chars | Truncated with `...[truncated]` suffix |
+| Log level filtering | Entries below minimum level are discarded |
 | Multiple log calls in one request | All share the same correlationId |
 | Unhandled error in handler | Error middleware logs with `module: 'error-middleware'` |
 | CorrelationId missing | Log entries still produce valid JSON with null context fields |
@@ -86,7 +111,7 @@ pass this ID through log calls to maintain request-level traceability.
 ## Usage
 
 ```typescript
-import { logger } from '../utils/logger.js';
+import { logger } from '../shared/logger/logger.js';
 
 // Within a request handler:
 logger.info('New session created', {
@@ -111,5 +136,8 @@ logger.error('Unhandled error in auth flow', error, {
 
 ## Testing
 
-See `apps/api/src/common/logger/__tests__/logger.contract.spec.ts` — verifies
-that the logger contract can be satisfied by a mock implementation.
+Unit tests: `apps/api/src/shared/__tests__/logger.test.ts`
+
+Tests cover all log levels, formatContext output, JSON serialization, debug
+suppression in production, context field propagation, null context handling,
+error edge cases, message truncation, and log level filtering.

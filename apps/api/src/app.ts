@@ -4,6 +4,7 @@ import { env } from './shared/config/env.js';
 import { ValidationError } from './shared/errors/AppError.js';
 import { errorMiddleware } from './shared/middleware/error.middleware.js';
 import { createAuthRouter } from './modules/auth/auth.routes.js';
+import { createPaymentRouter } from './modules/payments/payment.routes.js';
 import { rateLimit } from './modules/rate-limit/rate-limit.middleware.js';
 import { requestLogger } from './middleware/logger.middleware.js';
 import { logger } from './shared/logger/logger.js';
@@ -95,6 +96,7 @@ export function createApp(): Express {
    *   - Token verification         (requireAuth middleware)
    */
   app.use('/api/auth', rateLimit('auth'), createAuthRouter());
+  app.use('/api/payments', createPaymentRouter());
 
   // Catch-all: every request that reaches here has no matching route.
   app.use((_req: Request, res: Response) => {

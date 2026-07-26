@@ -5,3 +5,4 @@ export * from './client.js';
 export * from './wallet.js';
 export * from './account.js';
 export * from './friendbot.js';
+export * from './payment.js';

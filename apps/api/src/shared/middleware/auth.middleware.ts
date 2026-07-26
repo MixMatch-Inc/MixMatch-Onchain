@@ -13,11 +13,6 @@ interface AccessTokenPayload {
   role?: string;
 }
 
-/**
- * Verifies the `Authorization: Bearer <token>` header and attaches the
- * authenticated user's id to `req.userId`. Intended for protecting routes
- * that require a logged-in user.
- */
 export function requireAuth(req: AuthenticatedRequest, _res: Response, next: NextFunction): void {
   const header = req.headers.authorization;
 

@@ -1,35 +1,12 @@
 import type { Request, Response, NextFunction } from 'express';
-import { randomUUID } from 'node:crypto';
 import { logger } from '../utils/logger.js';
-import type { LogContext } from '../common/logger/logger.interface.js';
-import type { AuthenticatedRequest } from '../shared/middleware/auth.middleware.js';
-
-// Extend Express Request to include our correlationId
-declare global {
-  // eslint-disable-next-line @typescript-eslint/no-namespace -- required by Express's own type-augmentation pattern
-  namespace Express {
-    interface Request {
-      correlationId: string;
-    }
-  }
-}
 
 export function requestLogger(req: Request, res: Response, next: NextFunction): void {
   const start = Date.now();
-  // Generate unique correlation ID for request tracing
-  req.correlationId = randomUUID();
-  res.setHeader('X-Correlation-ID', req.correlationId);
   
   res.on('finish', () => {
     const duration = Date.now() - start;
-    
-    // Extract auth context from request if available (set by auth middleware)
-    const userId = (req as AuthenticatedRequest).userId;
-    
-    const logContext: LogContext = {
-      module: 'http',
-      correlationId: req.correlationId,
-      ...(userId && { userId }),
+    const meta = {
       method: req.method,
       url: req.originalUrl,
       status: res.statusCode,
@@ -39,11 +16,11 @@ export function requestLogger(req: Request, res: Response, next: NextFunction): 
     };
 
     if (res.statusCode >= 500) {
-      logger.error('Request failed', `HTTP ${res.statusCode}`, logContext);
+      logger.error('Request failed', meta);
     } else if (res.statusCode >= 400) {
-      logger.warn('Request resulted in client error', logContext);
+      logger.warn('Request resulted in client error', meta);
     } else {
-      logger.info('Request successful', logContext);
+      logger.info('Request successful', meta);
     }
   });
 

@@ -18,22 +18,54 @@ checks. This document makes that mapping explicit.
 | Workflow                   | Trigger                        | What it runs                                  |
 |---------------------------|--------------------------------|-----------------------------------------------|
 | `api.yml`                 | PR/push to `apps/api/**`       | Lint, test, build for `@mixmatch/api`         |
-| `web.yml`                 | PR/push to `apps/web/**`       | Lint, test, build for `@mixmatch/web`         |
-| `shared.yml`              | PR/push to `packages/shared/**`| Lint, test, build for `@mixmatch/shared`      |
-| `mobile.yml`              | PR/push to `apps/mobile/**`    | Lint, test, build for `@mixmatch/mobile`      |
 | `regression-coverage.yml` | PR/push to `main` or `dev`     | Full regression suite across API              |
 
-## Regression Coverage Pipeline
+## Pipeline Contracts
 
-The regression coverage workflow (`regression-coverage.yml`) runs on every
-push to `main` or `dev`. It ensures that:
+### `api.yml` — API Pipeline
 
-1. Dependencies install cleanly (`pnpm install --frozen-lockfile`)
-2. Lint passes (`turbo lint`)
-3. All tests pass with coverage (`turbo test`)
+**Triggers:**
+- Pull requests modifying `apps/api/**`, `packages/**`, `pnpm-workspace.yaml`, or `.github/workflows/api.yml`
+- Pushes to `dev` or `main` modifying `apps/api/**` or `packages/**`
 
-This pipeline does not build the API — it only validates that tests and
-linting pass. The `api.yml` workflow handles the full build step.
+**Jobs:**
+
+| Step | Command | Expected Outcome |
+|------|---------|-----------------|
+| Install | `pnpm install --frozen-lockfile` | Clean install with locked versions |
+| Lint | `pnpm exec turbo run lint --filter=@mixmatch/api` | No lint errors |
+| Test | `pnpm exec turbo run test --filter=@mixmatch/api` | All tests pass |
+| Build | `pnpm exec turbo run build --filter=@mixmatch/api` | TypeScript compilation succeeds |
+
+**Environment Variables:**
+
+| Variable | Value |
+|----------|-------|
+| `JWT_SECRET` | `test-secret` |
+| `DATABASE_URL` | `postgresql://postgres:postgres@localhost:5432/mixmatch?schema=public` |
+
+### `regression-coverage.yml` — Regression Coverage Pipeline
+
+**Triggers:**
+- Pull requests to `main` or `dev`
+- Pushes to `main` or `dev`
+
+**Jobs:**
+
+| Step | Command | Expected Outcome |
+|------|---------|-----------------|
+| Install | `pnpm install --frozen-lockfile` | Clean install with locked versions |
+| Lint | `pnpm exec turbo run lint --filter=@mixmatch/api` | No lint errors |
+| Test | `pnpm exec turbo run test --filter=@mixmatch/api` | All tests pass |
+
+**Note:** This pipeline does not build the API — it only validates that tests
+and linting pass. The `api.yml` workflow handles the full build step.
+
+**Environment Variables:**
+
+| Variable | Value |
+|----------|-------|
+| `JWT_SECRET` | `ci-regression-secret` |
 
 ## Test Harness Integration
 
@@ -56,6 +88,25 @@ which includes the harness tests in `apps/api/src/shared/__tests__/`.
 4. Reference the correct filter: `--filter=@mixmatch/<package>`.
 5. Add `JWT_SECRET` env var for API tests (any non-empty string works in CI).
 6. Ensure the check is triggered by the right path patterns.
+
+### Example workflow addition
+
+```yaml
+jobs:
+  my-check:
+    runs-on: ubuntu-latest
+    env:
+      JWT_SECRET: test-secret
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: ".nvmrc"
+          cache: "pnpm"
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec turbo run my-check --filter=@mixmatch/api
+```
 
 ## Environment Variables
 
@@ -87,3 +138,17 @@ env:
 ### CI fails with "frozen lockfile"
 
 Run `pnpm install` locally and commit the updated `pnpm-lock.yaml`.
+
+### Tests fail with "Cannot find module"
+
+Check the import path resolves correctly. Common causes:
+- Wrong file extension (use `.js` for ESM imports)
+- Missing dependency in `package.json`
+- Incorrect relative path
+
+### Lint fails with "Unexpected token"
+
+Check for syntax errors in the modified file. Common causes:
+- Missing comma in object literal
+- Unclosed string or template literal
+- Stray characters from copy-paste

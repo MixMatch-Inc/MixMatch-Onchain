@@ -43,7 +43,7 @@ export function parsePersistedAuth(raw: string | null): HydrationResult {
     const parsed = JSON.parse(raw) as unknown;
     if (
       typeof parsed === "object" &&
-      parsed \!== null &&
+      parsed !== null &&
       "user" in parsed &&
       "accessToken" in parsed &&
       typeof (parsed as Record<string, unknown>).accessToken === "string"

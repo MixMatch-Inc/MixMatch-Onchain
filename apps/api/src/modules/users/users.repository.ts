@@ -1,6 +1,12 @@
 import { randomUUID } from 'node:crypto';
 import { prisma } from '../../shared/database/prisma.js';
 import type { User } from './users.types.js';
+import {
+  wrapPrismaError,
+  withRetry,
+  validateRequired,
+  validateId,
+} from '../../shared/database/repository-errors.js';
 
 export interface CreateUserInput {
   email: string;
@@ -12,11 +18,6 @@ export interface UpdateUserInput {
   passwordHash?: string;
 }
 
-/**
- * Data access for the `users` table. The auth module is the only consumer
- * of this repository for now; it exists in `modules/users` because the
- * underlying table may be shared by future modules.
- */
 export interface UserRepository {
   findByEmail(email: string): Promise<User | null>;
   findById(id: string): Promise<User | null>;
@@ -26,26 +27,50 @@ export interface UserRepository {
 
 export class PrismaUserRepository implements UserRepository {
   async findByEmail(email: string): Promise<User | null> {
-    return prisma.user.findUnique({ where: { email } });
+    validateRequired({ email });
+    return withRetry(async () => {
+      try {
+        return await prisma.user.findUnique({ where: { email } });
+      } catch (error) {
+        wrapPrismaError(error);
+      }
+    });
   }
 
   async findById(id: string): Promise<User | null> {
-    return prisma.user.findUnique({ where: { id } });
+    validateId(id);
+    return withRetry(async () => {
+      try {
+        return await prisma.user.findUnique({ where: { id } });
+      } catch (error) {
+        wrapPrismaError(error);
+      }
+    });
   }
 
   async create(input: CreateUserInput): Promise<User> {
-    return prisma.user.create({ data: { ...input, role: 'USER' } });
+    validateRequired({ email: input.email, passwordHash: input.passwordHash });
+    return withRetry(async () => {
+      try {
+        return await prisma.user.create({ data: { ...input, role: 'USER' } });
+      } catch (error) {
+        wrapPrismaError(error);
+      }
+    });
   }
 
   async update(id: string, data: UpdateUserInput): Promise<User> {
-    return prisma.user.update({ where: { id }, data });
+    validateId(id);
+    return withRetry(async () => {
+      try {
+        return await prisma.user.update({ where: { id }, data });
+      } catch (error) {
+        wrapPrismaError(error);
+      }
+    });
   }
 }
 
-/**
- * In-memory implementation used by tests so the auth module's test suite
- * runs without a database connection.
- */
 export class InMemoryUserRepository implements UserRepository {
   private readonly users = new Map<string, User>();
 

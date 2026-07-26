@@ -55,7 +55,7 @@ export type LoginErrorCode =
   | "RATE_LIMITED"        // 429 — too many failed attempts
   | "CONFLICT";           // 409 — email already registered (register only)
 
-export interface AuthErrorResponse {
+export interface LoginErrorResponse {
   error: {
     code: LoginErrorCode;
     message: string;

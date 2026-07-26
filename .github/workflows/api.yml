@@ -13,9 +13,15 @@ on:
       - "apps/api/**"
       - "packages/**"
 
+# Cancel superseded runs on the same branch/PR to conserve minutes.
+concurrency:
+  group: api-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   api:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     env:
       JWT_SECRET: test-secret
       DATABASE_URL: postgresql://postgres:postgres@localhost:5432/mixmatch?schema=public

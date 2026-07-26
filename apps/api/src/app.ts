@@ -1,6 +1,7 @@
 import cors from 'cors';
-import express, { type Express, type Request, type Response } from 'express';
+import express, { type Express, type Request, type Response, type NextFunction } from 'express';
 import { env } from './shared/config/env.js';
+import { ValidationError } from './shared/errors/AppError.js';
 import { errorMiddleware } from './shared/middleware/error.middleware.js';
 import { createAuthRouter } from './modules/auth/auth.routes.js';
 import { rateLimit } from './modules/rate-limit/rate-limit.middleware.js';
@@ -34,7 +35,42 @@ export function createApp(): Express {
   const app = express();
 
   app.use(cors({ origin: env.webOrigin }));
-  app.use(express.json());
+
+  // Halt on oversized bodies before they reach any route handler.
+  app.use(express.json({ limit: '100kb' }));
+
+  // Structured error for malformed JSON — avoids an opaque 500 from Express.
+  app.use(
+    (err: unknown, _req: Request, res: Response, next: NextFunction): void => {
+      if (
+        err instanceof SyntaxError &&
+        'status' in err &&
+        (err as { status: number }).status === 400 &&
+        'body' in err
+      ) {
+        res.status(400).json({
+          error: { code: 'VALIDATION_ERROR', message: 'Malformed JSON in request body' },
+        });
+        return;
+      }
+      next(err);
+    },
+  );
+
+  // Per-request timeout — kills long-running handlers before they exhaust resources.
+  app.use((_req: Request, res: Response, next: NextFunction): void => {
+    const TIMEOUT_MS = 30_000;
+    const timer = setTimeout(() => {
+      if (!res.headersSent) {
+        res.status(504).json({
+          error: { code: 'GATEWAY_TIMEOUT', message: 'Request timed out' },
+        });
+      }
+    }, TIMEOUT_MS);
+    res.on('finish', () => clearTimeout(timer));
+    next();
+  });
+
   app.use(requestLogger);
 
   app.get('/health', (_req, res) => {
@@ -59,6 +95,15 @@ export function createApp(): Express {
    *   - Token verification         (requireAuth middleware)
    */
   app.use('/api/auth', rateLimit('auth'), createAuthRouter());
+
+  // Catch-all: every request that reaches here has no matching route.
+  app.use((_req: Request, res: Response) => {
+    if (!res.headersSent) {
+      res.status(404).json({
+        error: { code: 'NOT_FOUND', message: 'The requested endpoint does not exist' },
+      });
+    }
+  });
 
   app.use(errorMiddleware);
 

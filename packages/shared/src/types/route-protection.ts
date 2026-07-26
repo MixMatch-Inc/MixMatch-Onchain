@@ -1,12 +1,2 @@
-export type RouteAccess =
-  | { kind: 'public' }
-  | { kind: 'authenticated' }
-  | { kind: 'role'; role: string }
-  | { kind: 'ownership'; paramId: string };
-
-export interface RouteProtectionContract {
-  path: string;
-  method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
-  access: RouteAccess;
-  description?: string;
-}
+// Re-export from the canonical contract definition to avoid duplicate symbols.
+export { type RouteAccess, type RouteProtectionContract } from './route-protection-contract.js';

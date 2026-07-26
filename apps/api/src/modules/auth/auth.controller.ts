@@ -19,6 +19,17 @@ export class AuthController {
     res.status(200).json(result);
   };
 
+  /**
+   * GET /api/auth/me
+   * Returns the authenticated user's profile.
+   * Requires a valid Bearer token in the Authorization header.
+   *
+   * Success: 200 { user: AuthUser }
+   * Errors:
+   *   401 INVALID_TOKEN — missing, malformed, or invalid token
+   *   401 TOKEN_EXPIRED — expired token
+   *   404 NOT_FOUND    — user not found (should not happen with valid token)
+   */
   me = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     const user = await this.authService.getCurrentUser(req.userId!);
     if (!user) {

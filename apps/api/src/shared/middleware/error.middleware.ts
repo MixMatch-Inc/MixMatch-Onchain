@@ -20,6 +20,7 @@ export function errorMiddleware(
     return;
   }
 
-  logger.error('Unhandled error', { error: err instanceof Error ? err.stack : err });
+  const errInfo = err instanceof Error ? err : new Error(String(err));
+  logger.error('Unhandled error', errInfo, { module: 'error-middleware' });
   res.status(500).json({ error: { code: 'INTERNAL_SERVER_ERROR', message: 'Something went wrong' } });
 }

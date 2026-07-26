@@ -31,7 +31,12 @@ export default function SignupPage() {
 
   return (
     <main>
-      <AuthForm title="Create account" submitLabel="Create account" onSubmit={handleSubmit} />
+      <AuthForm
+        title="Create account"
+        submitLabel="Create account"
+        onSubmit={handleSubmit}
+        passwordAutoComplete="new-password"
+      />
       <p>
         Already have an account? <Link href="/login">Log in</Link>
       </p>

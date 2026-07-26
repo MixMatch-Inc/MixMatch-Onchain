@@ -3,7 +3,7 @@ import request from 'supertest';
 import { describe, expect, it } from 'vitest';
 import { createTestApp } from './test-app.js';
 
-const JWT_SECRET = process.env.JWT_SECRET ?? 'dev-secret-change-me';
+const JWT_SECRET = process.env.JWT_SECRET ?? 'dev-secret-change-me-abcdefghijklmnopqrstuvwxyz123';
 
 describe('GET /api/auth/me — route protection (#610)', () => {
   it('returns 401 with no Authorization header', async () => {
@@ -59,5 +59,17 @@ describe('GET /api/auth/me — route protection (#610)', () => {
     expect(meRes.status).toBe(200);
     expect(meRes.body.user.email).toBe(credentials.email);
     expect(meRes.body.user.passwordHash).toBeUndefined();
+  });
+
+  it('returns 404 for a valid token referencing a non-existent user', async () => {
+    const app = createTestApp();
+    const token = jwt.sign({ sub: '00000000-0000-0000-0000-000000000000' }, JWT_SECRET);
+
+    const meRes = await request(app)
+      .get('/api/auth/me')
+      .set('Authorization', `Bearer ${token}`);
+
+    expect(meRes.status).toBe(404);
+    expect(meRes.body.error.code).toBe('NOT_FOUND');
   });
 });

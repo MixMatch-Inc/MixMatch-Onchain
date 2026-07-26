@@ -23,4 +23,13 @@ export interface LoginInput {
 export interface AuthTokenResponse {
   user: AuthUser;
   accessToken: string;
+  refreshToken: string;
+}
+
+/**
+ * Response shape for GET /api/auth/me.
+ * Returns the authenticated user's profile data.
+ */
+export interface MeResponse {
+  user: AuthUser;
 }

@@ -1,5 +1,22 @@
 # Auth Error Handling
 
+## Scope
+
+The auth error system defines how authentication and authorization failures are
+communicated from the API to clients. It establishes a consistent error shape,
+a machine-readable error code vocabulary, and a mapping from error classes to
+HTTP status codes so that clients can handle failures uniformly without parsing
+human-readable messages.
+
+## Why this contract matters
+
+Without a shared error contract, each endpoint could invent its own error shape,
+leaving clients to guess at status codes and message formats. The auth error
+contract ensures that every authentication failure — expired token, missing
+credential, locked account, rate limit — follows the same JSON structure and
+uses the same error code enum. This makes client-side error handling reliable
+and testable.
+
 ## Strategy
 
 The API uses a consistent error response format across all endpoints. Every error

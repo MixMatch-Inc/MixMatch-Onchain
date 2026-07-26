@@ -1,11 +1,8 @@
 import type { StellarAccountRef } from '../types/index.js';
 
 /**
- * Placeholder interface for a future Stellar client.
- *
- * This package is a scaffold only: it defines naming and shape conventions
- * for upcoming Stellar functionality without implementing any SDK calls,
- * wallets, transactions, or network access.
+ * A configured Stellar client: wraps the Horizon and Soroban RPC connections
+ * for a single network.
  */
 export interface StellarClient {
   getNetwork(): StellarAccountRef['network'];

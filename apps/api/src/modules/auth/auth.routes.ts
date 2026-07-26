@@ -1,16 +1,18 @@
 import { Router } from 'express';
+import { PrismaClient } from '@prisma/client';
 import { asyncHandler } from '../../shared/middleware/async-handler.js';
 import { requireAuth, type AuthenticatedRequest } from '../../shared/middleware/auth.middleware.js';
 import { PrismaUserRepository } from '../users/users.repository.js';
 import { AuthController } from './auth.controller.js';
 import { AuthService } from './auth.service.js';
-import { InMemorySessionStore } from './session.store.js';
+import { PrismaSessionStore } from './session.store.js';
 import { SessionService } from './session.service.js';
 import { UserRole } from '@mixmatch/shared';
 import { allowOwnership, requireRole } from './auth.guard.js';
 
 export function createAuthRouter(): Router {
-  const sessionStore = new InMemorySessionStore();
+  const prisma = new PrismaClient();
+  const sessionStore = new PrismaSessionStore(prisma);
   const sessionService = new SessionService(sessionStore);
   const authService = new AuthService(new PrismaUserRepository(), sessionService);
   const controller = new AuthController(authService);

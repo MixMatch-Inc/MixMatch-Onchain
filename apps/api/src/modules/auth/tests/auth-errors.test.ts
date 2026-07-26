@@ -12,7 +12,7 @@ import {
 } from '../../../shared/errors/AuthErrors.js';
 import { createTestApp } from './test-app.js';
 
-const JWT_SECRET = process.env.JWT_SECRET ?? 'dev-secret-change-me';
+const JWT_SECRET = process.env.JWT_SECRET ?? 'dev-secret-change-me-abcdefghijklmnopqrstuvwxyz123';
 
 function createErrorTestApp() {
   const app = express();

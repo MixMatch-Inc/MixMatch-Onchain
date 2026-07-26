@@ -1,5 +1,19 @@
 # Session Lifecycle
 
+## Scope
+
+The session lifecycle defines how user authentication state is created, maintained,
+refreshed, and destroyed across the API and its clients. It covers token issuance,
+token validation, session refresh, session revocation, and the constraints that
+govern concurrent sessions.
+
+## Why this contract matters
+
+Without a clear session lifecycle, clients cannot reliably determine when a user
+is logged in, when a token needs refreshing, or how to handle session expiry.
+The lifecycle contract ensures that every client — web, mobile, future apps —
+follows the same token flow and handles edge cases consistently.
+
 ## Token Issuance
 
 When a user registers or logs in, the API issues a short-lived **access token**
@@ -25,8 +39,9 @@ Body: { refreshToken: "<opaque-uuid>" }
 ```
 
 The server validates the refresh token against its in-memory store, checks
-expiry, and returns a fresh access token. The refresh token itself is **not**
-rotated (simplification for v1).
+expiry, and returns a fresh access token. The old refresh token is deleted and
+a new one is issued (rotation). This ensures that a leaked refresh token cannot
+be reused indefinitely.
 
 ## Session Expiry
 
@@ -37,6 +52,18 @@ rotated (simplification for v1).
 
 A session is considered expired when its refresh token has passed the 7-day
 window. Expired refresh tokens are pruned on read and via periodic cleanup.
+
+## Concurrent Session Limits
+
+Each user is limited to a maximum of 5 active sessions. When the limit is
+reached, new session creation is rejected with `401 INVALID_REFRESH_TOKEN`.
+Existing sessions can be revoked to free up slots.
+
+| Constraint | Value |
+|------------|-------|
+| Max concurrent sessions per user | 5 |
+| Refresh token TTL | 7 days |
+| Access token TTL | 1 hour (configurable via `JWT_EXPIRES_IN`) |
 
 ## How `requireAuth` Validates Tokens
 
@@ -62,6 +89,29 @@ These guards are applied as Express middlewares before the route handler.
 router.put('/profile/:id', requireAuth, allowOwnership, handler);
 router.get('/admin', requireAuth, requireRole(UserRole.ADMIN), handler);
 ```
+
+## Integration Points
+
+| Component | Role |
+|-----------|------|
+| `session.service.ts` | Creates, refreshes, and revokes sessions |
+| `session.store.ts` | Persists sessions (InMemory for tests, Prisma for production) |
+| `session.types.ts` | Defines Session, TokenPair, SESSION_CONFIG |
+| `auth.service.ts` | Orchestrates registration/login with session creation |
+| `auth.middleware.ts` | Validates access tokens via JWT verification |
+| `auth.guard.ts` | Composes role/ownership checks on top of requireAuth |
+
+## Edge Cases
+
+| Scenario | Behaviour |
+|----------|-----------|
+| Refresh token reused after rotation | 401 INVALID_REFRESH_TOKEN (old token deleted) |
+| Refresh token expired | 401 INVALID_REFRESH_TOKEN, session deleted |
+| Max sessions reached | 401 INVALID_REFRESH_TOKEN with "Maximum active sessions reached" |
+| Revoke session that doesn't exist | 401 INVALID_REFRESH_TOKEN |
+| Revoke all sessions for a user | All sessions deleted, other users unaffected |
+| Access token expired but refresh valid | Client calls /refresh to get new access token |
+| Both tokens expired | User must re-authenticate (login again) |
 
 ## Troubleshooting
 

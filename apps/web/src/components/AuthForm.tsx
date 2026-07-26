@@ -12,9 +12,10 @@ export interface AuthFormProps {
   submitLabel: string;
   onSubmit: (values: AuthFormValues) => Promise<void>;
   fieldErrors?: Partial<Record<'email' | 'password', string>>;
+  passwordAutoComplete?: string;
 }
 
-export function AuthForm({ title, submitLabel, onSubmit, fieldErrors }: AuthFormProps) {
+export function AuthForm({ title, submitLabel, onSubmit, fieldErrors, passwordAutoComplete }: AuthFormProps) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -60,7 +61,7 @@ export function AuthForm({ title, submitLabel, onSubmit, fieldErrors }: AuthForm
           type="password"
           value={password}
           onChange={(event) => setPassword(event.target.value)}
-          autoComplete="current-password"
+          autoComplete={passwordAutoComplete ?? 'current-password'}
           required
         />
         {fieldErrors?.password && <p role="alert">{fieldErrors.password}</p>}

@@ -26,6 +26,9 @@ export function createTestApp(): Express {
   router.get('/admin', requireAuth, requireRole(UserRole.ADMIN), asyncHandler<AuthenticatedRequest>(async (_req, res) => {
     res.status(200).json({ ok: true });
   }));
+  router.get('/ownership-test', requireAuth, allowOwnership, asyncHandler<AuthenticatedRequest>(async (_req, res) => {
+    res.status(200).json({ ok: true });
+  }));
 
   const app = express();
   app.use(cors());

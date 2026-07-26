@@ -5,6 +5,7 @@ export default defineConfig({
   resolve: {
     alias: {
       '@mixmatch/shared': path.resolve(__dirname, '../../packages/shared/src/index.ts'),
+      '@mixmatch/stellar': path.resolve(__dirname, '../../packages/stellar/src/index.ts'),
     },
   },
   test: {

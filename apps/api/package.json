@@ -17,6 +17,7 @@
   },
   "dependencies": {
     "@mixmatch/shared": "workspace:*",
+    "@mixmatch/stellar": "workspace:*",
     "@prisma/client": "^6.2.1",
     "bcryptjs": "^2.4.3",
     "cors": "^2.8.5",
@@ -26,6 +27,7 @@
     "zod": "^3.24.1"
   },
   "devDependencies": {
+    "@stellar/stellar-sdk": "^16.1.0",
     "@types/bcryptjs": "^2.4.6",
     "@types/cors": "^2.8.17",
     "@types/express": "^4.17.21",

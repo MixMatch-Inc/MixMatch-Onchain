@@ -52,12 +52,6 @@ export function createApp(): Express {
     }
   });
 
-  /*
-   * Auth routes — see apps/docs/auth-guard.md for details on:
-   *   - Role-based access control  (AuthGuard.requireRoles)
-   *   - Self-ownership checks      (AuthGuard.requireOwnership)
-   *   - Token verification         (requireAuth middleware)
-   */
   app.use('/api/auth', rateLimit('auth'), createAuthRouter());
 
   app.use(errorMiddleware);

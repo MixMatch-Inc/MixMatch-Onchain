@@ -13,7 +13,8 @@ This document maps each environment variable to the specific code that consumes 
 | `JWT_EXPIRES_IN` | `apps/api/src/modules/auth/session.service.ts` | Access token TTL |
 | `WEB_ORIGIN` | `apps/api/src/app.ts` | CORS `origin` configuration |
 | `STELLAR_NETWORK` | `packages/stellar/src/config.ts` | Stellar network selection |
-| `RPC_URL` | `packages/stellar/src/client.ts` | Soroban RPC endpoint |
+| `RPC_URL` | `packages/stellar/src/config.ts` | Soroban RPC endpoint override, used by `client.ts`'s `rpc.Server` |
+| `HORIZON_URL` | `packages/stellar/src/config.ts` | Horizon endpoint override, used by `client.ts`'s `Horizon.Server` |
 
 ## apps/web
 

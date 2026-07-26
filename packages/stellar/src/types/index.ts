@@ -1,15 +1,11 @@
 /**
- * Placeholder type definitions for the future Stellar integration layer.
- *
- * No blockchain functionality is implemented yet. These types exist only to
- * establish naming conventions and a stable import path (`@mixmatch/stellar`)
- * for future work.
+ * Core type definitions for the Stellar integration layer.
  */
 
-/** Identifier for a Stellar network the platform may connect to in the future. */
-export type StellarNetwork = 'testnet' | 'mainnet';
+/** Stellar network the platform can connect to (matches `apps/api`'s `env.stellarNetwork`). */
+export type StellarNetwork = 'testnet' | 'public';
 
-/** Placeholder shape for a future Stellar account reference. */
+/** Reference to a Stellar account: which network it lives on, and its public key. */
 export interface StellarAccountRef {
   network: StellarNetwork;
   publicKey: string;

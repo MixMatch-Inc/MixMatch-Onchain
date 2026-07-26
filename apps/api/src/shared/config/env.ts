@@ -30,6 +30,12 @@ function parsePort(raw: string | undefined): number {
   return parsed;
 }
 
+function parseBoolean(raw: string | undefined, fallback: boolean): boolean {
+  if (raw === undefined) return fallback;
+  const val = raw.trim().toLowerCase();
+  return val === 'true' || val === '1' || val === 'yes';
+}
+
 const jwtSecret = requireEnv('JWT_SECRET', 'dev-secret-change-me-abcdefghijklmnopqrstuvwxyz123');
 if (process.env.NODE_ENV !== 'development' && jwtSecret.length < 32) {
   throw new Error('CRITICAL CONFIGURATION ERROR: JWT_SECRET must be at least 32 characters long in non-development environments');

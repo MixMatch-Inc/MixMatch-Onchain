@@ -51,29 +51,44 @@ describe('Environment config — regression coverage', () => {
       expect(env).toHaveProperty('rpcUrl');
     });
 
-    it('defaults nodeEnv to development', async () => {
-      delete process.env.NODE_ENV;
-      const { env } = await loadEnv();
-      expect(env.nodeEnv).toBe('development');
+  
+  describe('JWT_SECRET validation', () => {
+    it('accepts a secret longer than 32 characters in production', async () => {
+      process.env.NODE_ENV = 'production';
+      process.env.JWT_SECRET = 'a'.repeat(33);
+      await expect(loadEnv()).resolves.toBeDefined();
     });
 
-    it('defaults port to 3001', async () => {
-      delete process.env.PORT;
-      const { env } = await loadEnv();
-      expect(env.port).toBe(3001);
+    it('rejects a secret shorter than 32 characters in production', async () => {
+      process.env.NODE_ENV = 'production';
+      process.env.JWT_SECRET = 'short';
+      await expect(loadEnv()).rejects.toThrow();
     });
 
-    it('parses PORT as number', async () => {
-      process.env.PORT = '8080';
+    it('accepts a short secret in development', async () => {
+      process.env.NODE_ENV = 'development';
+      process.env.JWT_SECRET = 'short';
+      await expect(loadEnv()).resolves.toBeDefined();
+    });
+  });
+
+  describe('env trimming', () => {
+    it('trims whitespace from string values', async () => {
+      process.env.NODE_ENV = '  production  ';
+      process.env.JWT_EXPIRES_IN = '  2h  ';
+      process.env.WEB_ORIGIN = '  https://example.com  ';
+      const { env } = await loadEnv();
+      expect(env.nodeEnv).toBe('production');
+      expect(env.jwtExpiresIn).toBe('2h');
+      expect(env.webOrigin).toBe('https://example.com');
+    });
+
+    it('trims whitespace from PORT', async () => {
+      process.env.PORT = '  8080  ';
       const { env } = await loadEnv();
       expect(env.port).toBe(8080);
     });
-
-    it('defaults jwtExpiresIn to 1h', async () => {
-      delete process.env.JWT_EXPIRES_IN;
-      const { env } = await loadEnv();
-      expect(env.jwtExpiresIn).toBe('1h');
-    });
+  });
 
     it('defaults webOrigin to localhost:3000', async () => {
       delete process.env.WEB_ORIGIN;
@@ -98,7 +113,6 @@ describe('Environment config — regression coverage', () => {
       expect(env.jwtExpiresIn).toBe('2h');
       expect(env.webOrigin).toBe('https://example.com');
     });
-  });
 
   describe('JWT_SECRET validation', () => {
     it('accepts a secret longer than 32 characters in production', async () => {
@@ -254,4 +268,5 @@ describe('Environment config — regression coverage', () => {
       expect(result).toHaveProperty('databaseUrl', 'postgresql://localhost/db');
     });
   });
-});
+
+

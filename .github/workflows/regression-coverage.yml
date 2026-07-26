@@ -6,6 +6,10 @@ on:
   pull_request:
     branches: ["main", "dev"]
 
+concurrency:
+  group: regression-${{ github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
 
@@ -13,6 +17,7 @@ jobs:
   regression:
     name: Regression Coverage
     runs-on: ubuntu-latest
+    timeout-minutes: 15
 
     steps:
       - uses: actions/checkout@v4

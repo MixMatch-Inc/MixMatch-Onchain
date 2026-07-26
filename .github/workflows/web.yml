@@ -13,9 +13,14 @@ on:
       - "apps/web/**"
       - "packages/**"
 
+concurrency:
+  group: web-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   web:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
 

@@ -11,9 +11,14 @@ on:
     paths:
       - "packages/**"
 
+concurrency:
+  group: shared-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   shared:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     strategy:
       matrix:
         package: ["@mixmatch/shared", "@mixmatch/stellar"]

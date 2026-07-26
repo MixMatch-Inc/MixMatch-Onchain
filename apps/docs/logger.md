@@ -87,6 +87,21 @@ setLogLevel(LogLevel.WARN); // only warn and error are written
 Levels are ordered: `debug < info < warn < error`. Setting a minimum level
 suppresses all entries below that threshold.
 
+## Child Logers
+
+Use `createChildLogger` to create a logger bound to a specific module with
+optional base context:
+
+```typescript
+import { createChildLogger } from '../shared/logger/logger.js';
+
+const authLogger = createChildLogger('auth', { userId: 'u1' });
+authLogger.info('login', { correlationId: 'c1' });
+```
+
+Per-call context is merged with base context, with per-call values taking
+precedence. The module name is always overridden by the child logger's module.
+
 ## Message Truncation
 
 Messages exceeding 10,000 characters are automatically truncated with a
@@ -111,7 +126,7 @@ or filling up log storage.
 ## Usage
 
 ```typescript
-import { logger } from '../shared/logger/logger.js';
+import { logger, createChildLogger } from '../shared/logger/logger.js';
 
 // Within a request handler:
 logger.info('New session created', {
@@ -132,6 +147,10 @@ logger.error('Unhandled error in auth flow', error, {
   module: 'auth',
   userId,
 });
+
+// Using a child logger for a specific module:
+const authLogger = createChildLogger('auth');
+authLogger.info('token refreshed', { userId, correlationId });
 ```
 
 ## Testing
@@ -140,4 +159,4 @@ Unit tests: `apps/api/src/shared/__tests__/logger.test.ts`
 
 Tests cover all log levels, formatContext output, JSON serialization, debug
 suppression in production, context field propagation, null context handling,
-error edge cases, message truncation, and log level filtering.
+error edge cases, message truncation, log level filtering, and child loggers.

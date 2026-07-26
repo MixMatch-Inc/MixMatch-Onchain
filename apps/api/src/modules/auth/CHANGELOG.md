@@ -23,3 +23,11 @@
 
 ### Fixed
 - Added operational fault isolation to throw `503 Service Unavailable` on transient database/service verification failures without leaking internal stack traces (#691).
+
+# Changelog - Auth Module
+
+## [Unreleased]
+
+### Added
+- Implemented core `AuthExceptionFilter` to standardize authentication error payloads and status codes (#694).
+- Added unit test coverage for standardized `UNAUTHORIZED_ACCESS` error formatting (#694).

@@ -15,6 +15,7 @@ before running the app locally.
 | `WEB_ORIGIN`      | Allowed CORS origin for the web app                     | `http://localhost:3000`                                          |
 | `STELLAR_NETWORK` | Stellar network to connect to (testnet/public)          | `testnet`                                                        |
 | `RPC_URL`         | Soroban RPC endpoint URL (required for blockchain)      | `https://soroban-testnet.stellar.org`                             |
+| `HORIZON_URL`     | Horizon endpoint override (optional; defaults per `STELLAR_NETWORK`) | `https://horizon-testnet.stellar.org`                |
 
 ## apps/web/.env
 

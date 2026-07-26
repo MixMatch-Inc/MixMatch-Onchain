@@ -1,2 +1,7 @@
 export * from './types/index.js';
 export * from './interfaces/index.js';
+export * from './config.js';
+export * from './client.js';
+export * from './wallet.js';
+export * from './account.js';
+export * from './friendbot.js';

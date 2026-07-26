@@ -25,7 +25,8 @@ function shouldLog(level: LogLevel): boolean {
 
 function truncateMessage(message: string): string {
   if (message.length <= MAX_MESSAGE_LENGTH) return message;
-  return message.slice(0, MAX_MESSAGE_LENGTH) + '...[truncated]';
+  const suffix = '...[truncated]';
+  return message.slice(0, MAX_MESSAGE_LENGTH - suffix.length) + suffix;
 }
 
 export const logger: IAppLogger = {

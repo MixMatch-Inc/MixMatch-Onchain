@@ -88,32 +88,35 @@ describe('GET /health', () => {
 });
 
 describe('GET /health/detailed', () => {
-  it('returns 200 or 503 with components', async () => {
-    const result = await getDetailedHealth();
-    expect(result).toHaveProperty('status');
-    expect(result).toHaveProperty('timestamp');
-    expect(result).toHaveProperty('components');
-    expect(result.components).toHaveProperty('database');
+  it('returns 200 with components when db is reachable', async () => {
+    const app = createApp();
+    const response = await request(app).get('/health/detailed');
+    expect(response.status).toBe(200);
+    expect(response.body.status).toBe('ok');
+    expect(response.body.components).toBeDefined();
+    expect(response.body.components.database).toBeDefined();
+    expect(response.body.components.database.status).toBe('ok');
+    expect(response.body.timestamp).toBeDefined();
   });
 
-  it('returns ok status when database is reachable', async () => {
-    const result = await getDetailedHealth();
-    if (result.status === 'ok') {
-      expect(result.components.database).toHaveProperty('status', 'ok');
-      expect(result.components.database).toHaveProperty('latencyMs');
-    }
+  it('returns component latency', async () => {
+    const app = createApp();
+    const response = await request(app).get('/health/detailed');
+    expect(typeof response.body.components.database.latencyMs).toBe('number');
   });
 
-  it('returns degraded status when database fails', async () => {
-    const result = await getDetailedHealth();
-    if (result.status === 'degraded') {
-      expect(result.components.database).toHaveProperty('status', 'error');
-      expect(result.components.database).toHaveProperty('error');
-    }
+  it('returns ISO timestamp', async () => {
+    const app = createApp();
+    const response = await request(app).get('/health/detailed');
+    expect(new Date(response.body.timestamp as string).toISOString()).toBe(response.body.timestamp);
   });
+});
 
-  it('includes ISO timestamp', async () => {
+describe('getDetailedHealth', () => {
+  it('returns ok status structure', async () => {
     const result = await getDetailedHealth();
-    expect(new Date(result.timestamp as string).toISOString()).toBe(result.timestamp);
+    expect(result.status).toBe('ok');
+    expect(result.components).toBeDefined();
+    expect(result.timestamp).toBeDefined();
   });
 });

@@ -133,8 +133,8 @@ describe('Logger', () => {
       const longMsg = 'a'.repeat(10001);
       logger.info(longMsg, { module: 'test' });
       const output = JSON.parse(consoleSpy.log.mock.calls[0][0]);
+      expect(output.message.length).toBeLessThan(longMsg.length);
       expect(output.message).toContain('...[truncated]');
-      expect(output.message.length).toBeLessThan(longMsg.length + 20);
     });
 
     it('does not truncate short messages', () => {

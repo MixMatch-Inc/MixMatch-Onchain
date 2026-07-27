@@ -9,6 +9,8 @@ export interface AppConfig {
   webOrigin: string;
   stellarNetwork: 'testnet' | 'public';
   rpcUrl: string;
+  /** 64-char hex string (32 bytes) used as the AES-256-GCM key for encrypting stored wallet secret keys. */
+  walletEncryptionKey: string;
 }
 
 function requireEnv(name: string, fallback?: string): string {
@@ -43,6 +45,16 @@ if (process.env.NODE_ENV !== 'development' && jwtSecret.length < 32) {
 
 const rpcUrl = requireEnv('RPC_URL', 'https://soroban-testnet.stellar.org');
 
+const walletEncryptionKey = requireEnv(
+  'WALLET_ENCRYPTION_KEY',
+  '0'.repeat(64), // dev-only fallback: 32 zero bytes, hex-encoded
+);
+if (process.env.NODE_ENV !== 'development' && !/^[0-9a-f]{64}$/i.test(walletEncryptionKey)) {
+  throw new Error(
+    'CRITICAL CONFIGURATION ERROR: WALLET_ENCRYPTION_KEY must be a 64-character hex string (32 bytes) in non-development environments',
+  );
+}
+
 export const env: AppConfig = {
   nodeEnv: (process.env.NODE_ENV?.trim() || 'development'),
   port: parsePort(process.env.PORT),
@@ -52,6 +64,7 @@ export const env: AppConfig = {
   webOrigin: process.env.WEB_ORIGIN?.trim() ?? 'http://localhost:3000',
   stellarNetwork: (process.env.STELLAR_NETWORK?.trim() as 'testnet' | 'public') ?? 'testnet',
   rpcUrl,
+  walletEncryptionKey,
 };
 
 export function validateEnv(): AppConfig {
@@ -63,6 +76,9 @@ export function validateEnv(): AppConfig {
   }
   if (!env.rpcUrl) {
     throw new Error('RPC_URL is required but not set');
+  }
+  if (!env.walletEncryptionKey) {
+    throw new Error('WALLET_ENCRYPTION_KEY is required but not set');
   }
   return env;
 }

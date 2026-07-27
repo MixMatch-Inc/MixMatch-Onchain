@@ -5,4 +5,6 @@ export * from './client.js';
 export * from './wallet.js';
 export * from './account.js';
 export * from './friendbot.js';
+export * from './idempotency.js';
+export * from './payment-errors.js';
 export * from './payment.js';

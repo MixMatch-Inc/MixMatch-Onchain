@@ -1,172 +1,119 @@
-import { Keypair, TransactionBuilder, Operation, Asset, Memo } from '@stellar/stellar-sdk';
+import { Asset, BASE_FEE, Memo, Operation, TransactionBuilder } from '@stellar/stellar-sdk';
 import type { DefaultStellarClient } from './client.js';
+import type { Wallet } from './wallet.js';
+import { classifyStellarPaymentError } from './payment-errors.js';
+import { InMemoryIdempotencyStore, type IdempotencyStore } from './idempotency.js';
 
-export interface PaymentResult {
-  success: boolean;
-  transactionHash?: string;
-  error?: string;
-}
-
-export interface PaymentHistoryEntry {
-  hash: string;
+export interface SubmitNativePaymentParams {
+  /** Wallet for the paying account; must be able to sign for it. */
+  sourceWallet: Wallet;
+  /** Public key of the receiving account. */
+  destinationPublicKey: string;
+  /** Amount of native XLM to send, as a decimal string (e.g. `"10.5"`). */
   amount: string;
-  asset: string;
-  from: string;
-  to: string;
-  timestamp: Date;
+  /** Optional text memo attached to the transaction. */
   memo?: string;
+  /**
+   * Caller-supplied key used to dedupe retries/concurrent submissions of the
+   * "same" payment. See `IdempotencyStore` docs for scope/limitations.
+   */
+  idempotencyKey?: string;
 }
 
-export class StellarPaymentService {
-  private client: DefaultStellarClient;
+export interface StellarPaymentResult {
+  hash: string;
+  ledger: number;
+  successful: boolean;
+}
 
-  constructor(client: DefaultStellarClient) {
+/**
+ * Builds, signs, and submits native XLM payment transactions.
+ *
+ * Failures are normalized to `StellarPaymentError` (see `payment-errors.ts`)
+ * so callers can branch on a stable `kind` instead of Horizon's raw error
+ * shapes. Submissions sharing an `idempotencyKey` are deduped via the
+ * injected `IdempotencyStore` (in-memory by default).
+ */
+export class StellarPaymentService {
+  private readonly client: DefaultStellarClient;
+  private readonly idempotencyStore: IdempotencyStore<StellarPaymentResult>;
+
+  constructor(
+    client: DefaultStellarClient,
+    idempotencyStore: IdempotencyStore<StellarPaymentResult> = new InMemoryIdempotencyStore(),
+  ) {
     this.client = client;
+    this.idempotencyStore = idempotencyStore;
   }
 
-  async sendPayment(fromSecret: string, toAddress: string, amount: string, memo?: string): Promise<PaymentResult> {
-    try {
-      const keypair = Keypair.fromSecret(fromSecret);
-      const fromAddress = keypair.publicKey();
+  /**
+   * Submits a native XLM payment. If `idempotencyKey` matches an in-flight
+   * or previously-successful submission, that same result is returned
+   * instead of submitting a second, duplicate transaction. A failed
+   * submission is evicted from the store so a subsequent retry with the
+   * same key can actually attempt again.
+   */
+  async submitNativePayment(params: SubmitNativePaymentParams): Promise<StellarPaymentResult> {
+    const { idempotencyKey } = params;
 
-      const sourceAccount = await this.client.horizon.loadAccount(fromAddress);
+    if (idempotencyKey) {
+      const existing = this.idempotencyStore.get(idempotencyKey);
+      if (existing) {
+        return existing;
+      }
+    }
 
-      const baseFee = await this.client.horizon.fetchBaseFee();
+    const submission = this.buildAndSubmit(params);
 
-      const transactionBuilder = new TransactionBuilder(sourceAccount, {
-        fee: String(baseFee),
-        networkPassphrase: this.client.config.networkPassphrase,
+    if (idempotencyKey) {
+      this.idempotencyStore.set(idempotencyKey, submission);
+      submission.catch(() => {
+        this.idempotencyStore.delete(idempotencyKey);
       });
+    }
 
-      const paymentOp = Operation.payment({
-        destination: toAddress,
+    return submission;
+  }
+
+  private async buildAndSubmit(params: SubmitNativePaymentParams): Promise<StellarPaymentResult> {
+    const { sourceWallet, destinationPublicKey, amount, memo } = params;
+
+    let sourceAccount;
+    try {
+      sourceAccount = await this.client.horizon.loadAccount(sourceWallet.publicKey);
+    } catch (error) {
+      throw classifyStellarPaymentError(error);
+    }
+
+    const builder = new TransactionBuilder(sourceAccount, {
+      fee: BASE_FEE,
+      networkPassphrase: this.client.config.networkPassphrase,
+    }).addOperation(
+      Operation.payment({
+        destination: destinationPublicKey,
         asset: Asset.native(),
         amount,
-      });
+      }),
+    );
 
-      let tx = transactionBuilder.addOperation(paymentOp);
+    if (memo) {
+      builder.addMemo(Memo.text(memo));
+    }
 
-      if (memo) {
-        tx = tx.addMemo(Memo.text(memo));
-      }
+    const transaction = builder.setTimeout(30).build();
 
-      const builtTransaction = tx.setTimeout(180).build();
-      builtTransaction.sign(keypair);
+    const signature = sourceWallet.sign(transaction.hash());
+    transaction.addSignature(sourceWallet.publicKey, signature.toString('base64'));
 
-      const result = await this.client.horizon.submitTransaction(builtTransaction);
-
+    try {
+      const response = await this.client.horizon.submitTransaction(transaction);
       return {
-        success: true,
-        transactionHash: result.hash,
+        hash: response.hash,
+        ledger: response.ledger,
+        successful: response.successful,
       };
     } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      return {
-        success: false,
-        error: message,
-      };
+      throw classifyStellarPaymentError(error);
     }
   }
-
-  async getPaymentHistory(address: string, limit: number = 10): Promise<PaymentHistoryEntry[]> {
-    try {
-      const paymentsResponse = await this.client.horizon
-        .payments()
-        .forAccount(address)
-        .limit(limit)
-        .order('desc')
-        .call();
-
-      const entries: PaymentHistoryEntry[] = [];
-
-      for (const record of paymentsResponse.records) {
-        if (!isPaymentLikeRecord(record as Partial<PaymentLikeRecord>)) {
-          continue;
-        }
-
-        const paymentRecord = record as unknown as PaymentLikeRecord;
-
-        let memo: string | undefined;
-        try {
-          const txResponse = await this.client.horizon
-            .transactions()
-            .transaction(paymentRecord.transaction_hash)
-            .call();
-          if ('memo' in txResponse && typeof txResponse.memo === 'string') {
-            memo = txResponse.memo;
-          }
-        } catch {
-          // Transaction may not be available yet; skip memo
-        }
-
-        entries.push({
-          hash: paymentRecord.transaction_hash,
-          amount: paymentRecord.amount,
-          asset: paymentRecord.asset_type === 'native' ? 'XLM' : `${paymentRecord.asset_code ?? 'unknown'}`,
-          from: paymentRecord.from,
-          to: paymentRecord.to,
-          timestamp: new Date(paymentRecord.created_at),
-          memo,
-        });
-      }
-
-      return entries;
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      throw new Error(`Failed to fetch payment history: ${message}`);
-    }
-  }
-
-  async getPaymentStatus(transactionHash: string): Promise<'pending' | 'success' | 'failed'> {
-    try {
-      const response = await this.client.horizon
-        .transactions()
-        .transaction(transactionHash)
-        .call();
-
-      if (response.successful) {
-        return 'success';
-      }
-      return 'failed';
-    } catch (error) {
-      if (isNotFoundError(error)) {
-        return 'pending';
-      }
-      const message = error instanceof Error ? error.message : String(error);
-      throw new Error(`Failed to fetch payment status: ${message}`);
-    }
-  }
-}
-
-interface PaymentLikeRecord {
-  type: string;
-  transaction_hash: string;
-  amount: string;
-  asset_type: string;
-  asset_code?: string;
-  from: string;
-  to: string;
-  created_at: string;
-}
-
-function isPaymentLikeRecord(record: {
-  transaction_hash?: unknown;
-  amount?: unknown;
-  from?: unknown;
-  to?: unknown;
-}): record is PaymentLikeRecord {
-  return (
-    typeof record.transaction_hash === 'string' &&
-    typeof record.amount === 'string' &&
-    typeof record.from === 'string' &&
-    typeof record.to === 'string'
-  );
-}
-
-function isNotFoundError(error: unknown): boolean {
-  if (typeof error === 'object' && error !== null && 'response' in error) {
-    const response = (error as { response?: { status?: number } }).response;
-    return response?.status === 404;
-  }
-  return false;
 }

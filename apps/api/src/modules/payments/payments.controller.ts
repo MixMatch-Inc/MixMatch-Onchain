@@ -13,6 +13,16 @@ export class PaymentsController {
     res.status(201).json({ transaction });
   };
 
+  /**
+   * Returns (provisioning on first call) the caller's own Stellar account —
+   * just enough to receive a payment (public key), never the secret key.
+   * Used by clients to render a "receive" QR code of the user's address.
+   */
+  account = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+    const account = await this.paymentsService.getOrCreateStellarAccount(req.userId!);
+    res.status(200).json({ account: { publicKey: account.publicKey, network: account.network } });
+  };
+
   status = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     const transactionId = req.params.id;
     if (!transactionId) {

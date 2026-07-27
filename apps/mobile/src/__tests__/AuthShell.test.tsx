@@ -1,15 +1,21 @@
 import React from 'react';
+import { Text } from 'react-native';
 import { render, fireEvent, waitFor, act } from '@testing-library/react-native';
 import AuthShell from '../components/AuthShell';
+import { AuthProvider } from '../context/AuthContext';
 import * as apiClient from '../services/api-client';
+import type { AuthTokenResponse } from '../services/api-client';
 
 jest.mock('../services/api-client');
 
 const mockedRegister = apiClient.registerUser as jest.MockedFunction<typeof apiClient.registerUser>;
 const mockedLogin = apiClient.loginUser as jest.MockedFunction<typeof apiClient.loginUser>;
 
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const secureStoreMock = require('expo-secure-store');
+
 beforeEach(() => {
-  localStorage.clear();
+  secureStoreMock.__reset();
   jest.clearAllMocks();
 });
 
@@ -21,22 +27,27 @@ function createStoredAuth(overrides: Record<string, unknown> = {}) {
   };
 }
 
+function renderShell(children: React.ReactNode = <></>) {
+  return render(<AuthProvider><AuthShell>{children}</AuthShell></AuthProvider>);
+}
+
 describe('AuthShell (mobile) regression coverage', () => {
   describe('login flow', () => {
-    it('renders login form when not authenticated', () => {
-      const { getByText } = render(<AuthShell><></></AuthShell>);
-      expect(getByText('Sign In')).toBeTruthy();
+    it('renders login form when not authenticated', async () => {
+      const { getByText } = renderShell();
+      await waitFor(() => expect(getByText('Sign In')).toBeTruthy());
       expect(getByText('Log In')).toBeTruthy();
     });
 
     it('calls loginUser on form submission', async () => {
       mockedLogin.mockResolvedValueOnce(createStoredAuth());
 
-      const { getByPlaceholderText, getByText } = render(<AuthShell><></></AuthShell>);
+      const { getByPlaceholderText, getByText } = renderShell();
+      await waitFor(() => expect(getByText('Sign In')).toBeTruthy());
 
+      fireEvent.changeText(getByPlaceholderText('Email'), 'alice@test.com');
+      fireEvent.changeText(getByPlaceholderText('Password'), 'password123');
       await act(async () => {
-        fireEvent.changeText(getByPlaceholderText('Email'), 'alice@test.com');
-        fireEvent.changeText(getByPlaceholderText('Password'), 'password123');
         fireEvent.press(getByText('Log In'));
       });
 
@@ -46,7 +57,8 @@ describe('AuthShell (mobile) regression coverage', () => {
     it('displays API error on login failure', async () => {
       mockedLogin.mockRejectedValueOnce(new Error('Invalid email or password'));
 
-      const { getByPlaceholderText, getByText } = render(<AuthShell><></></AuthShell>);
+      const { getByPlaceholderText, getByText } = renderShell();
+      await waitFor(() => expect(getByText('Sign In')).toBeTruthy());
 
       await act(async () => {
         fireEvent.changeText(getByPlaceholderText('Email'), 'alice@test.com');
@@ -60,10 +72,11 @@ describe('AuthShell (mobile) regression coverage', () => {
     });
 
     it('disables submit button while request is in flight', async () => {
-      let resolveLogin: (value: unknown) => void;
-      mockedLogin.mockReturnValueOnce(new Promise((resolve) => { resolveLogin = resolve; }));
+      let resolveLogin: (value: AuthTokenResponse) => void;
+      mockedLogin.mockReturnValueOnce(new Promise<AuthTokenResponse>((resolve) => { resolveLogin = resolve; }));
 
-      const { getByPlaceholderText, getByText } = render(<AuthShell><></></AuthShell>);
+      const { getByPlaceholderText, getByText } = renderShell();
+      await waitFor(() => expect(getByText('Sign In')).toBeTruthy());
 
       await act(async () => {
         fireEvent.changeText(getByPlaceholderText('Email'), 'alice@test.com');
@@ -80,8 +93,9 @@ describe('AuthShell (mobile) regression coverage', () => {
   });
 
   describe('registration flow', () => {
-    it('toggles to registration mode', () => {
-      const { getByText } = render(<AuthShell><></></AuthShell>);
+    it('toggles to registration mode', async () => {
+      const { getByText } = renderShell();
+      await waitFor(() => expect(getByText('Sign In')).toBeTruthy());
       fireEvent.press(getByText("Don't have an account? Register"));
       expect(getByText('Create Account')).toBeTruthy();
       expect(getByText('Register')).toBeTruthy();
@@ -90,12 +104,13 @@ describe('AuthShell (mobile) regression coverage', () => {
     it('calls registerUser on registration submission', async () => {
       mockedRegister.mockResolvedValueOnce(createStoredAuth());
 
-      const { getByPlaceholderText, getByText } = render(<AuthShell><></></AuthShell>);
+      const { getByPlaceholderText, getByText } = renderShell();
+      await waitFor(() => expect(getByText('Sign In')).toBeTruthy());
       fireEvent.press(getByText("Don't have an account? Register"));
 
+      fireEvent.changeText(getByPlaceholderText('Email'), 'bob@test.com');
+      fireEvent.changeText(getByPlaceholderText('Password'), 'securepass1');
       await act(async () => {
-        fireEvent.changeText(getByPlaceholderText('Email'), 'bob@test.com');
-        fireEvent.changeText(getByPlaceholderText('Password'), 'securepass1');
         fireEvent.press(getByText('Register'));
       });
 
@@ -105,7 +120,8 @@ describe('AuthShell (mobile) regression coverage', () => {
     it('displays API error on registration failure', async () => {
       mockedRegister.mockRejectedValueOnce(new Error('An account with this email already exists'));
 
-      const { getByPlaceholderText, getByText } = render(<AuthShell><></></AuthShell>);
+      const { getByPlaceholderText, getByText } = renderShell();
+      await waitFor(() => expect(getByText('Sign In')).toBeTruthy());
       fireEvent.press(getByText("Don't have an account? Register"));
 
       await act(async () => {
@@ -119,8 +135,9 @@ describe('AuthShell (mobile) regression coverage', () => {
       });
     });
 
-    it('toggles back to login mode', () => {
-      const { getByText } = render(<AuthShell><></></AuthShell>);
+    it('toggles back to login mode', async () => {
+      const { getByText } = renderShell();
+      await waitFor(() => expect(getByText('Sign In')).toBeTruthy());
       fireEvent.press(getByText("Don't have an account? Register"));
       expect(getByText('Create Account')).toBeTruthy();
       fireEvent.press(getByText('Already have an account? Sign In'));
@@ -129,15 +146,11 @@ describe('AuthShell (mobile) regression coverage', () => {
   });
 
   describe('authenticated state', () => {
-    it('renders children when user is authenticated', () => {
-      localStorage.setItem('mixmatch.auth', JSON.stringify(createStoredAuth()));
+    it('renders children when user is authenticated', async () => {
+      await secureStoreMock.setItemAsync('mixmatch.auth', JSON.stringify(createStoredAuth()));
 
-      const { getByText } = render(
-        <AuthShell>
-          <><span>Dashboard Content</span></>
-        </AuthShell>,
-      );
-      expect(getByText('Dashboard Content')).toBeTruthy();
+      const { getByText } = renderShell(<><Text>Dashboard Content</Text></>);
+      await waitFor(() => expect(getByText('Dashboard Content')).toBeTruthy());
     });
   });
 
@@ -145,7 +158,8 @@ describe('AuthShell (mobile) regression coverage', () => {
     it('handles non-Error thrown during login', async () => {
       mockedLogin.mockRejectedValueOnce('string error');
 
-      const { getByPlaceholderText, getByText } = render(<AuthShell><></></AuthShell>);
+      const { getByPlaceholderText, getByText } = renderShell();
+      await waitFor(() => expect(getByText('Sign In')).toBeTruthy());
 
       await act(async () => {
         fireEvent.changeText(getByPlaceholderText('Email'), 'alice@test.com');
@@ -162,7 +176,8 @@ describe('AuthShell (mobile) regression coverage', () => {
       mockedLogin.mockRejectedValueOnce(new Error('First error'));
       mockedLogin.mockResolvedValueOnce(createStoredAuth());
 
-      const { getByPlaceholderText, getByText } = render(<AuthShell><></></AuthShell>);
+      const { getByPlaceholderText, getByText } = renderShell();
+      await waitFor(() => expect(getByText('Sign In')).toBeTruthy());
 
       await act(async () => {
         fireEvent.changeText(getByPlaceholderText('Email'), 'alice@test.com');
@@ -185,9 +200,11 @@ describe('AuthShell (mobile) regression coverage', () => {
   });
 
   describe('loading state', () => {
-    it('shows activity indicator while checking auth', () => {
-      const { getByText } = render(<AuthShell><></></AuthShell>);
-      expect(getText('Sign In')).toBeTruthy();
+    it('shows an activity indicator before the stored session check resolves', () => {
+      const { queryByText } = renderShell();
+      // Synchronously right after render, the stored-session check hasn't
+      // resolved yet, so neither the form nor children should be visible.
+      expect(queryByText('Sign In')).toBeNull();
     });
   });
 });

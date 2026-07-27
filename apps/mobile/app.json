@@ -8,11 +8,25 @@
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSCameraUsageDescription": "MixMatch Onchain uses your camera to scan payment QR codes."
+      }
     },
-    "android": {},
+    "android": {
+      "permissions": ["CAMERA"]
+    },
     "web": {
       "bundler": "metro"
-    }
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "MixMatch Onchain uses your camera to scan payment QR codes."
+        }
+      ]
+    ]
   }
 }

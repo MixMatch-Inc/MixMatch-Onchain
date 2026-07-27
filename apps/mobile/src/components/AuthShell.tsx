@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, ActivityIndicator, StyleSheet } from 'react-native';
-import { useAuth } from '../hooks/useAuth';
+import { useAuth } from '../context/AuthContext';
 import { loginUser, registerUser } from '../services/api-client';
 
 interface Props {
@@ -34,7 +34,7 @@ export default function AuthShell({ children }: Props) {
       const response = isRegistering
         ? await registerUser({ email, password })
         : await loginUser({ email, password });
-      setAuth(response);
+      await setAuth(response);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Something went wrong');
     } finally {

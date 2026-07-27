@@ -38,6 +38,7 @@ export function createTestApp(stellarClient: DefaultStellarClient): TestAppHandl
 
   const router = Router();
   router.post('/send', requireAuth, asyncHandler<AuthenticatedRequest>(controller.send));
+  router.get('/account', requireAuth, asyncHandler<AuthenticatedRequest>(controller.account));
   router.get('/history', requireAuth, asyncHandler<AuthenticatedRequest>(controller.history));
   router.get('/:id/status', requireAuth, asyncHandler<AuthenticatedRequest>(controller.status));
   router.post('/:id/reconcile', requireAuth, asyncHandler<AuthenticatedRequest>(controller.reconcile));

@@ -96,6 +96,7 @@ export function createApp(): Express {
    *   - Token verification         (requireAuth middleware)
    */
   app.use('/api/auth', rateLimit('auth'), createAuthRouter());
+  app.use('/api/payments', createPaymentRouter());
 
   // Payment routes — see apps/api/src/modules/payments/README.md for the
   // account-provisioning, idempotency, and reconciliation model.

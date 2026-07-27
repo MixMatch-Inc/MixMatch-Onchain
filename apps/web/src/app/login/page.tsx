@@ -24,6 +24,9 @@ export default function LoginPage() {
       <main>
         <h1>You are logged in</h1>
         <p>Signed in as {user.email}</p>
+        <p>
+          <Link href="/payments">Send a payment</Link>
+        </p>
         <button onClick={logout}>Log out</button>
       </main>
     );

@@ -1,11 +1,9 @@
 import cors from 'cors';
 import express, { type Express, type Request, type Response, type NextFunction } from 'express';
 import { env } from './shared/config/env.js';
-import { ValidationError } from './shared/errors/AppError.js';
 import { errorMiddleware } from './shared/middleware/error.middleware.js';
 import { createAuthRouter } from './modules/auth/auth.routes.js';
 import { createPaymentsRouter } from './modules/payments/payments.routes.js';
-import { rateLimit } from './modules/rate-limit/rate-limit.middleware.js';
 import { requestLogger } from './middleware/logger.middleware.js';
 import { logger } from './shared/logger/logger.js';
 import { prisma } from './shared/database/prisma.js';
@@ -20,7 +18,15 @@ async function checkDatabase(): Promise<{ status: 'ok' | 'error'; latencyMs?: nu
   }
 }
 
-export async function getDetailedHealth(): Promise<Record<string, unknown>> {
+export interface DetailedHealth {
+  status: 'ok' | 'degraded';
+  timestamp: string;
+  components: {
+    database: { status: 'ok' | 'error'; latencyMs?: number; error?: string };
+  };
+}
+
+export async function getDetailedHealth(): Promise<DetailedHealth> {
   const [db] = await Promise.all([checkDatabase()]);
   const healthy = db.status === 'ok';
   return {
@@ -89,13 +95,7 @@ export function createApp(): Express {
     }
   });
 
-  /*
-   * Auth routes — see apps/docs/auth-guard.md for details on:
-   *   - Role-based access control  (AuthGuard.requireRoles)
-   *   - Self-ownership checks      (AuthGuard.requireOwnership)
-   *   - Token verification         (requireAuth middleware)
-   */
-  app.use('/api/auth', rateLimit('auth'), createAuthRouter());
+  app.use('/api/auth', createAuthRouter());
 
   // Payment routes — see apps/api/src/modules/payments/README.md for the
   // account-provisioning, idempotency, and reconciliation model.

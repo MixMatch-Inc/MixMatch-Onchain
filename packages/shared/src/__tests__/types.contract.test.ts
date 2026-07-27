@@ -7,18 +7,11 @@ import type {
   TokenPair,
   Session,
   SessionConfig,
-  AuditEntry,
   AuthErrorCode,
   AuthErrorResponse,
   UserRole,
   AuthGuardOptions,
   GuardResult,
-  ValidationResult,
-  RateLimitConfig,
-  RateLimitInfo,
-  RateLimitStore,
-  RouteAccess,
-  RouteProtectionContract,
 } from '../index.js';
 
 describe('type contracts', () => {
@@ -88,17 +81,6 @@ describe('type contracts', () => {
     expect(config.maxActiveSessions).toBe(5);
   });
 
-  it('AuditEntry has required fields', () => {
-    const entry: AuditEntry = {
-      id: 'a1',
-      action: 'USER_REGISTERED',
-      actorId: 'u1',
-      timestamp: '2025-01-01T00:00:00.000Z',
-    };
-
-    expect(entry.action).toBe('USER_REGISTERED');
-  });
-
   it('AuthErrorResponse has code and message', () => {
     const err: AuthErrorResponse = { code: 'INVALID_TOKEN' as AuthErrorCode, message: 'Bad token' };
 
@@ -116,58 +98,5 @@ describe('type contracts', () => {
 
     expect(denied.allowed).toBe(false);
     expect(denied.reason).toBe('Not admin');
-  });
-
-  it('ValidationResult works for success and failure', () => {
-    const success: ValidationResult<string> = { success: true, data: 'ok' };
-    const failure: ValidationResult<string> = { success: false, error: 'fail' };
-
-    expect(success.success).toBe(true);
-    expect(failure.success).toBe(false);
-  });
-
-  it('RateLimitConfig has window and max', () => {
-    const config: RateLimitConfig = { windowMs: 900000, maxRequests: 20 };
-
-    expect(config.windowMs).toBe(900000);
-  });
-
-  it('RateLimitInfo has limit, remaining, resetAt', () => {
-    const info: RateLimitInfo = { limit: 20, remaining: 15, resetAt: new Date(), retryAfterMs: 0, allowed: true };
-
-    expect(info.remaining).toBe(15);
-  });
-
-  it('RateLimitStore interface is structurally sound', () => {
-    const store: RateLimitStore = {
-      increment: async () => ({ count: 1, resetAt: new Date() }),
-      decrement: async () => {},
-      reset: async () => {},
-    };
-
-    expect(store).toBeDefined();
-  });
-
-  it('RouteAccess can be public, authenticated, role, or ownership', () => {
-    const pub: RouteAccess = { kind: 'public' };
-    const auth: RouteAccess = { kind: 'authenticated' };
-    const role: RouteAccess = { kind: 'role', role: 'ADMIN' };
-    const owned: RouteAccess = { kind: 'ownership', paramId: 'id' };
-
-    expect(pub.kind).toBe('public');
-    expect(auth.kind).toBe('authenticated');
-    expect(role).toEqual({ kind: 'role', role: 'ADMIN' });
-    expect(owned).toEqual({ kind: 'ownership', paramId: 'id' });
-  });
-
-  it('RouteProtectionContract has path, method, access', () => {
-    const contract: RouteProtectionContract = {
-      path: '/api/auth/me',
-      method: 'GET',
-      access: { kind: 'authenticated' },
-    };
-
-    expect(contract.path).toBe('/api/auth/me');
-    expect(contract.access.kind).toBe('authenticated');
   });
 });

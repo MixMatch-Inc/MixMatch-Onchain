@@ -13,7 +13,16 @@ vi.mock('../../../shared/database/prisma.js', () => ({
 }));
 
 const { prisma } = await import('../../../shared/database/prisma.js');
-const mockPrisma = vi.mocked(prisma);
+// The mocked module's `prisma.user.*` methods are plain `vi.fn()`s at
+// runtime, but the imported binding keeps the real (non-mock) Prisma
+// method signatures at the type level — cast to access mock helpers.
+const mockPrisma = prisma as unknown as {
+  user: {
+    findUnique: ReturnType<typeof vi.fn>;
+    create: ReturnType<typeof vi.fn>;
+    update: ReturnType<typeof vi.fn>;
+  };
+};
 
 describe('PrismaUserRepository', () => {
   let repo: PrismaUserRepository;
@@ -150,8 +159,7 @@ describe('PrismaUserRepository', () => {
     });
 
     it('wraps Prisma not-found on update', async () => {
-      const prismaError = new Error('Record not found');
-      (prismaError as any).code = 'P2025';
+      const prismaError = Object.assign(new Error('Record not found'), { code: 'P2025' });
       mockPrisma.user.update.mockRejectedValue(prismaError);
 
       await expect(

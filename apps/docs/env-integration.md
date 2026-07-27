@@ -27,6 +27,7 @@ making it difficult to add new variables safely or debug configuration issues.
 | `STELLAR_NETWORK` | `packages/stellar/src/config.ts` | Stellar network selection |
 | `RPC_URL` | `packages/stellar/src/config.ts` | Soroban RPC endpoint override, used by `client.ts`'s `rpc.Server` |
 | `HORIZON_URL` | `packages/stellar/src/config.ts` | Horizon endpoint override, used by `client.ts`'s `Horizon.Server` |
+| `WALLET_ENCRYPTION_KEY` | `apps/api/src/modules/payments/wallet-encryption.ts` | AES-256-GCM key encrypting stored Stellar secret keys |
 
 ## apps/web
 
@@ -90,6 +91,7 @@ are present before the server starts accepting requests.
 | `NODE_ENV` | Defaults to `development` if not set |
 | `DATABASE_URL` | Required by Prisma; fails at connection time if missing |
 | `WEB_ORIGIN` | Used by CORS; if missing, cross-origin requests are blocked |
+| `WALLET_ENCRYPTION_KEY` | Must be a 64-character hex string (32 bytes) in non-development environments |
 
 ### Fail-Fast Behaviour
 

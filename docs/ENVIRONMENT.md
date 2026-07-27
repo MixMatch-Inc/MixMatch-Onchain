@@ -13,6 +13,10 @@ before running the app locally.
 | `JWT_SECRET`     | Secret used to sign access tokens                              | a long random string                                                  |
 | `JWT_EXPIRES_IN` | Access token lifetime                                          | `1h`                                                                  |
 | `WEB_ORIGIN`     | Allowed CORS origin for the web app                            | `http://localhost:3000`                                               |
+| `STELLAR_NETWORK` | Stellar network to connect to (testnet/public)                | `testnet`                                                             |
+| `RPC_URL`        | Soroban RPC endpoint URL (required for blockchain)              | `https://soroban-testnet.stellar.org`                                 |
+| `HORIZON_URL`    | Horizon endpoint override (optional; defaults per `STELLAR_NETWORK`) | `https://horizon-testnet.stellar.org`                            |
+| `WALLET_ENCRYPTION_KEY` | 64-char hex key (32 bytes) used to encrypt stored wallet secret keys | generate with `openssl rand -hex 32`                       |
 
 ## apps/web/.env
 

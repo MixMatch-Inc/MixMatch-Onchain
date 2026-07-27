@@ -1,8 +1,9 @@
 # @mixmatch/stellar
 
-Core Stellar account and wallet infrastructure for the platform: Horizon/Soroban
-client configuration, account generation/loading, a non-custodial wallet
-abstraction, and testnet Friendbot funding.
+Core Stellar account, wallet, and payment infrastructure for the platform:
+Horizon/Soroban client configuration, account generation/loading, a
+non-custodial wallet abstraction, testnet Friendbot funding, and a payment
+service for building/signing/submitting native XLM payments.
 
 ## Contents
 
@@ -18,6 +19,43 @@ abstraction, and testnet Friendbot funding.
   model (see doc comment in the file for details)
 - `src/account.ts` — `generateStellarAccount()`, `loadStellarAccount()`
 - `src/friendbot.ts` — `fundTestnetAccount()`, testnet-only Friendbot funding
+- `src/payment.ts` — `StellarPaymentService`, builds/signs/submits native XLM
+  payments, with idempotent submission (see below)
+- `src/payment-errors.ts` — `StellarPaymentError`/`classifyStellarPaymentError()`,
+  normalizing Horizon failures into a stable `kind`
+- `src/idempotency.ts` — `IdempotencyStore`/`InMemoryIdempotencyStore`, used by
+  `StellarPaymentService` to dedupe submissions
+
+## Payments
+
+```ts
+import { createStellarClient, KeypairWallet, StellarPaymentService } from '@mixmatch/stellar';
+
+const client = createStellarClient();
+const payments = new StellarPaymentService(client);
+
+const result = await payments.submitNativePayment({
+  sourceWallet: KeypairWallet.fromSecret('testnet', mySecretKey),
+  destinationPublicKey: 'GDEST...',
+  amount: '10',
+  idempotencyKey: 'order-42', // optional, see Idempotency below
+});
+```
+
+Failures are normalized to `StellarPaymentError`, with a `kind` (e.g.
+`insufficient_balance`, `sequence_conflict`, `destination_not_found`,
+`network_error`) instead of raw Horizon error shapes — see
+`src/payment-errors.ts` for the full list and mapping.
+
+### Idempotency
+
+`submitNativePayment` accepts an optional `idempotencyKey`. Concurrent or
+repeated calls sharing a key return the same in-flight/completed result
+instead of submitting a second transaction; a failed submission is evicted
+so a later retry with the same key can actually attempt again. The default
+`InMemoryIdempotencyStore` is process-local — durable, cross-process
+idempotency (e.g. surviving a restart) requires passing a persistent
+`IdempotencyStore` implementation, which is an application-level concern.
 
 ## Wallet custody model
 

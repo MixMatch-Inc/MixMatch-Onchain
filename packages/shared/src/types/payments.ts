@@ -42,3 +42,13 @@ export interface TransactionHistoryResponse {
   page: number;
   limit: number;
 }
+
+/** The caller's own Stellar account — public key only, never the secret key. */
+export interface MyStellarAccount {
+  publicKey: string;
+  network: string;
+}
+
+export interface MyAccountResponse {
+  account: MyStellarAccount;
+}

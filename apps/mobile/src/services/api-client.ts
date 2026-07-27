@@ -31,11 +31,11 @@ export interface LoginInput {
   password: string;
 }
 
-async function postJson<T>(path: string, body: unknown): Promise<T> {
+/** Generic request helper — exported so other services (e.g. payments) can reuse it. */
+export async function request<T>(path: string, options?: RequestInit): Promise<T> {
   const response = await fetch(`${API_URL}${path}`, {
-    method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
+    ...options,
   });
 
   const data = await response.json();
@@ -47,22 +47,14 @@ async function postJson<T>(path: string, body: unknown): Promise<T> {
   return data as T;
 }
 
-async function getJson<T>(path: string, accessToken: string): Promise<T> {
-  const response = await fetch(`${API_URL}${path}`, {
-    method: 'GET',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${accessToken}`,
-    },
+function postJson<T>(path: string, body: unknown): Promise<T> {
+  return request<T>(path, { method: 'POST', body: JSON.stringify(body) });
+}
+
+function getJson<T>(path: string, accessToken: string): Promise<T> {
+  return request<T>(path, {
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
   });
-
-  const data = await response.json();
-
-  if (!response.ok) {
-    throw new ApiError(data?.error?.message ?? 'Something went wrong');
-  }
-
-  return data as T;
 }
 
 export function registerUser(input: RegisterInput): Promise<AuthTokenResponse> {

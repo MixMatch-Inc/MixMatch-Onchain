@@ -4,8 +4,23 @@ import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { AuthProvider } from '@/lib/auth-context';
 import SignupPage from './page';
 
+const { mockUser } = vi.hoisted(() => ({
+  mockUser: {
+    id: '1',
+    email: 'new@example.com',
+    role: 'USER',
+    createdAt: '2025-01-01T00:00:00.000Z',
+    updatedAt: '2025-01-01T00:00:00.000Z',
+  },
+}));
+
 vi.mock('@/lib/api-client', () => ({
   registerUser: vi.fn(),
+  // auth-context re-validates any stored session on mount via getCurrentUser;
+  // resolve with the same user the test seeds into localStorage so the
+  // account-created-state assertion isn't followed by an async
+  // clear-on-reject state update.
+  getCurrentUser: vi.fn().mockResolvedValue({ user: mockUser }),
 }));
 
 function renderSignupPage() {
@@ -50,7 +65,7 @@ describe('SignupPage', () => {
   });
 
   it('renders account-created state when user is authenticated', () => {
-    const auth = { user: { id: '1', email: 'new@example.com', role: 'USER', createdAt: '2025-01-01T00:00:00.000Z', updatedAt: '2025-01-01T00:00:00.000Z' }, accessToken: 'token' };
+    const auth = { user: mockUser, accessToken: 'token' };
     window.localStorage.setItem('mixmatch.auth', JSON.stringify(auth));
 
     renderSignupPage();

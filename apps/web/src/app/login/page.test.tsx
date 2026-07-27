@@ -4,8 +4,23 @@ import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { AuthProvider } from '@/lib/auth-context';
 import LoginPage from './page';
 
+const { mockUser } = vi.hoisted(() => ({
+  mockUser: {
+    id: '1',
+    email: 'test@example.com',
+    role: 'USER',
+    createdAt: '2025-01-01T00:00:00.000Z',
+    updatedAt: '2025-01-01T00:00:00.000Z',
+  },
+}));
+
 vi.mock('@/lib/api-client', () => ({
   loginUser: vi.fn(),
+  // auth-context re-validates any stored session on mount via getCurrentUser;
+  // resolve with the same user the tests seed into localStorage so the
+  // logged-in-state assertions (which run synchronously, before this promise
+  // settles) aren't followed by an async clear-on-reject state update.
+  getCurrentUser: vi.fn().mockResolvedValue({ user: mockUser }),
 }));
 
 function renderLoginPage() {
@@ -49,7 +64,7 @@ describe('LoginPage', () => {
   });
 
   it('renders logged-in state when user is authenticated', () => {
-    const auth = { user: { id: '1', email: 'test@example.com', role: 'USER', createdAt: '2025-01-01T00:00:00.000Z', updatedAt: '2025-01-01T00:00:00.000Z' }, accessToken: 'token' };
+    const auth = { user: mockUser, accessToken: 'token' };
     window.localStorage.setItem('mixmatch.auth', JSON.stringify(auth));
 
     renderLoginPage();
@@ -59,7 +74,7 @@ describe('LoginPage', () => {
   });
 
   it('renders a logout button when authenticated', () => {
-    const auth = { user: { id: '1', email: 'test@example.com', role: 'USER', createdAt: '2025-01-01T00:00:00.000Z', updatedAt: '2025-01-01T00:00:00.000Z' }, accessToken: 'token' };
+    const auth = { user: mockUser, accessToken: 'token' };
     window.localStorage.setItem('mixmatch.auth', JSON.stringify(auth));
 
     renderLoginPage();

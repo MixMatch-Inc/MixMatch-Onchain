@@ -34,18 +34,6 @@ model Session {
   @@map("sessions")
 }
 
-model Property {
-  id          String   @id @default(uuid())
-  name        String
-  description String?
-  type        String   @default("STRING")
-  required    Boolean  @default(false)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  @@map("properties")
-}
-
 model StellarAccount {
   id                  String   @id @default(uuid())
   userId              String   @unique

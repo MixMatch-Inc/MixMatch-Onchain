@@ -1,24 +1,6 @@
-import { z } from 'zod';
+import { sendPaymentSchema } from '@mixmatch/shared';
 import { ValidationError } from '../../shared/errors/AppError.js';
 import type { SendPaymentDto } from './payments.types.js';
-
-// Stellar ed25519 public keys ("account IDs"): 'G' + 55 base32 characters.
-const STELLAR_PUBLIC_KEY_PATTERN = /^G[A-Z2-7]{55}$/;
-
-// Decimal amount, up to 7 fractional digits (Stellar's native asset precision), strictly positive.
-const AMOUNT_PATTERN = /^\d+(\.\d{1,7})?$/;
-
-const sendPaymentSchema = z.object({
-  destinationPublicKey: z
-    .string()
-    .regex(STELLAR_PUBLIC_KEY_PATTERN, 'destinationPublicKey must be a valid Stellar public key'),
-  amount: z
-    .string()
-    .regex(AMOUNT_PATTERN, 'amount must be a positive decimal string with up to 7 decimal places')
-    .refine((value) => Number(value) > 0, 'amount must be greater than zero'),
-  memo: z.string().max(28, 'memo must be at most 28 characters').optional(),
-  idempotencyKey: z.string().min(1).max(255).optional(),
-});
 
 export function parseSendPaymentInput(input: unknown): SendPaymentDto {
   const result = sendPaymentSchema.safeParse(input);

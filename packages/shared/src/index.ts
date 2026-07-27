@@ -12,6 +12,8 @@ export * from './types/rate-limit-contract.js';
 export * from './types/route-protection-contract.js';
 export * from './types/session-lifecycle.js';
 export * from './types/token-persistence.js';
+export * from './types/payments.js';
 export * from './validation/auth.schema.js';
 export * from './validation/session.schema.js';
 export * from './validation/validators.js';
+export * from './validation/payments.schema.js';

@@ -10,8 +10,8 @@ export class TasteCron {
 
   // Run every night at midnight to ingest daily streaming updates
   @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT)
-  async handleDailyTasteIngestion() {
+  handleDailyTasteIngestion() {
     this.logger.log('CRON: Triggering daily taste profile ingestion');
-    await this.tasteService.ingestTasteProfiles();
+    this.tasteService.ingestTasteProfiles();
   }
 }

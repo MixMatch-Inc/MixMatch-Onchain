@@ -1,299 +1,64 @@
-# TheMixMatch Onchain
+# MixMatch 🎧
 
-**TheMixMatch Onchain** is a music-focused platform designed to connect DJs, artists, creators, and fans through discovery, collaboration, and blockchain-powered experiences.
+Welcome to **MixMatch** — a social connection platform that matches people based on their true music identity, rather than just how they look. We use your Spotify streaming history to generate a deeply accurate "Taste Profile" and connect you with others who share your vibe.
 
-The platform combines web, mobile, API, and Stellar infrastructure to create a modern ecosystem where music communities can interact, discover talent, collaborate, and participate in new creator-driven experiences.
+This project is open-source and built for the community. We believe human connection through music is a core utility, and we're building the best platform to facilitate it.
 
-TheMixMatch Onchain uses Stellar to introduce fast, affordable, and transparent blockchain interactions while keeping the user experience simple and accessible.
+## 🏗 Architecture & Stack
 
----
+This is a modern monorepo powered by **Turborepo** and `pnpm`. Our stack is chosen for strict typing, modularity, and scalability:
 
-# Overview
+- **Backend (`apps/api`)**: A modular monolith built with **NestJS**. Enforces strong domain boundaries.
+- **Database**: PostgreSQL (with `pgvector` for AI similarity matching), Redis for caching, and Drizzle ORM.
+- **Web App (`apps/web`)**: Next.js (App Router).
+- **Mobile App (`apps/mobile`)**: React Native via Expo.
 
-The music industry is built around communities, creators, and shared experiences. However, many independent artists and DJs still struggle with discovery, collaboration opportunities, fan engagement, and direct monetization.
+## 🚀 Getting Started for Local Development
 
-TheMixMatch Onchain aims to improve this by creating a platform where:
+We adhere to the **"Zero to Hello World"** rule. You should be able to spin up the entire stack locally in under 5 minutes without needing any cloud API keys (we use mock data for local dev).
 
-* DJs can build their presence and connect with opportunities.
-* Artists and creators can discover collaborators.
-* Fans can engage with creators in meaningful ways.
-* Communities can participate in music experiences.
-* Blockchain technology enables new forms of ownership, support, and interaction.
+### Prerequisites
+- Node.js (v20+)
+- [pnpm](https://pnpm.io/installation) (v9+)
+- Docker & Docker Compose
 
-The platform combines familiar music community features with Stellar-powered infrastructure.
-
----
-
-# Core Features
-
-## Creator Profiles
-
-Creators can establish their presence on TheMixMatch Onchain through dedicated profiles.
-
-Profiles can include:
-
-* DJ or artist information,
-* music preferences,
-* portfolio details,
-* social links,
-* performance history,
-* community activity.
-
-The goal is to create a central identity layer for music creators.
-
----
-
-## Music Discovery
-
-TheMixMatch Onchain focuses on helping users discover creators and music experiences.
-
-Discovery experiences may include:
-
-* finding DJs and artists,
-* exploring music communities,
-* matching creators with similar interests,
-* discovering events and collaborations,
-* personalized music experiences.
-
----
-
-## Creator Collaboration
-
-Music creation is highly collaborative.
-
-The platform supports workflows around:
-
-* DJ discovery,
-* artist matching,
-* collaboration opportunities,
-* community-driven connections,
-* creator networking.
-
-The goal is to make it easier for creators to find and work with each other.
-
----
-
-## Fan Engagement
-
-Fans are an important part of the music ecosystem.
-
-The platform enables future fan-focused experiences such as:
-
-* following creators,
-* supporting artists,
-* joining communities,
-* participating in exclusive experiences,
-* interacting with creator content.
-
----
-
-## Stellar Integration
-
-TheMixMatch Onchain uses Stellar as the blockchain infrastructure powering creator and community interactions.
-
-Potential Stellar-powered features include:
-
-* wallet connections,
-* creator support payments,
-* digital rewards,
-* transaction receipts,
-* transparent ownership records,
-* blockchain-based engagement features.
-
-Stellar provides the speed and low transaction costs needed for consumer-facing experiences without adding unnecessary complexity for users.
-
----
-
-# Technology Stack
-
-TheMixMatch Onchain is built with a modern full-stack TypeScript architecture.
-
-| Area               | Technology                       |
-| ------------------ | -------------------------------- |
-| Web Application    | Next.js + React + TypeScript     |
-| Mobile Application | Expo + React Native + TypeScript |
-| Backend API        | Express.js + TypeScript          |
-| Blockchain Layer   | Stellar                          |
-| Package Manager    | pnpm                             |
-| Architecture       | Monorepo                         |
-
----
-
-# Repository Structure
-
-This repository is currently a **foundation release**: monorepo tooling plus
-authentication only. Everything else described in the Product Vision below
-is future scope and is intentionally not implemented yet.
-
-```text
-themixmatch-onchain/
-│
-├── apps/
-│   ├── api/        # Express modular monolith — authentication backend
-│   ├── web/        # Next.js web app — login & signup
-│   └── mobile/     # Expo/React Native foundation (no screens yet)
-│
-├── packages/
-│   ├── shared/     # Shared TypeScript types & validation schemas
-│   └── stellar/    # Placeholder scaffold for future Stellar integration
-│
-├── docs/           # Environment, testing, and contributor documentation
-└── .github/
-    └── workflows/  # Per-package CI (install, lint, test, build)
-```
-
----
-
-# Applications
-
-## API
-
-`apps/api`
-
-A modular-monolith Express + TypeScript backend. Currently implements only
-the **auth** and **users** modules:
-
-* registration (`POST /api/auth/register`)
-* login (`POST /api/auth/login`)
-* current user (`GET /api/auth/me`, requires a bearer token)
-
-Data is persisted to PostgreSQL via Prisma. See [apps/api/README.md](apps/api/README.md).
-
----
-
-## Web Application
-
-`apps/web`
-
-A Next.js (App Router) app with two pages: `/login` and `/signup`. Shares
-validation schemas and types with the API via `@mixmatch/shared`. See
-[apps/web/README.md](apps/web/README.md).
-
----
-
-## Mobile Application
-
-`apps/mobile`
-
-An Expo/React Native + TypeScript foundation: project structure, linting,
-formatting, and testing setup only. No screens, navigation, or
-authentication yet. See [apps/mobile/README.md](apps/mobile/README.md).
-
----
-
-## Stellar Package
-
-`packages/stellar`
-
-A scaffold-only package establishing the future Stellar integration
-boundary (placeholder types and interfaces, no blockchain logic). See
-[packages/stellar/README.md](packages/stellar/README.md).
-
----
-
-# Getting Started
-
-## Requirements
-
-* Node.js 20+
-* pnpm 10+
-
-Enable pnpm:
-
+### 1. Clone & Install
 ```bash
-corepack enable
-```
-
-Install dependencies:
-
-```bash
+git clone https://github.com/your-org/mixmatch.git
+cd mixmatch
 pnpm install
 ```
 
----
+### 2. Spin up Infrastructure
+We use Docker to run our local Postgres database, Redis cache, and ClickHouse instance.
+```bash
+docker compose up -d
+```
 
-# Running the Platform
-
-Copy each app's `.env.example` to `.env` first (see
-[docs/ENVIRONMENT.md](docs/ENVIRONMENT.md)). The API requires a local
-PostgreSQL database.
-
-Start everything:
-
+### 3. Run the Development Servers
+Start all applications (API, Web, and Mobile) concurrently using Turborepo:
 ```bash
 pnpm dev
 ```
 
-Individual apps:
+* **API**: http://localhost:3000
+* **Web**: http://localhost:3001
+* **Mobile**: Follow the Expo terminal prompts to open the app on your iOS/Android simulator.
 
-```bash
-pnpm --filter @mixmatch/api dev
-pnpm --filter @mixmatch/web dev
-pnpm --filter @mixmatch/mobile dev
-```
+## 🤝 Contributing to MixMatch
 
-Default ports:
+We love open-source contributors! Our roadmap is broken down into specific domains so you can work on features without blocking others.
 
-```text
-Web: http://localhost:3000
-API: http://localhost:3001
-```
+### Where to start?
+1. Check out our **Issue Tracker** and look for issues labeled `good first issue` or `help wanted`.
+2. Our work is split by domains (e.g., `[Backend]`, `[Mobile]`, `[Design]`). Pick one that matches your skillset!
+3. Review our [GitHub Work Roadmap](./docs/roadmap.md) (if you want the big picture).
 
----
+### Contributor Guidelines
+- **Contract-First:** Before building a frontend feature, ensure the backend API schema (Zod/Drizzle) is agreed upon.
+- **Strict Modularity:** If you are working in the `Taste Engine` NestJS module, do not directly import services from the `Messaging` module. Keep domains isolated.
+- **Tests Required:** We expect unit tests for core logic (especially in the Match Engine).
 
-# Running Tests
+## 📜 License
 
-```bash
-pnpm test
-```
-
-See [docs/TESTING.md](docs/TESTING.md) for per-package details.
-
----
-
-# Quality Checks
-
-Run:
-
-```bash
-pnpm build
-pnpm typecheck
-pnpm lint
-```
-
----
-
-# Environment Configuration
-
-Each application provides its own environment template:
-
-```text
-apps/api/.env.example
-apps/web/.env.example
-apps/mobile/.env.example
-```
-
-Copy the required environment file before running locally. See
-[docs/ENVIRONMENT.md](docs/ENVIRONMENT.md) for variable descriptions and
-secrets handling.
-
----
-
-# Product Vision
-
-TheMixMatch Onchain aims to become a platform where music creators and fans can discover, collaborate, and engage in new ways.
-
-The long-term vision is to combine music culture with accessible blockchain technology, enabling stronger creator communities, better discovery, and new opportunities for participation.
-
----
-
-# Contributing
-
-See [docs/CONTRIBUTING.md](docs/CONTRIBUTING.md) for coding standards,
-project structure, and the development workflow.
-
----
-
-# License
-
-MIT
+[MIT License](./LICENSE)

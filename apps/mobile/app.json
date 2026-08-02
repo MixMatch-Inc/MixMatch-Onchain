@@ -1,32 +1,24 @@
 {
   "expo": {
-    "name": "MixMatch Onchain",
-    "slug": "mixmatch-onchain",
-    "scheme": "mixmatch",
-    "version": "0.1.0",
+    "name": "mobile",
+    "slug": "mobile",
+    "version": "1.0.0",
     "orientation": "portrait",
-    "userInterfaceStyle": "automatic",
-    "newArchEnabled": true,
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
     "ios": {
-      "supportsTablet": true,
-      "infoPlist": {
-        "NSCameraUsageDescription": "MixMatch Onchain uses your camera to scan payment QR codes."
-      }
+      "supportsTablet": true
     },
     "android": {
-      "permissions": ["CAMERA"]
+      "adaptiveIcon": {
+        "backgroundColor": "#E6F4FE",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      }
     },
     "web": {
-      "bundler": "metro"
-    },
-    "plugins": [
-      "expo-router",
-      [
-        "expo-camera",
-        {
-          "cameraPermission": "MixMatch Onchain uses your camera to scan payment QR codes."
-        }
-      ]
-    ]
+      "favicon": "./assets/favicon.png"
+    }
   }
 }

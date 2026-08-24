@@ -1,17 +1,49 @@
-import { Controller, Get, Post } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  NotFoundException,
+  Post,
+  UseGuards,
+  UsePipes,
+} from '@nestjs/common';
+import {
+  loginSchema,
+  registerSchema,
+  type AuthTokenResponse,
+  type LoginInput,
+  type MeResponse,
+  type RegisterInput,
+} from '@mixmatch/shared';
+import { ZodValidationPipe } from '../../common/zod-validation.pipe';
+import { AuthService } from './auth.service';
+import { CurrentUserId } from './current-user.decorator';
+import { JwtAuthGuard } from './jwt-auth.guard';
 
 @Controller('auth')
 export class AuthController {
-  @Post('login')
-  login() {
-    // TODO: Implement JWT login
-    return { message: 'Login endpoint stub' };
+  constructor(private readonly authService: AuthService) {}
+
+  @Post('register')
+  @UsePipes(new ZodValidationPipe(registerSchema))
+  register(@Body() body: RegisterInput): Promise<AuthTokenResponse> {
+    return this.authService.register(body);
   }
 
-  @Post('signup')
-  signup() {
-    // TODO: Implement user registration
-    return { message: 'Signup endpoint stub' };
+  @Post('login')
+  @UsePipes(new ZodValidationPipe(loginSchema))
+  login(@Body() body: LoginInput): Promise<AuthTokenResponse> {
+    return this.authService.login(body);
+  }
+
+  @Get('me')
+  @UseGuards(JwtAuthGuard)
+  async me(@CurrentUserId() userId: string): Promise<MeResponse> {
+    const user = await this.authService.getCurrentUser(userId);
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+    return { user };
   }
 
   @Get('spotify/login')

@@ -1,27 +1,37 @@
 import { Asset, BASE_FEE, Memo, Operation, TransactionBuilder } from '@stellar/stellar-sdk';
 import type { DefaultStellarClient } from './client.js';
 import { classifyStellarPaymentError } from './payment-errors.js';
+import type { StellarAssetRef } from './types/index.js';
 import type { Wallet } from './wallet.js';
 
 const TRANSACTION_TIMEOUT_SECONDS = 30;
 
-export interface SubmitNativePaymentParams {
+export interface SubmitPaymentParams {
   sourceWallet: Wallet;
   destinationPublicKey: string;
   amount: string;
   memo?: string;
+  /** Omit for native XLM; pass a code+issuer to send a custom asset. */
+  asset?: StellarAssetRef;
 }
+
+/** @deprecated Use `SubmitPaymentParams` (with `asset` omitted for native XLM). Kept as an alias for existing callers. */
+export type SubmitNativePaymentParams = Omit<SubmitPaymentParams, 'asset'>;
 
 export interface StellarPaymentResult {
   hash: string;
   ledger: number;
 }
 
+function toStellarAsset(asset?: StellarAssetRef): Asset {
+  return asset ? new Asset(asset.code, asset.issuer) : Asset.native();
+}
+
 export class StellarPaymentService {
   constructor(private readonly client: DefaultStellarClient) {}
 
-  /** Builds, signs, and submits a native-XLM payment. Throws a `StellarPaymentError` on failure. */
-  async submitNativePayment(params: SubmitNativePaymentParams): Promise<StellarPaymentResult> {
+  /** Builds, signs, and submits a payment — native XLM if `params.asset` is omitted, otherwise the given asset. */
+  async submitPayment(params: SubmitPaymentParams): Promise<StellarPaymentResult> {
     try {
       const sourceAccount = await this.client.horizon.loadAccount(params.sourceWallet.publicKey);
 
@@ -31,7 +41,7 @@ export class StellarPaymentService {
       }).addOperation(
         Operation.payment({
           destination: params.destinationPublicKey,
-          asset: Asset.native(),
+          asset: toStellarAsset(params.asset),
           amount: params.amount,
         }),
       );
@@ -49,5 +59,10 @@ export class StellarPaymentService {
     } catch (error) {
       throw classifyStellarPaymentError(error);
     }
+  }
+
+  /** Native-XLM-only convenience wrapper around `submitPayment`. */
+  async submitNativePayment(params: SubmitNativePaymentParams): Promise<StellarPaymentResult> {
+    return this.submitPayment(params);
   }
 }

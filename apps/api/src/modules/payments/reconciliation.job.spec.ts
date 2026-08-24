@@ -14,6 +14,8 @@ function buildTransaction(
     destinationPublicKey: 'GDEST',
     amount: '10',
     memo: null,
+    assetCode: null,
+    assetIssuer: null,
     status: 'SUCCESS',
     stellarTxHash: 'hash',
     failureCode: null,

@@ -10,7 +10,10 @@ import {
   UsePipes,
 } from '@nestjs/common';
 import {
+  establishTrustlineSchema,
   sendPaymentSchema,
+  type EstablishTrustlineInput,
+  type EstablishTrustlineResponse,
   type SendPaymentInput,
   type StellarAccountResponse,
 } from '@mixmatch/shared';
@@ -30,6 +33,15 @@ export class PaymentsController {
   async send(@CurrentUserId() userId: string, @Body() body: SendPaymentInput) {
     const transaction = await this.paymentsService.sendPayment(userId, body);
     return { transaction };
+  }
+
+  @Post('trustlines')
+  @UsePipes(new ZodValidationPipe(establishTrustlineSchema))
+  async establishTrustline(
+    @CurrentUserId() userId: string,
+    @Body() body: EstablishTrustlineInput,
+  ): Promise<EstablishTrustlineResponse> {
+    return this.paymentsService.establishTrustlineForUser(userId, body);
   }
 
   @Get('account')

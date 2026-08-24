@@ -89,6 +89,11 @@ export const transactions = pgTable('transactions', {
   destinationPublicKey: text('destination_public_key').notNull(),
   amount: text('amount').notNull(),
   memo: text('memo'),
+  // Null means native XLM. When set, assetIssuer is always set too (and
+  // vice versa) — enforced at the application layer, see
+  // @mixmatch/shared's sendPaymentSchema.
+  assetCode: text('asset_code'),
+  assetIssuer: text('asset_issuer'),
   status: transactionStatusEnum('status').default('PENDING').notNull(),
   stellarTxHash: text('stellar_tx_hash'),
   failureCode: text('failure_code'),

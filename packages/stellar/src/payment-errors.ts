@@ -11,6 +11,16 @@ export type StellarPaymentErrorKind =
   | 'insufficient_fee'
   | 'destination_not_found'
   | 'destination_requires_trustline'
+  /** The caller's own account doesn't hold a trustline for the asset it's trying to send. */
+  | 'source_requires_trustline'
+  /** The asset's issuing account doesn't exist — distinct from `destination_requires_trustline`. */
+  | 'issuer_not_found'
+  /** Sending would push the destination's trustline balance past its configured limit. */
+  | 'trustline_limit_exceeded'
+  /** The asset issuer requires explicit authorization and this account isn't authorized to hold/send it. */
+  | 'not_authorized'
+  /** A `changeTrust` call passed a limit outside the valid range (e.g. negative). */
+  | 'invalid_trustline_limit'
   | 'malformed_transaction'
   | 'timing'
   | 'network_error'
@@ -34,7 +44,12 @@ const OPERATION_CODE_KIND: Record<string, StellarPaymentErrorKind> = {
   op_low_reserve: 'insufficient_balance',
   op_no_destination: 'destination_not_found',
   op_no_trust: 'destination_requires_trustline',
-  op_no_issuer: 'destination_requires_trustline',
+  op_src_no_trust: 'source_requires_trustline',
+  op_no_issuer: 'issuer_not_found',
+  op_line_full: 'trustline_limit_exceeded',
+  op_not_authorized: 'not_authorized',
+  op_src_not_authorized: 'not_authorized',
+  op_invalid_limit: 'invalid_trustline_limit',
 };
 
 interface HorizonTransactionFailedBody {

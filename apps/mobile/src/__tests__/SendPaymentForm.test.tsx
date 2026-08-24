@@ -3,6 +3,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react-nativ
 import SendPaymentForm from '../components/SendPaymentForm';
 
 const VALID_ADDRESS = 'G'.padEnd(56, 'A');
+const VALID_ISSUER = 'G'.padEnd(56, 'B');
 
 function buildTransaction(overrides: Partial<TransactionRecord> = {}): TransactionRecord {
   return {
@@ -12,6 +13,8 @@ function buildTransaction(overrides: Partial<TransactionRecord> = {}): Transacti
     destinationPublicKey: VALID_ADDRESS,
     amount: '10',
     memo: null,
+    assetCode: null,
+    assetIssuer: null,
     status: 'SUCCESS',
     stellarTxHash: 'hash',
     failureCode: null,
@@ -76,5 +79,27 @@ describe('SendPaymentForm', () => {
     render(<SendPaymentForm onSubmit={jest.fn()} initialDestination={VALID_ADDRESS} />);
 
     expect(screen.getByTestId('destination-input').props.value).toBe(VALID_ADDRESS);
+  });
+
+  it('submits with assetCode/assetIssuer when the asset fields are toggled on', async () => {
+    const transaction = buildTransaction({ assetCode: 'USDC', assetIssuer: VALID_ISSUER });
+    const onSubmit = jest.fn().mockResolvedValue(transaction);
+    render(<SendPaymentForm onSubmit={onSubmit} />);
+
+    fireEvent.changeText(screen.getByTestId('destination-input'), VALID_ADDRESS);
+    fireEvent.changeText(screen.getByTestId('amount-input'), '10');
+    fireEvent.press(screen.getByTestId('toggle-asset-fields'));
+    fireEvent.changeText(screen.getByTestId('asset-code-input'), 'USDC');
+    fireEvent.changeText(screen.getByTestId('asset-issuer-input'), VALID_ISSUER);
+    fireEvent.press(screen.getByTestId('send-button'));
+
+    await waitFor(() =>
+      expect(onSubmit).toHaveBeenCalledWith({
+        destinationPublicKey: VALID_ADDRESS,
+        amount: '10',
+        assetCode: 'USDC',
+        assetIssuer: VALID_ISSUER,
+      }),
+    );
   });
 });

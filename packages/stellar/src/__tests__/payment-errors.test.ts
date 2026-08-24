@@ -41,6 +41,36 @@ describe('classifyStellarPaymentError', () => {
     expect(error.kind).toBe('destination_requires_trustline');
   });
 
+  it('classifies op_src_no_trust as source_requires_trustline', () => {
+    const error = classifyStellarPaymentError(horizonFailure('tx_failed', ['op_src_no_trust']));
+    expect(error.kind).toBe('source_requires_trustline');
+  });
+
+  it('classifies op_no_issuer as issuer_not_found, distinct from destination_requires_trustline', () => {
+    const error = classifyStellarPaymentError(horizonFailure('tx_failed', ['op_no_issuer']));
+    expect(error.kind).toBe('issuer_not_found');
+  });
+
+  it('classifies op_line_full as trustline_limit_exceeded', () => {
+    const error = classifyStellarPaymentError(horizonFailure('tx_failed', ['op_line_full']));
+    expect(error.kind).toBe('trustline_limit_exceeded');
+  });
+
+  it('classifies op_not_authorized as not_authorized', () => {
+    const error = classifyStellarPaymentError(horizonFailure('tx_failed', ['op_not_authorized']));
+    expect(error.kind).toBe('not_authorized');
+  });
+
+  it('classifies op_src_not_authorized as not_authorized', () => {
+    const error = classifyStellarPaymentError(horizonFailure('tx_failed', ['op_src_not_authorized']));
+    expect(error.kind).toBe('not_authorized');
+  });
+
+  it('classifies op_invalid_limit as invalid_trustline_limit', () => {
+    const error = classifyStellarPaymentError(horizonFailure('tx_failed', ['op_invalid_limit']));
+    expect(error.kind).toBe('invalid_trustline_limit');
+  });
+
   it('falls back to the transaction-level code when no operation code matches', () => {
     const error = classifyStellarPaymentError(horizonFailure('tx_bad_seq', []));
     expect(error.kind).toBe('sequence_conflict');

@@ -1,4 +1,6 @@
 import type {
+  EstablishTrustlineInput,
+  EstablishTrustlineResponse,
   SendPaymentInput,
   SendPaymentResponse,
   StellarAccountResponse,
@@ -50,5 +52,16 @@ export function reconcileTransaction(id: string, accessToken: string): Promise<T
   return request<TransactionStatusResponse>(`/payments/${id}/reconcile`, {
     method: 'POST',
     headers: authHeaders(accessToken),
+  });
+}
+
+export function establishTrustline(
+  input: EstablishTrustlineInput,
+  accessToken: string,
+): Promise<EstablishTrustlineResponse> {
+  return request<EstablishTrustlineResponse>('/payments/trustlines', {
+    method: 'POST',
+    headers: authHeaders(accessToken),
+    body: JSON.stringify(input),
   });
 }

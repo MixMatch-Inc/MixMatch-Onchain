@@ -6,6 +6,22 @@ import {
   type DefaultStellarClient,
   type StellarPaymentService as StellarPaymentEngine,
 } from '@mixmatch/stellar';
+
+type EstablishTrustlineFn = (input: {
+  asset: { code: string; issuer: string };
+}) => Promise<{ hash: string; ledger: number }>;
+
+const establishTrustlineMock = jest.fn<
+  Promise<{ hash: string; ledger: number }>,
+  [{ asset: { code: string; issuer: string } }]
+>();
+
+jest.mock('@mixmatch/stellar', () => {
+  const actual: object = jest.requireActual('@mixmatch/stellar');
+  const establishTrustline: EstablishTrustlineFn = (input) =>
+    establishTrustlineMock(input);
+  return { ...actual, establishTrustline };
+});
 import { encryptSecretKey } from './wallet-encryption';
 import { PaymentFailedError } from './payment-errors';
 import { PaymentsService } from './payments.service';
@@ -55,6 +71,8 @@ function buildTransaction(
     destinationPublicKey: 'GDEST',
     amount: '10.0000000',
     memo: null,
+    assetCode: null,
+    assetIssuer: null,
     status: 'PENDING',
     stellarTxHash: null,
     failureCode: null,
@@ -69,7 +87,7 @@ describe('PaymentsService', () => {
   let service: PaymentsService;
   let stellarAccountRepository: Record<string, jest.Mock>;
   let transactionRepository: Record<string, jest.Mock>;
-  let paymentEngine: { submitNativePayment: jest.Mock };
+  let paymentEngine: { submitPayment: jest.Mock };
   let stellarClient: {
     getNetwork: jest.Mock;
     horizon: Record<string, jest.Mock>;
@@ -89,7 +107,7 @@ describe('PaymentsService', () => {
       listByStellarAccountId: jest.fn(),
       findStalePending: jest.fn(),
     };
-    paymentEngine = { submitNativePayment: jest.fn() };
+    paymentEngine = { submitPayment: jest.fn() };
     stellarClient = {
       getNetwork: jest.fn().mockReturnValue('testnet'),
       horizon: { friendbot: jest.fn() },
@@ -110,7 +128,7 @@ describe('PaymentsService', () => {
     it('sends a payment and marks the transaction SUCCESS', async () => {
       stellarAccountRepository.findByUserId.mockResolvedValue(buildAccount());
       transactionRepository.create.mockResolvedValue(buildTransaction());
-      paymentEngine.submitNativePayment.mockResolvedValue({
+      paymentEngine.submitPayment.mockResolvedValue({
         hash: 'tx-hash',
         ledger: 1,
       });
@@ -130,7 +148,7 @@ describe('PaymentsService', () => {
     it('marks the transaction FAILED and throws when Stellar submission fails', async () => {
       stellarAccountRepository.findByUserId.mockResolvedValue(buildAccount());
       transactionRepository.create.mockResolvedValue(buildTransaction());
-      paymentEngine.submitNativePayment.mockRejectedValue(
+      paymentEngine.submitPayment.mockRejectedValue(
         new StellarPaymentError('insufficient_balance', 'not enough funds'),
       );
       transactionRepository.updateStatus.mockResolvedValue(
@@ -170,14 +188,14 @@ describe('PaymentsService', () => {
       });
 
       expect(result).toBe(existing);
-      expect(paymentEngine.submitNativePayment).not.toHaveBeenCalled();
+      expect(paymentEngine.submitPayment).not.toHaveBeenCalled();
     });
 
     it('provisions a Stellar account on first use and funds it via Friendbot on testnet', async () => {
       stellarAccountRepository.findByUserId.mockResolvedValue(null);
       stellarAccountRepository.create.mockResolvedValue(buildAccount());
       transactionRepository.create.mockResolvedValue(buildTransaction());
-      paymentEngine.submitNativePayment.mockResolvedValue({
+      paymentEngine.submitPayment.mockResolvedValue({
         hash: 'h',
         ledger: 1,
       });
@@ -194,6 +212,84 @@ describe('PaymentsService', () => {
 
       expect(stellarAccountRepository.create).toHaveBeenCalled();
       expect(friendbotCall).toHaveBeenCalled();
+    });
+
+    it('sends a non-native asset payment, passing the asset through to the engine and persisting it', async () => {
+      stellarAccountRepository.findByUserId.mockResolvedValue(buildAccount());
+      transactionRepository.create.mockResolvedValue(
+        buildTransaction({ assetCode: 'USDC', assetIssuer: 'GISSUER' }),
+      );
+      paymentEngine.submitPayment.mockResolvedValue({
+        hash: 'tx-hash',
+        ledger: 1,
+      });
+      transactionRepository.updateStatus.mockImplementation(
+        (_id: string, update: object) => buildTransaction({ ...update }),
+      );
+
+      const result = await service.sendPayment('user-1', {
+        destinationPublicKey: 'GDEST',
+        amount: '10',
+        assetCode: 'USDC',
+        assetIssuer: 'GISSUER',
+      });
+
+      expect(result.status).toBe('SUCCESS');
+      expect(transactionRepository.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          assetCode: 'USDC',
+          assetIssuer: 'GISSUER',
+        }),
+      );
+      expect(paymentEngine.submitPayment).toHaveBeenCalledWith(
+        expect.objectContaining({
+          asset: { code: 'USDC', issuer: 'GISSUER' },
+        }),
+      );
+    });
+  });
+
+  describe('establishTrustlineForUser', () => {
+    afterEach(() => {
+      establishTrustlineMock.mockReset();
+    });
+
+    it('establishes a trustline and returns the asset details on success', async () => {
+      stellarAccountRepository.findByUserId.mockResolvedValue(buildAccount());
+      establishTrustlineMock.mockResolvedValue({
+        hash: 'trust-hash',
+        ledger: 1,
+      });
+
+      const result = await service.establishTrustlineForUser('user-1', {
+        assetCode: 'USDC',
+        assetIssuer: 'GISSUER',
+      });
+
+      expect(result).toEqual({
+        stellarTxHash: 'trust-hash',
+        assetCode: 'USDC',
+        assetIssuer: 'GISSUER',
+      });
+      expect(establishTrustlineMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          asset: { code: 'USDC', issuer: 'GISSUER' },
+        }),
+      );
+    });
+
+    it('classifies and rethrows a Stellar failure as PaymentFailedError', async () => {
+      stellarAccountRepository.findByUserId.mockResolvedValue(buildAccount());
+      establishTrustlineMock.mockRejectedValue(
+        new StellarPaymentError('issuer_not_found', 'issuer does not exist'),
+      );
+
+      await expect(
+        service.establishTrustlineForUser('user-1', {
+          assetCode: 'USDC',
+          assetIssuer: 'GBADISSUER',
+        }),
+      ).rejects.toBeInstanceOf(PaymentFailedError);
     });
   });
 
@@ -332,6 +428,74 @@ describe('PaymentsService', () => {
       const result = await service.getTransactionStatus('user-1', 'tx-1');
 
       expect(result.status).toBe('PENDING');
+    });
+
+    it('matches a stale non-native asset transaction to its Horizon payment record', async () => {
+      const account = buildAccount();
+      const transaction = buildTransaction({
+        status: 'PENDING',
+        createdAt: new Date(Date.now() - RECONCILIATION_STALE_MS - 1000),
+        amount: '10.0000000',
+        destinationPublicKey: 'GDEST',
+        assetCode: 'USDC',
+        assetIssuer: 'GISSUER',
+      });
+      transactionRepository.findById.mockResolvedValue(transaction);
+      stellarAccountRepository.findById.mockResolvedValue(account);
+      mockHorizonPayments([
+        {
+          type: 'payment',
+          asset_type: 'credit_alphanum4',
+          asset_code: 'USDC',
+          asset_issuer: 'GISSUER',
+          to: 'GDEST',
+          amount: '10.0000000',
+          created_at: new Date(
+            transaction.createdAt.getTime() + 1000,
+          ).toISOString(),
+          transaction_hash: 'found-hash',
+        },
+      ]);
+      transactionRepository.updateStatus.mockImplementation(
+        (_id: string, update: object) =>
+          buildTransaction({ ...transaction, ...update }),
+      );
+
+      const result = await service.getTransactionStatus('user-1', 'tx-1');
+
+      expect(result.status).toBe('SUCCESS');
+      expect(result.stellarTxHash).toBe('found-hash');
+    });
+
+    it('does not match a native XLM payment record against a pending non-native asset transaction', async () => {
+      const account = buildAccount();
+      const transaction = buildTransaction({
+        status: 'PENDING',
+        createdAt: new Date(Date.now() - RECONCILIATION_STALE_MS - 1000),
+        amount: '10.0000000',
+        destinationPublicKey: 'GDEST',
+        assetCode: 'USDC',
+        assetIssuer: 'GISSUER',
+      });
+      transactionRepository.findById.mockResolvedValue(transaction);
+      stellarAccountRepository.findById.mockResolvedValue(account);
+      mockHorizonPayments([
+        {
+          type: 'payment',
+          asset_type: 'native',
+          to: 'GDEST',
+          amount: '10.0000000',
+          created_at: new Date(
+            transaction.createdAt.getTime() + 1000,
+          ).toISOString(),
+          transaction_hash: 'wrong-asset-hash',
+        },
+      ]);
+
+      const result = await service.getTransactionStatus('user-1', 'tx-1');
+
+      expect(result.status).toBe('PENDING');
+      expect(transactionRepository.updateStatus).not.toHaveBeenCalled();
     });
 
     it('reconcilePendingTransactions processes every stale transaction returned by the repository', async () => {

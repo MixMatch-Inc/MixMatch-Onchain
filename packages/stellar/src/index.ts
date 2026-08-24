@@ -7,3 +7,4 @@ export * from './account.js';
 export * from './friendbot.js';
 export * from './payment-errors.js';
 export * from './payment.js';
+export * from './trustline.js';

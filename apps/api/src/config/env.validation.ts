@@ -9,11 +9,20 @@ export interface EnvConfig {
   stellarNetwork: 'testnet' | 'public';
   stellarHorizonUrl?: string;
   stellarRpcUrl?: string;
+  /** How often the background job re-checks stuck PENDING transactions, in ms. */
+  reconciliationIntervalMs: number;
+  /** How long a PENDING transaction is left alone before a reconciliation attempt is made, in ms. */
+  reconciliationStaleMs: number;
+  /** How long reconciliation keeps retrying before giving up and flagging NEEDS_REVIEW, in ms. */
+  reconciliationEscalationMs: number;
 }
 
 const DEFAULT_PORT = 3000;
 const DEFAULT_JWT_EXPIRES_IN_SECONDS = 60 * 60; // 1 hour
 const MIN_JWT_SECRET_LENGTH = 32;
+const DEFAULT_RECONCILIATION_INTERVAL_MS = 2 * 60 * 1000; // 2 minutes
+const DEFAULT_RECONCILIATION_STALE_MS = 2 * 60 * 1000; // 2 minutes
+const DEFAULT_RECONCILIATION_ESCALATION_MS = 24 * 60 * 60 * 1000; // 24 hours
 /** AES-256-GCM key: 32 bytes, hex-encoded (64 hex characters). */
 const WALLET_ENCRYPTION_KEY_HEX_LENGTH = 64;
 
@@ -57,5 +66,13 @@ export function validateEnv(env: NodeJS.ProcessEnv = process.env): EnvConfig {
     stellarNetwork,
     stellarHorizonUrl: env.STELLAR_HORIZON_URL?.trim(),
     stellarRpcUrl: env.STELLAR_RPC_URL?.trim(),
+    reconciliationIntervalMs:
+      Number(env.RECONCILIATION_INTERVAL_MS) ||
+      DEFAULT_RECONCILIATION_INTERVAL_MS,
+    reconciliationStaleMs:
+      Number(env.RECONCILIATION_STALE_MS) || DEFAULT_RECONCILIATION_STALE_MS,
+    reconciliationEscalationMs:
+      Number(env.RECONCILIATION_ESCALATION_MS) ||
+      DEFAULT_RECONCILIATION_ESCALATION_MS,
   };
 }

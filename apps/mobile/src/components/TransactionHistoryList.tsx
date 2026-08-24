@@ -9,6 +9,7 @@ const STATUS_COLOR: Record<TransactionRecord['status'], string> = {
   PENDING: '#b8860b',
   SUCCESS: '#0a0',
   FAILED: '#e00',
+  NEEDS_REVIEW: '#a05a00',
 };
 
 function TransactionRow({ transaction }: { transaction: TransactionRecord }) {

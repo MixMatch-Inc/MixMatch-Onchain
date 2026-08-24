@@ -3,13 +3,19 @@ import { AuthModule } from '../auth/auth.module';
 import { StellarModule } from '../stellar/stellar.module';
 import { PaymentsController } from './payments.controller';
 import { PaymentsService } from './payments.service';
+import { ReconciliationJob } from './reconciliation.job';
 import { StellarAccountRepository } from './stellar-account.repository';
 import { TransactionRepository } from './transaction.repository';
 
 @Module({
   imports: [AuthModule, StellarModule],
   controllers: [PaymentsController],
-  providers: [PaymentsService, StellarAccountRepository, TransactionRepository],
+  providers: [
+    PaymentsService,
+    StellarAccountRepository,
+    TransactionRepository,
+    ReconciliationJob,
+  ],
   exports: [PaymentsService],
 })
 export class PaymentsModule {}

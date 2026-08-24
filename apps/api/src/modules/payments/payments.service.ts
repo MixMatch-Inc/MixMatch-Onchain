@@ -27,9 +27,6 @@ import {
   type TransactionRecord,
 } from './transaction.repository';
 
-/** How long a PENDING transaction is left alone before reconciliation treats it as stuck. */
-const RECONCILIATION_STALE_MS = 2 * 60 * 1000;
-
 function normalizeAmount(amount: string): string {
   return Number(amount).toFixed(7);
 }
@@ -179,13 +176,13 @@ export class PaymentsService {
   }
 
   /**
-   * Batch reconciliation entry point for stuck PENDING transactions —
-   * intended to be invoked by a scheduled job (see the reconciliation-job
-   * issue in the Stellar track).
+   * Batch reconciliation entry point for stuck PENDING transactions.
+   * Invoked on a schedule by `ReconciliationJob` — see
+   * `apps/api/src/modules/payments/reconciliation.job.ts`.
    */
   async reconcilePendingTransactions(): Promise<TransactionRecord[]> {
     const stale = await this.transactionRepository.findStalePending(
-      new Date(Date.now() - RECONCILIATION_STALE_MS),
+      new Date(Date.now() - this.reconciliationStaleMs()),
     );
     const reconciled: TransactionRecord[] = [];
     for (const transaction of stale) {
@@ -196,7 +193,16 @@ export class PaymentsService {
 
   private isStale(transaction: TransactionRecord): boolean {
     return (
-      Date.now() - transaction.createdAt.getTime() > RECONCILIATION_STALE_MS
+      Date.now() - transaction.createdAt.getTime() >
+      this.reconciliationStaleMs()
+    );
+  }
+
+  /** True once a transaction has been stuck PENDING long enough that automatic retries should give up. */
+  private isPastEscalationWindow(transaction: TransactionRecord): boolean {
+    return (
+      Date.now() - transaction.createdAt.getTime() >
+      this.reconciliationEscalationMs()
     );
   }
 
@@ -249,12 +255,17 @@ export class PaymentsService {
       });
     }
 
-    if (this.isStale(transaction)) {
+    // No match yet — this is inherently a "not found so far" result, not
+    // proof the payment failed (Horizon may be lagging, or briefly
+    // unreachable). Only give up and flag it for manual review once we've
+    // been retrying across the full escalation window; before that, leave
+    // it PENDING so the next scheduled pass tries again.
+    if (this.isPastEscalationWindow(transaction)) {
       return this.transactionRepository.updateStatus(transaction.id, {
-        status: 'FAILED',
-        failureCode: 'reconciliation_timeout',
+        status: 'NEEDS_REVIEW',
+        failureCode: 'reconciliation_escalated',
         failureReason:
-          'No matching payment found on-chain within the reconciliation window',
+          'No matching payment found on-chain after repeated reconciliation attempts — needs manual verification against the ledger',
       });
     }
 
@@ -293,6 +304,14 @@ export class PaymentsService {
       // Horizon unreachable or query failed — leave PENDING, retry on the next pass.
     }
     return null;
+  }
+
+  private reconciliationStaleMs(): number {
+    return this.configService.getOrThrow<number>('reconciliationStaleMs');
+  }
+
+  private reconciliationEscalationMs(): number {
+    return this.configService.getOrThrow<number>('reconciliationEscalationMs');
   }
 
   private walletEncryptionKey(): string {

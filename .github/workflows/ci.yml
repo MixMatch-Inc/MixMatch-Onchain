@@ -42,12 +42,14 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Lint (Turborepo)
-        run: pnpm lint
-
       - name: Build (Turborepo)
         run: pnpm build
 
-      # Uncomment below once unit tests are added to the apps
-      # - name: Run Tests
-      #   run: pnpm test
+      - name: Lint (Turborepo)
+        run: pnpm lint
+
+      - name: Check types (Turborepo)
+        run: pnpm check-types
+
+      - name: Run Tests
+        run: pnpm test

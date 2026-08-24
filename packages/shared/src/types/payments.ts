@@ -14,6 +14,10 @@ export interface TransactionRecord {
   destinationPublicKey: string;
   amount: string;
   memo: string | null;
+  /** Null means native XLM; otherwise the custom asset's code (e.g. "MMX"). */
+  assetCode: string | null;
+  /** Null means native XLM; otherwise the custom asset's issuing account. */
+  assetIssuer: string | null;
   status: TransactionStatus;
   stellarTxHash: string | null;
   failureCode: string | null;
@@ -40,4 +44,10 @@ export interface TransactionHistoryResponse {
 export interface StellarAccountResponse {
   publicKey: string;
   network: 'testnet' | 'public';
+}
+
+export interface EstablishTrustlineResponse {
+  stellarTxHash: string;
+  assetCode: string;
+  assetIssuer: string;
 }

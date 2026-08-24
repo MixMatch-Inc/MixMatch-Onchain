@@ -8,13 +8,18 @@ import { ConfigService } from '@nestjs/config';
 import {
   classifyStellarPaymentError,
   DefaultStellarClient,
+  establishTrustline,
   fundTestnetAccount,
   generateStellarAccount,
   KeypairWallet,
   StellarPaymentError,
   StellarPaymentService as StellarPaymentEngine,
 } from '@mixmatch/stellar';
-import type { SendPaymentInput } from '@mixmatch/shared';
+import type {
+  EstablishTrustlineInput,
+  EstablishTrustlineResponse,
+  SendPaymentInput,
+} from '@mixmatch/shared';
 import { PaymentFailedError } from './payment-errors';
 import { decryptSecretKey, encryptSecretKey } from './wallet-encryption';
 import {
@@ -73,7 +78,9 @@ export class PaymentsService {
   }
 
   /**
-   * Sends a native XLM payment on the caller's behalf.
+   * Sends a payment on the caller's behalf — native XLM, or a custom asset
+   * if `input.assetCode`/`input.assetIssuer` are set (the caller's account
+   * must already hold a trustline to that asset; see `establishTrustline`).
    *
    * Durable idempotency: a `Transaction` row is created (with a unique
    * constraint on `idempotencyKey`) *before* submitting to Stellar. If a row
@@ -95,6 +102,8 @@ export class PaymentsService {
         destinationPublicKey: input.destinationPublicKey,
         amount: input.amount,
         memo: input.memo,
+        assetCode: input.assetCode,
+        assetIssuer: input.assetIssuer,
       });
     } catch (error) {
       if (error instanceof DuplicateIdempotencyKeyError) {
@@ -113,11 +122,15 @@ export class PaymentsService {
     );
 
     try {
-      const result = await this.paymentEngine.submitNativePayment({
+      const result = await this.paymentEngine.submitPayment({
         sourceWallet: wallet,
         destinationPublicKey: input.destinationPublicKey,
         amount: input.amount,
         memo: input.memo,
+        asset:
+          input.assetCode && input.assetIssuer
+            ? { code: input.assetCode, issuer: input.assetIssuer }
+            : undefined,
       });
 
       return await this.transactionRepository.updateStatus(transaction.id, {
@@ -134,6 +147,47 @@ export class PaymentsService {
         failureCode: classified.kind,
         failureReason: classified.message,
       });
+      throw new PaymentFailedError(classified.kind, classified.message);
+    }
+  }
+
+  /**
+   * Establishes a trustline from the caller's custodial account to a custom
+   * asset, so it can subsequently hold/receive/send that asset via
+   * `sendPayment`. This is a live Stellar operation (not durably persisted
+   * via our own idempotency mechanism the way payments are) — a `changeTrust`
+   * call is itself idempotent on Stellar's side (calling it again with the
+   * same limit is a no-op), so a client-side retry is safe without our own
+   * dedup layer.
+   */
+  async establishTrustlineForUser(
+    userId: string,
+    input: EstablishTrustlineInput,
+  ): Promise<EstablishTrustlineResponse> {
+    const account = await this.getOrCreateStellarAccount(userId);
+    const wallet = KeypairWallet.fromSecret(
+      account.network,
+      decryptSecretKey(account.encryptedSecretKey, this.walletEncryptionKey()),
+    );
+
+    try {
+      const result = await establishTrustline({
+        client: this.stellarClient,
+        wallet,
+        asset: { code: input.assetCode, issuer: input.assetIssuer },
+        limit: input.limit,
+      });
+
+      return {
+        stellarTxHash: result.hash,
+        assetCode: input.assetCode,
+        assetIssuer: input.assetIssuer,
+      };
+    } catch (error) {
+      const classified =
+        error instanceof StellarPaymentError
+          ? error
+          : classifyStellarPaymentError(error);
       throw new PaymentFailedError(classified.kind, classified.message);
     }
   }
@@ -290,7 +344,7 @@ export class PaymentsService {
         if (
           String(operation.type) === 'payment' &&
           'asset_type' in operation &&
-          operation.asset_type === 'native' &&
+          this.matchesTransactionAsset(operation, transaction) &&
           'to' in operation &&
           operation.to === transaction.destinationPublicKey &&
           'amount' in operation &&
@@ -304,6 +358,35 @@ export class PaymentsService {
       // Horizon unreachable or query failed — leave PENDING, retry on the next pass.
     }
     return null;
+  }
+
+  /**
+   * True if a Horizon payment-operation record is for the same asset as
+   * `transaction` — native XLM, or the matching custom asset code + issuer.
+   * Horizon reports non-native assets as `asset_type: 'credit_alphanum4' |
+   * 'credit_alphanum12'` with separate `asset_code`/`asset_issuer` fields.
+   */
+  private matchesTransactionAsset(
+    operation: unknown,
+    transaction: TransactionRecord,
+  ): boolean {
+    if (
+      typeof operation !== 'object' ||
+      operation === null ||
+      !('asset_type' in operation)
+    ) {
+      return false;
+    }
+    if (!transaction.assetCode) {
+      return operation.asset_type === 'native';
+    }
+    return (
+      operation.asset_type !== 'native' &&
+      'asset_code' in operation &&
+      operation.asset_code === transaction.assetCode &&
+      'asset_issuer' in operation &&
+      operation.asset_issuer === transaction.assetIssuer
+    );
   }
 
   private reconciliationStaleMs(): number {

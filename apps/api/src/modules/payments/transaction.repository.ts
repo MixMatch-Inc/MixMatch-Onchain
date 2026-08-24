@@ -21,6 +21,10 @@ export interface TransactionRecord {
   destinationPublicKey: string;
   amount: string;
   memo: string | null;
+  /** Null means native XLM. */
+  assetCode: string | null;
+  /** Null means native XLM. */
+  assetIssuer: string | null;
   status: TransactionStatus;
   stellarTxHash: string | null;
   failureCode: string | null;
@@ -64,11 +68,19 @@ export class TransactionRepository {
     destinationPublicKey: string;
     amount: string;
     memo?: string;
+    assetCode?: string;
+    assetIssuer?: string;
   }): Promise<TransactionRecord> {
     try {
       const [row] = await this.db
         .insert(schema.transactions)
-        .values({ ...input, memo: input.memo ?? null, status: 'PENDING' })
+        .values({
+          ...input,
+          memo: input.memo ?? null,
+          assetCode: input.assetCode ?? null,
+          assetIssuer: input.assetIssuer ?? null,
+          status: 'PENDING',
+        })
         .returning();
       if (!row) {
         throw new Error('Failed to create transaction');

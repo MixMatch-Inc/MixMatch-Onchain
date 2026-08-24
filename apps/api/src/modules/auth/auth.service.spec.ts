@@ -22,14 +22,17 @@ describe('AuthService', () => {
   let usersRepository: {
     findByEmail: jest.Mock;
     findById: jest.Mock;
-    create: jest.Mock<User, [{ email: string; passwordHash: string }]>;
+    create: jest.Mock<Promise<User>, [{ email: string; passwordHash: string }]>;
   };
 
   beforeEach(async () => {
     usersRepository = {
       findByEmail: jest.fn(),
       findById: jest.fn(),
-      create: jest.fn<User, [{ email: string; passwordHash: string }]>(),
+      create: jest.fn<
+        Promise<User>,
+        [{ email: string; passwordHash: string }]
+      >(),
     };
 
     const moduleRef = await Test.createTestingModule({
@@ -51,7 +54,7 @@ describe('AuthService', () => {
       usersRepository.findByEmail.mockResolvedValue(null);
       usersRepository.create.mockImplementation(
         ({ email, passwordHash }: { email: string; passwordHash: string }) =>
-          buildUser({ email, passwordHash }),
+          Promise.resolve(buildUser({ email, passwordHash })),
       );
 
       const result = await service.register({

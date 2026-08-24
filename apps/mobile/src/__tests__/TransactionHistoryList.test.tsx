@@ -10,6 +10,8 @@ function buildTransaction(overrides: Partial<TransactionRecord> = {}): Transacti
     destinationPublicKey: 'G'.padEnd(56, 'A'),
     amount: '10',
     memo: null,
+    assetCode: null,
+    assetIssuer: null,
     status: 'SUCCESS',
     stellarTxHash: 'hash',
     failureCode: null,

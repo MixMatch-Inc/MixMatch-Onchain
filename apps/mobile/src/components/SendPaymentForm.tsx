@@ -2,7 +2,7 @@ import { sendPaymentSchema, type SendPaymentInput, type TransactionRecord } from
 import { useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
-type PaymentField = 'destinationPublicKey' | 'amount' | 'memo';
+type PaymentField = 'destinationPublicKey' | 'amount' | 'memo' | 'assetCode' | 'assetIssuer';
 
 export interface SendPaymentFormProps {
   onSubmit: (values: SendPaymentInput) => Promise<TransactionRecord>;
@@ -14,6 +14,9 @@ export default function SendPaymentForm({ onSubmit, onSuccess, initialDestinatio
   const [destinationPublicKey, setDestinationPublicKey] = useState(initialDestination ?? '');
   const [amount, setAmount] = useState('');
   const [memo, setMemo] = useState('');
+  const [showAssetFields, setShowAssetFields] = useState(false);
+  const [assetCode, setAssetCode] = useState('');
+  const [assetIssuer, setAssetIssuer] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Partial<Record<PaymentField, string>>>({});
@@ -26,6 +29,8 @@ export default function SendPaymentForm({ onSubmit, onSuccess, initialDestinatio
       destinationPublicKey,
       amount,
       memo: memo || undefined,
+      assetCode: showAssetFields && assetCode ? assetCode : undefined,
+      assetIssuer: showAssetFields && assetIssuer ? assetIssuer : undefined,
     });
 
     if (!result.success) {
@@ -46,6 +51,8 @@ export default function SendPaymentForm({ onSubmit, onSuccess, initialDestinatio
       setDestinationPublicKey('');
       setAmount('');
       setMemo('');
+      setAssetCode('');
+      setAssetIssuer('');
       onSuccess?.(transaction);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Something went wrong');
@@ -80,6 +87,37 @@ export default function SendPaymentForm({ onSubmit, onSuccess, initialDestinatio
       <TextInput style={styles.input} value={memo} onChangeText={setMemo} testID="memo-input" />
       {fieldErrors.memo && <Text style={styles.fieldError}>{fieldErrors.memo}</Text>}
 
+      <TouchableOpacity
+        onPress={() => setShowAssetFields((prev) => !prev)}
+        testID="toggle-asset-fields"
+      >
+        <Text style={styles.link}>{showAssetFields ? 'Send XLM instead' : 'Send a different asset'}</Text>
+      </TouchableOpacity>
+
+      {showAssetFields && (
+        <>
+          <Text style={styles.label}>Asset code</Text>
+          <TextInput
+            style={styles.input}
+            value={assetCode}
+            onChangeText={setAssetCode}
+            autoCapitalize="characters"
+            testID="asset-code-input"
+          />
+          {fieldErrors.assetCode && <Text style={styles.fieldError}>{fieldErrors.assetCode}</Text>}
+
+          <Text style={styles.label}>Asset issuer</Text>
+          <TextInput
+            style={styles.input}
+            value={assetIssuer}
+            onChangeText={setAssetIssuer}
+            autoCapitalize="characters"
+            testID="asset-issuer-input"
+          />
+          {fieldErrors.assetIssuer && <Text style={styles.fieldError}>{fieldErrors.assetIssuer}</Text>}
+        </>
+      )}
+
       {error && <Text style={styles.error}>{error}</Text>}
 
       <TouchableOpacity style={styles.button} onPress={() => void handleSubmit()} disabled={isSubmitting} testID="send-button">
@@ -100,6 +138,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   fieldError: { color: '#e00', fontSize: 12, marginTop: 4 },
+  link: { color: '#0066cc', fontSize: 14, marginTop: 16 },
   error: { color: '#e00', textAlign: 'center', marginTop: 12 },
   button: {
     backgroundColor: '#000',

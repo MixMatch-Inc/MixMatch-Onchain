@@ -11,9 +11,12 @@ import {
 } from '@nestjs/common';
 import {
   establishTrustlineSchema,
+  pathQuoteSchema,
   sendPaymentSchema,
   type EstablishTrustlineInput,
   type EstablishTrustlineResponse,
+  type PathQuoteInput,
+  type PathQuoteResponse,
   type SendPaymentInput,
   type StellarAccountResponse,
 } from '@mixmatch/shared';
@@ -33,6 +36,12 @@ export class PaymentsController {
   async send(@CurrentUserId() userId: string, @Body() body: SendPaymentInput) {
     const transaction = await this.paymentsService.sendPayment(userId, body);
     return { transaction };
+  }
+
+  @Post('quote')
+  @UsePipes(new ZodValidationPipe(pathQuoteSchema))
+  async quote(@Body() body: PathQuoteInput): Promise<PathQuoteResponse> {
+    return this.paymentsService.previewPath(body);
   }
 
   @Post('trustlines')

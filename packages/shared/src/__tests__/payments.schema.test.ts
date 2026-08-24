@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { establishTrustlineSchema, sendPaymentSchema } from '../validation/payments.schema.js';
+import { establishTrustlineSchema, pathQuoteSchema, sendPaymentSchema } from '../validation/payments.schema.js';
 
 const VALID_ADDRESS = 'G'.padEnd(56, 'A');
 const VALID_ISSUER = 'G'.padEnd(56, 'B');
@@ -88,6 +88,91 @@ describe('sendPaymentSchema', () => {
       amount: '10',
       assetCode: 'not valid!',
       assetIssuer: VALID_ISSUER,
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it('accepts a path payment with a receive asset, pathMode, and slippageBps', () => {
+    const result = sendPaymentSchema.safeParse({
+      destinationPublicKey: VALID_ADDRESS,
+      amount: '10',
+      receiveAssetCode: 'MMX',
+      receiveAssetIssuer: VALID_ISSUER,
+      pathMode: 'strictReceive',
+      slippageBps: 100,
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it('rejects receiveAssetCode without receiveAssetIssuer', () => {
+    const result = sendPaymentSchema.safeParse({
+      destinationPublicKey: VALID_ADDRESS,
+      amount: '10',
+      receiveAssetCode: 'MMX',
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it('rejects a slippageBps above 1000', () => {
+    const result = sendPaymentSchema.safeParse({
+      destinationPublicKey: VALID_ADDRESS,
+      amount: '10',
+      receiveAssetCode: 'MMX',
+      receiveAssetIssuer: VALID_ISSUER,
+      slippageBps: 1001,
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it('rejects a negative slippageBps', () => {
+    const result = sendPaymentSchema.safeParse({
+      destinationPublicKey: VALID_ADDRESS,
+      amount: '10',
+      receiveAssetCode: 'MMX',
+      receiveAssetIssuer: VALID_ISSUER,
+      slippageBps: -1,
+    });
+    expect(result.success).toBe(false);
+  });
+});
+
+describe('pathQuoteSchema', () => {
+  it('accepts a valid strict-send quote request (native source, custom dest)', () => {
+    const result = pathQuoteSchema.safeParse({
+      source: {},
+      dest: { assetCode: 'MMX', assetIssuer: VALID_ISSUER },
+      amount: '10',
+      mode: 'strictSend',
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it('accepts a valid strict-receive quote request', () => {
+    const result = pathQuoteSchema.safeParse({
+      source: { assetCode: 'MMX', assetIssuer: VALID_ISSUER },
+      dest: {},
+      amount: '10',
+      mode: 'strictReceive',
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it('rejects a source asset with a code but no issuer', () => {
+    const result = pathQuoteSchema.safeParse({
+      source: { assetCode: 'MMX' },
+      dest: {},
+      amount: '10',
+      mode: 'strictSend',
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it('rejects an invalid mode', () => {
+    const result = pathQuoteSchema.safeParse({
+      source: {},
+      dest: {},
+      amount: '10',
+      mode: 'invalid',
     });
     expect(result.success).toBe(false);
   });

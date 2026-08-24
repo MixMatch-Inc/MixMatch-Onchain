@@ -16,11 +16,56 @@ const establishTrustlineMock = jest.fn<
   [{ asset: { code: string; issuer: string } }]
 >();
 
+interface FakePathQuote {
+  mode: 'strictSend' | 'strictReceive';
+  sourceAsset?: { code: string; issuer: string };
+  destAsset?: { code: string; issuer: string };
+  sourceAmount: string;
+  destAmount: string;
+  path: unknown[];
+}
+
+type FindPathFn = (input: {
+  sourceAsset?: { code: string; issuer: string };
+  destAsset?: { code: string; issuer: string };
+  amount: string;
+}) => Promise<FakePathQuote | null>;
+
+type SubmitPathPaymentFn = (input: {
+  quote: FakePathQuote;
+  slippageBps?: number;
+}) => Promise<{ hash: string; ledger: number }>;
+
+const findStrictSendPathMock = jest.fn<
+  Promise<FakePathQuote | null>,
+  Parameters<FindPathFn>
+>();
+const findStrictReceivePathMock = jest.fn<
+  Promise<FakePathQuote | null>,
+  Parameters<FindPathFn>
+>();
+const submitPathPaymentMock = jest.fn<
+  Promise<{ hash: string; ledger: number }>,
+  Parameters<SubmitPathPaymentFn>
+>();
+
 jest.mock('@mixmatch/stellar', () => {
   const actual: object = jest.requireActual('@mixmatch/stellar');
   const establishTrustline: EstablishTrustlineFn = (input) =>
     establishTrustlineMock(input);
-  return { ...actual, establishTrustline };
+  const findStrictSendPath: FindPathFn = (input) =>
+    findStrictSendPathMock(input);
+  const findStrictReceivePath: FindPathFn = (input) =>
+    findStrictReceivePathMock(input);
+  const submitPathPayment: SubmitPathPaymentFn = (input) =>
+    submitPathPaymentMock(input);
+  return {
+    ...actual,
+    establishTrustline,
+    findStrictSendPath,
+    findStrictReceivePath,
+    submitPathPayment,
+  };
 });
 import { encryptSecretKey } from './wallet-encryption';
 import { PaymentFailedError } from './payment-errors';
@@ -73,6 +118,9 @@ function buildTransaction(
     memo: null,
     assetCode: null,
     assetIssuer: null,
+    receiveAssetCode: null,
+    receiveAssetIssuer: null,
+    destAmount: null,
     status: 'PENDING',
     stellarTxHash: null,
     failureCode: null,
@@ -94,6 +142,10 @@ describe('PaymentsService', () => {
   };
 
   beforeEach(() => {
+    establishTrustlineMock.mockReset();
+    findStrictSendPathMock.mockReset();
+    findStrictReceivePathMock.mockReset();
+    submitPathPaymentMock.mockReset();
     stellarAccountRepository = {
       findByUserId: jest.fn(),
       findById: jest.fn(),
@@ -246,6 +298,185 @@ describe('PaymentsService', () => {
           asset: { code: 'USDC', issuer: 'GISSUER' },
         }),
       );
+    });
+  });
+
+  describe('sendPayment (path payments)', () => {
+    it('resolves a strictSend quote, submits the path payment, and persists the destAmount/receive asset', async () => {
+      stellarAccountRepository.findByUserId.mockResolvedValue(buildAccount());
+      findStrictSendPathMock.mockResolvedValue({
+        mode: 'strictSend',
+        sourceAsset: undefined,
+        destAsset: { code: 'MMX', issuer: 'GISSUER' },
+        sourceAmount: '10',
+        destAmount: '19.8',
+        path: [],
+      });
+      transactionRepository.create.mockResolvedValue(
+        buildTransaction({
+          amount: '10',
+          receiveAssetCode: 'MMX',
+          receiveAssetIssuer: 'GISSUER',
+          destAmount: '19.8',
+        }),
+      );
+      submitPathPaymentMock.mockResolvedValue({ hash: 'path-hash', ledger: 3 });
+      transactionRepository.updateStatus.mockImplementation(
+        (_id: string, update: object) => buildTransaction({ ...update }),
+      );
+
+      const result = await service.sendPayment('user-1', {
+        destinationPublicKey: 'GDEST',
+        amount: '10',
+        receiveAssetCode: 'MMX',
+        receiveAssetIssuer: 'GISSUER',
+      });
+
+      expect(result.status).toBe('SUCCESS');
+      expect(result.stellarTxHash).toBe('path-hash');
+      expect(transactionRepository.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          amount: '10',
+          receiveAssetCode: 'MMX',
+          receiveAssetIssuer: 'GISSUER',
+          destAmount: '19.8',
+        }),
+      );
+      const submittedQuote = submitPathPaymentMock.mock.calls[0]?.[0].quote;
+      expect(submittedQuote).toMatchObject({
+        mode: 'strictSend',
+        sourceAmount: '10',
+        destAmount: '19.8',
+      });
+    });
+
+    it('resolves a strictReceive quote, treating amount as the destination amount and quote.sourceAmount as what is actually sent', async () => {
+      stellarAccountRepository.findByUserId.mockResolvedValue(buildAccount());
+      findStrictReceivePathMock.mockResolvedValue({
+        mode: 'strictReceive',
+        sourceAsset: undefined,
+        destAsset: { code: 'MMX', issuer: 'GISSUER' },
+        sourceAmount: '10.2',
+        destAmount: '20',
+        path: [],
+      });
+      transactionRepository.create.mockResolvedValue(
+        buildTransaction({ amount: '10.2', destAmount: '20' }),
+      );
+      submitPathPaymentMock.mockResolvedValue({ hash: 'h', ledger: 1 });
+      transactionRepository.updateStatus.mockImplementation(
+        (_id: string, update: object) => buildTransaction({ ...update }),
+      );
+
+      await service.sendPayment('user-1', {
+        destinationPublicKey: 'GDEST',
+        amount: '20',
+        receiveAssetCode: 'MMX',
+        receiveAssetIssuer: 'GISSUER',
+        pathMode: 'strictReceive',
+      });
+
+      expect(findStrictReceivePathMock).toHaveBeenCalledWith(
+        expect.objectContaining({ amount: '20' }),
+      );
+      expect(transactionRepository.create).toHaveBeenCalledWith(
+        expect.objectContaining({ amount: '10.2', destAmount: '20' }),
+      );
+    });
+
+    it('throws PaymentFailedError with kind no_payment_path and never creates a transaction row when no path exists', async () => {
+      stellarAccountRepository.findByUserId.mockResolvedValue(buildAccount());
+      findStrictSendPathMock.mockResolvedValue(null);
+
+      await expect(
+        service.sendPayment('user-1', {
+          destinationPublicKey: 'GDEST',
+          amount: '10',
+          receiveAssetCode: 'MMX',
+          receiveAssetIssuer: 'GISSUER',
+        }),
+      ).rejects.toMatchObject({ kind: 'no_payment_path' });
+
+      expect(transactionRepository.create).not.toHaveBeenCalled();
+    });
+
+    it('marks the transaction FAILED with kind slippage_exceeded when submission fails due to slippage', async () => {
+      stellarAccountRepository.findByUserId.mockResolvedValue(buildAccount());
+      findStrictSendPathMock.mockResolvedValue({
+        mode: 'strictSend',
+        destAsset: { code: 'MMX', issuer: 'GISSUER' },
+        sourceAmount: '10',
+        destAmount: '19.8',
+        path: [],
+      });
+      transactionRepository.create.mockResolvedValue(
+        buildTransaction({ amount: '10', destAmount: '19.8' }),
+      );
+      submitPathPaymentMock.mockRejectedValue(
+        new StellarPaymentError(
+          'slippage_exceeded',
+          'market moved past tolerance',
+        ),
+      );
+      transactionRepository.updateStatus.mockResolvedValue(
+        buildTransaction({ status: 'FAILED' }),
+      );
+
+      await expect(
+        service.sendPayment('user-1', {
+          destinationPublicKey: 'GDEST',
+          amount: '10',
+          receiveAssetCode: 'MMX',
+          receiveAssetIssuer: 'GISSUER',
+        }),
+      ).rejects.toMatchObject({ kind: 'slippage_exceeded' });
+
+      expect(transactionRepository.updateStatus).toHaveBeenCalledWith(
+        'tx-1',
+        expect.objectContaining({
+          status: 'FAILED',
+          failureCode: 'slippage_exceeded',
+        }),
+      );
+    });
+  });
+
+  describe('previewPath', () => {
+    it('returns a strictSend quote', async () => {
+      findStrictSendPathMock.mockResolvedValue({
+        mode: 'strictSend',
+        destAsset: { code: 'MMX', issuer: 'GISSUER' },
+        sourceAmount: '10',
+        destAmount: '19.8',
+        path: [],
+      });
+
+      const result = await service.previewPath({
+        source: {},
+        dest: { assetCode: 'MMX', assetIssuer: 'GISSUER' },
+        amount: '10',
+        mode: 'strictSend',
+      });
+
+      expect(result).toEqual({
+        mode: 'strictSend',
+        sourceAmount: '10',
+        destAmount: '19.8',
+        path: [],
+      });
+    });
+
+    it('throws PaymentFailedError with kind no_payment_path when no path exists', async () => {
+      findStrictSendPathMock.mockResolvedValue(null);
+
+      await expect(
+        service.previewPath({
+          source: {},
+          dest: { assetCode: 'MMX', assetIssuer: 'GISSUER' },
+          amount: '10',
+          mode: 'strictSend',
+        }),
+      ).rejects.toMatchObject({ kind: 'no_payment_path' });
     });
   });
 
@@ -496,6 +727,46 @@ describe('PaymentsService', () => {
 
       expect(result.status).toBe('PENDING');
       expect(transactionRepository.updateStatus).not.toHaveBeenCalled();
+    });
+
+    it('matches a stale path-payment transaction against the receive asset/destAmount, not the sent asset/amount', async () => {
+      const account = buildAccount();
+      const transaction = buildTransaction({
+        status: 'PENDING',
+        createdAt: new Date(Date.now() - RECONCILIATION_STALE_MS - 1000),
+        amount: '10.0000000',
+        destAmount: '19.8000000',
+        destinationPublicKey: 'GDEST',
+        assetCode: null,
+        assetIssuer: null,
+        receiveAssetCode: 'MMX',
+        receiveAssetIssuer: 'GISSUER',
+      });
+      transactionRepository.findById.mockResolvedValue(transaction);
+      stellarAccountRepository.findById.mockResolvedValue(account);
+      mockHorizonPayments([
+        {
+          type: 'path_payment_strict_send',
+          asset_type: 'credit_alphanum4',
+          asset_code: 'MMX',
+          asset_issuer: 'GISSUER',
+          to: 'GDEST',
+          amount: '19.8000000',
+          created_at: new Date(
+            transaction.createdAt.getTime() + 1000,
+          ).toISOString(),
+          transaction_hash: 'path-found-hash',
+        },
+      ]);
+      transactionRepository.updateStatus.mockImplementation(
+        (_id: string, update: object) =>
+          buildTransaction({ ...transaction, ...update }),
+      );
+
+      const result = await service.getTransactionStatus('user-1', 'tx-1');
+
+      expect(result.status).toBe('SUCCESS');
+      expect(result.stellarTxHash).toBe('path-found-hash');
     });
 
     it('reconcilePendingTransactions processes every stale transaction returned by the repository', async () => {

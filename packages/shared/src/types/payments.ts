@@ -18,6 +18,12 @@ export interface TransactionRecord {
   assetCode: string | null;
   /** Null means native XLM; otherwise the custom asset's issuing account. */
   assetIssuer: string | null;
+  /** Set only for a path payment, where the recipient receives a different asset than assetCode/assetIssuer. Null means "same asset as sent". */
+  receiveAssetCode: string | null;
+  /** Set only for a path payment. Null means "same asset as sent". */
+  receiveAssetIssuer: string | null;
+  /** Set only for a path payment: the exact amount the recipient receives. Null for a plain payment (equal to `amount`). */
+  destAmount: string | null;
   status: TransactionStatus;
   stellarTxHash: string | null;
   failureCode: string | null;
@@ -50,4 +56,20 @@ export interface EstablishTrustlineResponse {
   stellarTxHash: string;
   assetCode: string;
   assetIssuer: string;
+}
+
+/** A hop in a payment path — `null` means native XLM. */
+export interface PathAssetHop {
+  assetCode: string;
+  assetIssuer: string;
+}
+
+export interface PathQuoteResponse {
+  mode: 'strictSend' | 'strictReceive';
+  /** The exact amount sent (known up front for strictSend, computed for strictReceive). */
+  sourceAmount: string;
+  /** The exact amount received (known up front for strictReceive, computed for strictSend). */
+  destAmount: string;
+  /** Intermediate assets the payment routes through, in order. */
+  path: (PathAssetHop | null)[];
 }

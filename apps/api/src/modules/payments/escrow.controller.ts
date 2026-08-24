@@ -1,4 +1,12 @@
-import { Body, Controller, Get, Param, Post, UseGuards, UsePipes } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  Post,
+  UseGuards,
+  UsePipes,
+} from '@nestjs/common';
 import { depositEscrowSchema, type DepositEscrowInput } from '@mixmatch/shared';
 import { ZodValidationPipe } from '../../common/zod-validation.pipe';
 import { CurrentUserId } from '../auth/current-user.decorator';
@@ -12,7 +20,10 @@ export class EscrowController {
 
   @Post()
   @UsePipes(new ZodValidationPipe(depositEscrowSchema))
-  async deposit(@CurrentUserId() userId: string, @Body() body: DepositEscrowInput) {
+  async deposit(
+    @CurrentUserId() userId: string,
+    @Body() body: DepositEscrowInput,
+  ) {
     const escrow = await this.escrowService.depositForUser(userId, body);
     return { escrow };
   }

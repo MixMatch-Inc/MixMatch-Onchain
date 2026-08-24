@@ -1,6 +1,8 @@
 import type {
   EstablishTrustlineInput,
   EstablishTrustlineResponse,
+  PathQuoteInput,
+  PathQuoteResponse,
   SendPaymentInput,
   SendPaymentResponse,
   StellarAccountResponse,
@@ -60,6 +62,14 @@ export function establishTrustline(
   accessToken: string,
 ): Promise<EstablishTrustlineResponse> {
   return request<EstablishTrustlineResponse>('/payments/trustlines', {
+    method: 'POST',
+    headers: authHeaders(accessToken),
+    body: JSON.stringify(input),
+  });
+}
+
+export function quotePath(input: PathQuoteInput, accessToken: string): Promise<PathQuoteResponse> {
+  return request<PathQuoteResponse>('/payments/quote', {
     method: 'POST',
     headers: authHeaders(accessToken),
     body: JSON.stringify(input),

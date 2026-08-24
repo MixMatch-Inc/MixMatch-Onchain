@@ -1,4 +1,9 @@
 #![no_std]
+// `token::Client::transfer` takes `&Address`/`&i128` args; clippy's
+// needless-borrow suggestion doesn't type-check for the `to` parameter
+// (declared as `MuxedAddress` in the trait, `&Address` on the generated
+// client) — verified by hand, not a real redundant borrow.
+#![allow(clippy::needless_borrows_for_generic_args)]
 
 use soroban_sdk::{contract, contracterror, contractimpl, contracttype, token, Address, Env};
 

@@ -13,6 +13,8 @@ const KIND_HTTP_STATUS: Record<StellarPaymentErrorKind, HttpStatus> = {
   trustline_limit_exceeded: HttpStatus.UNPROCESSABLE_ENTITY,
   not_authorized: HttpStatus.FORBIDDEN,
   invalid_trustline_limit: HttpStatus.BAD_REQUEST,
+  no_payment_path: HttpStatus.UNPROCESSABLE_ENTITY,
+  slippage_exceeded: HttpStatus.CONFLICT,
   malformed_transaction: HttpStatus.BAD_REQUEST,
   timing: HttpStatus.CONFLICT,
   network_error: HttpStatus.BAD_GATEWAY,

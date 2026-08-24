@@ -21,6 +21,13 @@ export type StellarPaymentErrorKind =
   | 'not_authorized'
   /** A `changeTrust` call passed a limit outside the valid range (e.g. negative). */
   | 'invalid_trustline_limit'
+  /** No path exists between the source and destination assets that can satisfy the requested amount (`op_too_few_offers`). */
+  | 'no_payment_path'
+  /**
+   * A path was found but the market moved: for strict-send, the recipient would get less
+   * than `destMin`; for strict-receive, sending would cost more than `sendMax` (`op_under_destmin` / `op_over_source_max`).
+   */
+  | 'slippage_exceeded'
   | 'malformed_transaction'
   | 'timing'
   | 'network_error'
@@ -50,6 +57,14 @@ const OPERATION_CODE_KIND: Record<string, StellarPaymentErrorKind> = {
   op_not_authorized: 'not_authorized',
   op_src_not_authorized: 'not_authorized',
   op_invalid_limit: 'invalid_trustline_limit',
+  op_too_few_offers: 'no_payment_path',
+  op_under_destmin: 'slippage_exceeded',
+  op_over_source_max: 'slippage_exceeded',
+  op_sell_no_trust: 'source_requires_trustline',
+  op_buy_no_trust: 'destination_requires_trustline',
+  op_sell_not_authorized: 'not_authorized',
+  op_buy_not_authorized: 'not_authorized',
+  op_offer_cross_self: 'malformed_transaction',
 };
 
 interface HorizonTransactionFailedBody {

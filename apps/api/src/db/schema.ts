@@ -102,6 +102,16 @@ export const transactions = pgTable('transactions', {
   // @mixmatch/shared's sendPaymentSchema.
   assetCode: text('asset_code'),
   assetIssuer: text('asset_issuer'),
+  // Set only for path payments, where the recipient receives a different
+  // asset than assetCode/assetIssuer. Null means "same asset as sent"
+  // (a plain payment). destAmount is the exact amount the recipient
+  // receives — known up front for strictReceive, resolved from the quote
+  // at submission time for strictSend — used to match reconciliation
+  // against the recipient-side Horizon record, which reports the
+  // *destination* asset/amount for path payment operations.
+  receiveAssetCode: text('receive_asset_code'),
+  receiveAssetIssuer: text('receive_asset_issuer'),
+  destAmount: text('dest_amount'),
   status: transactionStatusEnum('status').default('PENDING').notNull(),
   stellarTxHash: text('stellar_tx_hash'),
   failureCode: text('failure_code'),

@@ -19,6 +19,7 @@ export const transactionStatusEnum = pgEnum('transaction_status', [
   'PENDING',
   'SUCCESS',
   'FAILED',
+  'NEEDS_REVIEW',
 ]);
 
 // Identity Models

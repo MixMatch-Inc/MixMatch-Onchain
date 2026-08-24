@@ -1,0 +1,1 @@
+ALTER TYPE "public"."transaction_status" ADD VALUE 'NEEDS_REVIEW';

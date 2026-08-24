@@ -21,6 +21,14 @@ import {
 
 const ENCRYPTION_KEY = 'ab'.repeat(32);
 const REAL_TESTNET_SECRET = Keypair.random().secret();
+const RECONCILIATION_STALE_MS = 2 * 60 * 1000;
+const RECONCILIATION_ESCALATION_MS = 24 * 60 * 60 * 1000;
+
+const CONFIG_VALUES: Record<string, unknown> = {
+  walletEncryptionKey: ENCRYPTION_KEY,
+  reconciliationStaleMs: RECONCILIATION_STALE_MS,
+  reconciliationEscalationMs: RECONCILIATION_ESCALATION_MS,
+};
 
 function buildAccount(
   overrides: Partial<StellarAccountRecord> = {},
@@ -93,7 +101,7 @@ describe('PaymentsService', () => {
       stellarClient as unknown as DefaultStellarClient,
       paymentEngine as unknown as StellarPaymentEngine,
       {
-        getOrThrow: jest.fn().mockReturnValue(ENCRYPTION_KEY),
+        getOrThrow: jest.fn((key: string) => CONFIG_VALUES[key]),
       } as unknown as ConfigService,
     );
   });
@@ -220,6 +228,133 @@ describe('PaymentsService', () => {
       await expect(
         service.getTransactionStatus('user-1', 'tx-1'),
       ).rejects.toBeInstanceOf(ForbiddenException);
+    });
+  });
+
+  describe('reconciliation', () => {
+    function mockHorizonPayments(records: unknown[]) {
+      const call = jest.fn().mockResolvedValue({ records });
+      const limit = jest.fn().mockReturnValue({ call });
+      const order = jest.fn().mockReturnValue({ limit });
+      const forAccount = jest.fn().mockReturnValue({ order });
+      stellarClient.horizon.payments = jest
+        .fn()
+        .mockReturnValue({ forAccount });
+    }
+
+    it('marks a stale transaction SUCCESS when a matching payment is found on-chain', async () => {
+      const account = buildAccount();
+      const transaction = buildTransaction({
+        status: 'PENDING',
+        createdAt: new Date(Date.now() - RECONCILIATION_STALE_MS - 1000),
+        amount: '10.0000000',
+        destinationPublicKey: 'GDEST',
+      });
+      transactionRepository.findById.mockResolvedValue(transaction);
+      stellarAccountRepository.findById.mockResolvedValue(account);
+      mockHorizonPayments([
+        {
+          type: 'payment',
+          asset_type: 'native',
+          to: 'GDEST',
+          amount: '10.0000000',
+          created_at: new Date(
+            transaction.createdAt.getTime() + 1000,
+          ).toISOString(),
+          transaction_hash: 'found-hash',
+        },
+      ]);
+      transactionRepository.updateStatus.mockImplementation(
+        (_id: string, update: object) =>
+          buildTransaction({ ...transaction, ...update }),
+      );
+
+      const result = await service.getTransactionStatus('user-1', 'tx-1');
+
+      expect(result.status).toBe('SUCCESS');
+      expect(result.stellarTxHash).toBe('found-hash');
+    });
+
+    it('leaves a stale transaction PENDING when unmatched but still within the escalation window', async () => {
+      const account = buildAccount();
+      const transaction = buildTransaction({
+        status: 'PENDING',
+        createdAt: new Date(Date.now() - RECONCILIATION_STALE_MS - 1000),
+      });
+      transactionRepository.findById.mockResolvedValue(transaction);
+      stellarAccountRepository.findById.mockResolvedValue(account);
+      mockHorizonPayments([]);
+
+      const result = await service.getTransactionStatus('user-1', 'tx-1');
+
+      expect(result.status).toBe('PENDING');
+      expect(transactionRepository.updateStatus).not.toHaveBeenCalled();
+    });
+
+    it('escalates to NEEDS_REVIEW once unmatched past the escalation window', async () => {
+      const account = buildAccount();
+      const transaction = buildTransaction({
+        status: 'PENDING',
+        createdAt: new Date(Date.now() - RECONCILIATION_ESCALATION_MS - 1000),
+      });
+      transactionRepository.findById.mockResolvedValue(transaction);
+      stellarAccountRepository.findById.mockResolvedValue(account);
+      mockHorizonPayments([]);
+      transactionRepository.updateStatus.mockImplementation(
+        (_id: string, update: object) =>
+          buildTransaction({ ...transaction, ...update }),
+      );
+
+      const result = await service.getTransactionStatus('user-1', 'tx-1');
+
+      expect(result.status).toBe('NEEDS_REVIEW');
+      expect(transactionRepository.updateStatus).toHaveBeenCalledWith(
+        'tx-1',
+        expect.objectContaining({
+          status: 'NEEDS_REVIEW',
+          failureCode: 'reconciliation_escalated',
+        }),
+      );
+    });
+
+    it('leaves a transaction PENDING when Horizon is unreachable, rather than escalating early', async () => {
+      const account = buildAccount();
+      const transaction = buildTransaction({
+        status: 'PENDING',
+        createdAt: new Date(Date.now() - RECONCILIATION_STALE_MS - 1000),
+      });
+      transactionRepository.findById.mockResolvedValue(transaction);
+      stellarAccountRepository.findById.mockResolvedValue(account);
+      stellarClient.horizon.payments = jest.fn().mockImplementation(() => {
+        throw new Error('ECONNREFUSED');
+      });
+
+      const result = await service.getTransactionStatus('user-1', 'tx-1');
+
+      expect(result.status).toBe('PENDING');
+    });
+
+    it('reconcilePendingTransactions processes every stale transaction returned by the repository', async () => {
+      const stale = [
+        buildTransaction({
+          id: 'tx-a',
+          createdAt: new Date(Date.now() - RECONCILIATION_STALE_MS - 1000),
+        }),
+        buildTransaction({
+          id: 'tx-b',
+          createdAt: new Date(Date.now() - RECONCILIATION_STALE_MS - 1000),
+        }),
+      ];
+      transactionRepository.findStalePending.mockResolvedValue(stale);
+      stellarAccountRepository.findById.mockResolvedValue(buildAccount());
+      mockHorizonPayments([]);
+
+      const result = await service.reconcilePendingTransactions();
+
+      expect(result).toHaveLength(2);
+      expect(transactionRepository.findStalePending).toHaveBeenCalledWith(
+        expect.any(Date),
+      );
     });
   });
 

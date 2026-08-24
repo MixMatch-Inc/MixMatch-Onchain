@@ -1,0 +1,61 @@
+export interface EnvConfig {
+  nodeEnv: string;
+  port: number;
+  databaseUrl: string;
+  jwtSecret: string;
+  /** Access token lifetime, in seconds. */
+  jwtExpiresInSeconds: number;
+  walletEncryptionKey: string;
+  stellarNetwork: 'testnet' | 'public';
+  stellarHorizonUrl?: string;
+  stellarRpcUrl?: string;
+}
+
+const DEFAULT_PORT = 3000;
+const DEFAULT_JWT_EXPIRES_IN_SECONDS = 60 * 60; // 1 hour
+const MIN_JWT_SECRET_LENGTH = 32;
+/** AES-256-GCM key: 32 bytes, hex-encoded (64 hex characters). */
+const WALLET_ENCRYPTION_KEY_HEX_LENGTH = 64;
+
+function required(env: NodeJS.ProcessEnv, key: string): string {
+  const value = env[key]?.trim();
+  if (!value) {
+    throw new Error(`Missing required environment variable: ${key}`);
+  }
+  return value;
+}
+
+/** Validates and normalizes process.env into a typed `EnvConfig`. Throws on startup if misconfigured. */
+export function validateEnv(env: NodeJS.ProcessEnv = process.env): EnvConfig {
+  const nodeEnv = env.NODE_ENV?.trim() || 'development';
+  const jwtSecret = required(env, 'JWT_SECRET');
+
+  if (nodeEnv === 'production' && jwtSecret.length < MIN_JWT_SECRET_LENGTH) {
+    throw new Error(
+      `JWT_SECRET must be at least ${MIN_JWT_SECRET_LENGTH} characters in production`,
+    );
+  }
+
+  const walletEncryptionKey = required(env, 'WALLET_ENCRYPTION_KEY');
+  if (!/^[0-9a-f]{64}$/i.test(walletEncryptionKey)) {
+    throw new Error(
+      `WALLET_ENCRYPTION_KEY must be a ${WALLET_ENCRYPTION_KEY_HEX_LENGTH}-character hex string (32 bytes for AES-256)`,
+    );
+  }
+
+  const stellarNetwork =
+    env.STELLAR_NETWORK?.trim() === 'public' ? 'public' : 'testnet';
+
+  return {
+    nodeEnv,
+    port: Number(env.PORT) || DEFAULT_PORT,
+    databaseUrl: required(env, 'DATABASE_URL'),
+    jwtSecret,
+    jwtExpiresInSeconds:
+      Number(env.JWT_EXPIRES_IN_SECONDS) || DEFAULT_JWT_EXPIRES_IN_SECONDS,
+    walletEncryptionKey,
+    stellarNetwork,
+    stellarHorizonUrl: env.STELLAR_HORIZON_URL?.trim(),
+    stellarRpcUrl: env.STELLAR_RPC_URL?.trim(),
+  };
+}

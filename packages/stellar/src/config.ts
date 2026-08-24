@@ -4,6 +4,8 @@ export interface StellarConfig {
   network: StellarNetwork;
   horizonUrl: string;
   rpcUrl: string;
+  /** Deployed id of the escrow contract (see contracts/escrow) on this network, if configured. */
+  escrowContractId?: string;
 }
 
 const NETWORK_DEFAULTS: Record<StellarNetwork, { horizonUrl: string; rpcUrl: string }> = {
@@ -31,5 +33,6 @@ export function loadStellarConfig(env: NodeJS.ProcessEnv = process.env): Stellar
     network,
     horizonUrl: env.STELLAR_HORIZON_URL?.trim() || defaults.horizonUrl,
     rpcUrl: env.STELLAR_RPC_URL?.trim() || defaults.rpcUrl,
+    escrowContractId: env.STELLAR_ESCROW_CONTRACT_ID?.trim() || undefined,
   };
 }

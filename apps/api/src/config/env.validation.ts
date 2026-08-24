@@ -9,6 +9,8 @@ export interface EnvConfig {
   stellarNetwork: 'testnet' | 'public';
   stellarHorizonUrl?: string;
   stellarRpcUrl?: string;
+  /** Deployed contract id of the escrow contract (see contracts/escrow); required to use /escrows endpoints. */
+  stellarEscrowContractId?: string;
   /** How often the background job re-checks stuck PENDING transactions, in ms. */
   reconciliationIntervalMs: number;
   /** How long a PENDING transaction is left alone before a reconciliation attempt is made, in ms. */
@@ -66,6 +68,7 @@ export function validateEnv(env: NodeJS.ProcessEnv = process.env): EnvConfig {
     stellarNetwork,
     stellarHorizonUrl: env.STELLAR_HORIZON_URL?.trim(),
     stellarRpcUrl: env.STELLAR_RPC_URL?.trim(),
+    stellarEscrowContractId: env.STELLAR_ESCROW_CONTRACT_ID?.trim(),
     reconciliationIntervalMs:
       Number(env.RECONCILIATION_INTERVAL_MS) ||
       DEFAULT_RECONCILIATION_INTERVAL_MS,

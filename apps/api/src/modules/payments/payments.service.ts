@@ -9,15 +9,21 @@ import {
   classifyStellarPaymentError,
   DefaultStellarClient,
   establishTrustline,
+  findStrictReceivePath,
+  findStrictSendPath,
   fundTestnetAccount,
   generateStellarAccount,
   KeypairWallet,
   StellarPaymentError,
   StellarPaymentService as StellarPaymentEngine,
+  submitPathPayment,
+  type PathQuote,
 } from '@mixmatch/stellar';
 import type {
   EstablishTrustlineInput,
   EstablishTrustlineResponse,
+  PathQuoteInput,
+  PathQuoteResponse,
   SendPaymentInput,
 } from '@mixmatch/shared';
 import { PaymentFailedError } from './payment-errors';
@@ -35,6 +41,13 @@ import {
 function normalizeAmount(amount: string): string {
   return Number(amount).toFixed(7);
 }
+
+/** Horizon operation types whose `to`/`asset_*`/`amount` fields describe the destination side — matched by `findMatchingPayment`. */
+const MATCHABLE_OPERATION_TYPES = new Set([
+  'payment',
+  'path_payment_strict_receive',
+  'path_payment_strict_send',
+]);
 
 @Injectable()
 export class PaymentsService {
@@ -82,6 +95,14 @@ export class PaymentsService {
    * if `input.assetCode`/`input.assetIssuer` are set (the caller's account
    * must already hold a trustline to that asset; see `establishTrustline`).
    *
+   * If `input.receiveAssetCode`/`input.receiveAssetIssuer` are set, this is
+   * a *path payment*: the recipient receives a different asset than what
+   * was sent, routed through Stellar's DEX. The path is resolved via
+   * `findStrictSendPath`/`findStrictReceivePath` *before* the durable
+   * idempotency row is created (a quote is a read — resolving it early just
+   * means the persisted row always has both `amount` — what was sent — and
+   * `destAmount` — what the recipient receives — filled in from the start).
+   *
    * Durable idempotency: a `Transaction` row is created (with a unique
    * constraint on `idempotencyKey`) *before* submitting to Stellar. If a row
    * for this key already exists — including across process restarts — that
@@ -94,16 +115,24 @@ export class PaymentsService {
     const account = await this.getOrCreateStellarAccount(userId);
     const idempotencyKey = input.idempotencyKey ?? randomUUID();
 
+    let quote: PathQuote | undefined;
+    if (input.receiveAssetCode && input.receiveAssetIssuer) {
+      quote = await this.resolvePathQuote(input);
+    }
+
     let transaction: TransactionRecord;
     try {
       transaction = await this.transactionRepository.create({
         idempotencyKey,
         stellarAccountId: account.id,
         destinationPublicKey: input.destinationPublicKey,
-        amount: input.amount,
+        amount: quote ? quote.sourceAmount : input.amount,
         memo: input.memo,
         assetCode: input.assetCode,
         assetIssuer: input.assetIssuer,
+        receiveAssetCode: input.receiveAssetCode,
+        receiveAssetIssuer: input.receiveAssetIssuer,
+        destAmount: quote?.destAmount,
       });
     } catch (error) {
       if (error instanceof DuplicateIdempotencyKeyError) {
@@ -122,16 +151,25 @@ export class PaymentsService {
     );
 
     try {
-      const result = await this.paymentEngine.submitPayment({
-        sourceWallet: wallet,
-        destinationPublicKey: input.destinationPublicKey,
-        amount: input.amount,
-        memo: input.memo,
-        asset:
-          input.assetCode && input.assetIssuer
-            ? { code: input.assetCode, issuer: input.assetIssuer }
-            : undefined,
-      });
+      const result = quote
+        ? await submitPathPayment({
+            client: this.stellarClient,
+            sourceWallet: wallet,
+            destinationPublicKey: input.destinationPublicKey,
+            memo: input.memo,
+            quote,
+            slippageBps: input.slippageBps,
+          })
+        : await this.paymentEngine.submitPayment({
+            sourceWallet: wallet,
+            destinationPublicKey: input.destinationPublicKey,
+            amount: input.amount,
+            memo: input.memo,
+            asset:
+              input.assetCode && input.assetIssuer
+                ? { code: input.assetCode, issuer: input.assetIssuer }
+                : undefined,
+          });
 
       return await this.transactionRepository.updateStatus(transaction.id, {
         status: 'SUCCESS',
@@ -149,6 +187,94 @@ export class PaymentsService {
       });
       throw new PaymentFailedError(classified.kind, classified.message);
     }
+  }
+
+  /**
+   * Resolves a path payment's quote up front, so `sendPayment` throws
+   * before creating a DB row if no path exists at all.
+   */
+  private async resolvePathQuote(input: SendPaymentInput): Promise<PathQuote> {
+    const sourceAsset =
+      input.assetCode && input.assetIssuer
+        ? { code: input.assetCode, issuer: input.assetIssuer }
+        : undefined;
+    const destAsset =
+      input.receiveAssetCode && input.receiveAssetIssuer
+        ? { code: input.receiveAssetCode, issuer: input.receiveAssetIssuer }
+        : undefined;
+    const mode = input.pathMode ?? 'strictSend';
+
+    const quote =
+      mode === 'strictSend'
+        ? await findStrictSendPath({
+            client: this.stellarClient,
+            sourceAsset,
+            destAsset,
+            amount: input.amount,
+          })
+        : await findStrictReceivePath({
+            client: this.stellarClient,
+            sourceAsset,
+            destAsset,
+            amount: input.amount,
+          });
+
+    if (!quote) {
+      throw new PaymentFailedError(
+        'no_payment_path',
+        'No payment path exists between the two assets for the requested amount',
+      );
+    }
+    return quote;
+  }
+
+  /**
+   * Previews a path payment without submitting anything — resolves the
+   * best available path and returns the resulting quote (source amount,
+   * destination amount, and the intermediate assets it routes through),
+   * so a client can show "you send X, recipient gets approximately Y"
+   * before the caller confirms.
+   */
+  async previewPath(input: PathQuoteInput): Promise<PathQuoteResponse> {
+    const sourceAsset =
+      input.source.assetCode && input.source.assetIssuer
+        ? { code: input.source.assetCode, issuer: input.source.assetIssuer }
+        : undefined;
+    const destAsset =
+      input.dest.assetCode && input.dest.assetIssuer
+        ? { code: input.dest.assetCode, issuer: input.dest.assetIssuer }
+        : undefined;
+
+    const quote =
+      input.mode === 'strictSend'
+        ? await findStrictSendPath({
+            client: this.stellarClient,
+            sourceAsset,
+            destAsset,
+            amount: input.amount,
+          })
+        : await findStrictReceivePath({
+            client: this.stellarClient,
+            sourceAsset,
+            destAsset,
+            amount: input.amount,
+          });
+
+    if (!quote) {
+      throw new PaymentFailedError(
+        'no_payment_path',
+        'No payment path exists between the two assets for the requested amount',
+      );
+    }
+
+    return {
+      mode: quote.mode,
+      sourceAmount: quote.sourceAmount,
+      destAmount: quote.destAmount,
+      path: quote.path.map((hop) =>
+        hop ? { assetCode: hop.code, assetIssuer: hop.issuer } : null,
+      ),
+    };
   }
 
   /**
@@ -338,11 +464,16 @@ export class PaymentsService {
         .limit(50)
         .call();
 
-      const expectedAmount = normalizeAmount(transaction.amount);
+      // For a path payment, the recipient receives destAmount of the
+      // receive asset — that's what shows up as `amount`/`asset_*` on the
+      // Horizon operation record, not the amount/asset that was sent.
+      const expectedAmount = normalizeAmount(
+        transaction.destAmount ?? transaction.amount,
+      );
 
       for (const operation of page.records) {
         if (
-          String(operation.type) === 'payment' &&
+          MATCHABLE_OPERATION_TYPES.has(String(operation.type)) &&
           'asset_type' in operation &&
           this.matchesTransactionAsset(operation, transaction) &&
           'to' in operation &&
@@ -361,10 +492,13 @@ export class PaymentsService {
   }
 
   /**
-   * True if a Horizon payment-operation record is for the same asset as
-   * `transaction` — native XLM, or the matching custom asset code + issuer.
-   * Horizon reports non-native assets as `asset_type: 'credit_alphanum4' |
-   * 'credit_alphanum12'` with separate `asset_code`/`asset_issuer` fields.
+   * True if a Horizon payment-operation record is for the same asset the
+   * *recipient* should end up holding — the receive asset for a path
+   * payment, or otherwise the same asset that was sent (native XLM, or the
+   * matching custom asset code + issuer). Horizon reports non-native
+   * assets as `asset_type: 'credit_alphanum4' | 'credit_alphanum12'` with
+   * separate `asset_code`/`asset_issuer` fields; for `payment` and both
+   * path-payment operation types, these describe the *destination* asset.
    */
   private matchesTransactionAsset(
     operation: unknown,
@@ -377,15 +511,18 @@ export class PaymentsService {
     ) {
       return false;
     }
-    if (!transaction.assetCode) {
+    const expectedCode = transaction.receiveAssetCode ?? transaction.assetCode;
+    const expectedIssuer =
+      transaction.receiveAssetIssuer ?? transaction.assetIssuer;
+    if (!expectedCode) {
       return operation.asset_type === 'native';
     }
     return (
       operation.asset_type !== 'native' &&
       'asset_code' in operation &&
-      operation.asset_code === transaction.assetCode &&
+      operation.asset_code === expectedCode &&
       'asset_issuer' in operation &&
-      operation.asset_issuer === transaction.assetIssuer
+      operation.asset_issuer === expectedIssuer
     );
   }
 

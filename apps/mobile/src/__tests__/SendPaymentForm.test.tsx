@@ -15,6 +15,9 @@ function buildTransaction(overrides: Partial<TransactionRecord> = {}): Transacti
     memo: null,
     assetCode: null,
     assetIssuer: null,
+    receiveAssetCode: null,
+    receiveAssetIssuer: null,
+    destAmount: null,
     status: 'SUCCESS',
     stellarTxHash: 'hash',
     failureCode: null,
@@ -101,5 +104,61 @@ describe('SendPaymentForm', () => {
         assetIssuer: VALID_ISSUER,
       }),
     );
+  });
+
+  it('shows a quote preview and submits with receiveAssetCode/receiveAssetIssuer when the receive-asset flow is used', async () => {
+    const transaction = buildTransaction({ receiveAssetCode: 'MMX', receiveAssetIssuer: VALID_ISSUER });
+    const onSubmit = jest.fn().mockResolvedValue(transaction);
+    const onQuote = jest.fn().mockResolvedValue({
+      mode: 'strictSend',
+      sourceAmount: '10',
+      destAmount: '19.8',
+      path: [],
+    });
+    render(<SendPaymentForm onSubmit={onSubmit} onQuote={onQuote} />);
+
+    fireEvent.changeText(screen.getByTestId('destination-input'), VALID_ADDRESS);
+    fireEvent.changeText(screen.getByTestId('amount-input'), '10');
+    fireEvent.press(screen.getByTestId('toggle-receive-asset-fields'));
+    fireEvent.changeText(screen.getByTestId('receive-asset-code-input'), 'MMX');
+    fireEvent.changeText(screen.getByTestId('receive-asset-issuer-input'), VALID_ISSUER);
+    fireEvent.press(screen.getByTestId('get-quote-button'));
+
+    await waitFor(() =>
+      expect(onQuote).toHaveBeenCalledWith({
+        sourceAssetCode: undefined,
+        sourceAssetIssuer: undefined,
+        destAssetCode: 'MMX',
+        destAssetIssuer: VALID_ISSUER,
+        amount: '10',
+      }),
+    );
+    await waitFor(() => expect(screen.getByTestId('quote-preview')).toBeTruthy());
+    expect(screen.getByText(/You send 10, recipient gets approximately 19.8/)).toBeTruthy();
+
+    fireEvent.press(screen.getByTestId('send-button'));
+
+    await waitFor(() =>
+      expect(onSubmit).toHaveBeenCalledWith({
+        destinationPublicKey: VALID_ADDRESS,
+        amount: '10',
+        receiveAssetCode: 'MMX',
+        receiveAssetIssuer: VALID_ISSUER,
+      }),
+    );
+  });
+
+  it('shows an error and no preview when the quote fails (e.g. no path exists)', async () => {
+    const onQuote = jest.fn().mockRejectedValue(new Error('No payment path exists'));
+    render(<SendPaymentForm onSubmit={jest.fn()} onQuote={onQuote} />);
+
+    fireEvent.changeText(screen.getByTestId('amount-input'), '10');
+    fireEvent.press(screen.getByTestId('toggle-receive-asset-fields'));
+    fireEvent.changeText(screen.getByTestId('receive-asset-code-input'), 'MMX');
+    fireEvent.changeText(screen.getByTestId('receive-asset-issuer-input'), VALID_ISSUER);
+    fireEvent.press(screen.getByTestId('get-quote-button'));
+
+    await waitFor(() => expect(screen.getByText('No payment path exists')).toBeTruthy());
+    expect(screen.queryByTestId('quote-preview')).toBeNull();
   });
 });

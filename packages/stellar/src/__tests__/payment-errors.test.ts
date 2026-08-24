@@ -71,6 +71,31 @@ describe('classifyStellarPaymentError', () => {
     expect(error.kind).toBe('invalid_trustline_limit');
   });
 
+  it('classifies op_too_few_offers as no_payment_path', () => {
+    const error = classifyStellarPaymentError(horizonFailure('tx_failed', ['op_too_few_offers']));
+    expect(error.kind).toBe('no_payment_path');
+  });
+
+  it('classifies op_under_destmin as slippage_exceeded', () => {
+    const error = classifyStellarPaymentError(horizonFailure('tx_failed', ['op_under_destmin']));
+    expect(error.kind).toBe('slippage_exceeded');
+  });
+
+  it('classifies op_over_source_max as slippage_exceeded', () => {
+    const error = classifyStellarPaymentError(horizonFailure('tx_failed', ['op_over_source_max']));
+    expect(error.kind).toBe('slippage_exceeded');
+  });
+
+  it('classifies op_sell_no_trust as source_requires_trustline', () => {
+    const error = classifyStellarPaymentError(horizonFailure('tx_failed', ['op_sell_no_trust']));
+    expect(error.kind).toBe('source_requires_trustline');
+  });
+
+  it('classifies op_buy_no_trust as destination_requires_trustline', () => {
+    const error = classifyStellarPaymentError(horizonFailure('tx_failed', ['op_buy_no_trust']));
+    expect(error.kind).toBe('destination_requires_trustline');
+  });
+
   it('falls back to the transaction-level code when no operation code matches', () => {
     const error = classifyStellarPaymentError(horizonFailure('tx_bad_seq', []));
     expect(error.kind).toBe('sequence_conflict');

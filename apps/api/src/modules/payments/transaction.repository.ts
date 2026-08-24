@@ -25,6 +25,12 @@ export interface TransactionRecord {
   assetCode: string | null;
   /** Null means native XLM. */
   assetIssuer: string | null;
+  /** Set only for a path payment. Null means "same asset as sent". */
+  receiveAssetCode: string | null;
+  /** Set only for a path payment. Null means "same asset as sent". */
+  receiveAssetIssuer: string | null;
+  /** Set only for a path payment: the exact amount the recipient receives. */
+  destAmount: string | null;
   status: TransactionStatus;
   stellarTxHash: string | null;
   failureCode: string | null;
@@ -70,6 +76,9 @@ export class TransactionRepository {
     memo?: string;
     assetCode?: string;
     assetIssuer?: string;
+    receiveAssetCode?: string;
+    receiveAssetIssuer?: string;
+    destAmount?: string;
   }): Promise<TransactionRecord> {
     try {
       const [row] = await this.db
@@ -79,6 +88,9 @@ export class TransactionRepository {
           memo: input.memo ?? null,
           assetCode: input.assetCode ?? null,
           assetIssuer: input.assetIssuer ?? null,
+          receiveAssetCode: input.receiveAssetCode ?? null,
+          receiveAssetIssuer: input.receiveAssetIssuer ?? null,
+          destAmount: input.destAmount ?? null,
           status: 'PENDING',
         })
         .returning();

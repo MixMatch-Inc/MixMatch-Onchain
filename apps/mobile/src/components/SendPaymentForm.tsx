@@ -1,22 +1,43 @@
-import { sendPaymentSchema, type SendPaymentInput, type TransactionRecord } from '@mixmatch/shared';
+import { sendPaymentSchema, type PathQuoteResponse, type SendPaymentInput, type TransactionRecord } from '@mixmatch/shared';
 import { useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
-type PaymentField = 'destinationPublicKey' | 'amount' | 'memo' | 'assetCode' | 'assetIssuer';
+type PaymentField =
+  | 'destinationPublicKey'
+  | 'amount'
+  | 'memo'
+  | 'assetCode'
+  | 'assetIssuer'
+  | 'receiveAssetCode'
+  | 'receiveAssetIssuer';
 
 export interface SendPaymentFormProps {
   onSubmit: (values: SendPaymentInput) => Promise<TransactionRecord>;
   onSuccess?: (transaction: TransactionRecord) => void;
+  /** Fetches a path-payment quote for a "send asset A, recipient gets asset B" preview. Required for the receive-asset flow to show a preview before submitting. */
+  onQuote?: (params: {
+    sourceAssetCode?: string;
+    sourceAssetIssuer?: string;
+    destAssetCode: string;
+    destAssetIssuer: string;
+    amount: string;
+  }) => Promise<PathQuoteResponse>;
   initialDestination?: string;
 }
 
-export default function SendPaymentForm({ onSubmit, onSuccess, initialDestination }: SendPaymentFormProps) {
+export default function SendPaymentForm({ onSubmit, onSuccess, onQuote, initialDestination }: SendPaymentFormProps) {
   const [destinationPublicKey, setDestinationPublicKey] = useState(initialDestination ?? '');
   const [amount, setAmount] = useState('');
   const [memo, setMemo] = useState('');
   const [showAssetFields, setShowAssetFields] = useState(false);
   const [assetCode, setAssetCode] = useState('');
   const [assetIssuer, setAssetIssuer] = useState('');
+  const [showReceiveAssetFields, setShowReceiveAssetFields] = useState(false);
+  const [receiveAssetCode, setReceiveAssetCode] = useState('');
+  const [receiveAssetIssuer, setReceiveAssetIssuer] = useState('');
+  const [quote, setQuote] = useState<PathQuoteResponse | null>(null);
+  const [isQuoting, setIsQuoting] = useState(false);
+  const [quoteError, setQuoteError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Partial<Record<PaymentField, string>>>({});
@@ -31,6 +52,8 @@ export default function SendPaymentForm({ onSubmit, onSuccess, initialDestinatio
       memo: memo || undefined,
       assetCode: showAssetFields && assetCode ? assetCode : undefined,
       assetIssuer: showAssetFields && assetIssuer ? assetIssuer : undefined,
+      receiveAssetCode: showReceiveAssetFields && receiveAssetCode ? receiveAssetCode : undefined,
+      receiveAssetIssuer: showReceiveAssetFields && receiveAssetIssuer ? receiveAssetIssuer : undefined,
     });
 
     if (!result.success) {
@@ -53,11 +76,37 @@ export default function SendPaymentForm({ onSubmit, onSuccess, initialDestinatio
       setMemo('');
       setAssetCode('');
       setAssetIssuer('');
+      setReceiveAssetCode('');
+      setReceiveAssetIssuer('');
+      setQuote(null);
       onSuccess?.(transaction);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Something went wrong');
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleGetQuote = async () => {
+    setQuoteError(null);
+    setQuote(null);
+    if (!onQuote || !receiveAssetCode || !receiveAssetIssuer || !amount) {
+      return;
+    }
+    setIsQuoting(true);
+    try {
+      const result = await onQuote({
+        sourceAssetCode: assetCode || undefined,
+        sourceAssetIssuer: assetIssuer || undefined,
+        destAssetCode: receiveAssetCode,
+        destAssetIssuer: receiveAssetIssuer,
+        amount,
+      });
+      setQuote(result);
+    } catch (err) {
+      setQuoteError(err instanceof Error ? err.message : 'Could not find a payment path');
+    } finally {
+      setIsQuoting(false);
     }
   };
 
@@ -118,6 +167,64 @@ export default function SendPaymentForm({ onSubmit, onSuccess, initialDestinatio
         </>
       )}
 
+      {onQuote && (
+        <TouchableOpacity
+          onPress={() => setShowReceiveAssetFields((prev) => !prev)}
+          testID="toggle-receive-asset-fields"
+        >
+          <Text style={styles.link}>
+            {showReceiveAssetFields ? "Recipient gets the same asset I send" : "Recipient should get a different asset"}
+          </Text>
+        </TouchableOpacity>
+      )}
+
+      {showReceiveAssetFields && (
+        <>
+          <Text style={styles.label}>Recipient receives (asset code)</Text>
+          <TextInput
+            style={styles.input}
+            value={receiveAssetCode}
+            onChangeText={(value) => {
+              setReceiveAssetCode(value);
+              setQuote(null);
+            }}
+            autoCapitalize="characters"
+            testID="receive-asset-code-input"
+          />
+          {fieldErrors.receiveAssetCode && <Text style={styles.fieldError}>{fieldErrors.receiveAssetCode}</Text>}
+
+          <Text style={styles.label}>Recipient receives (asset issuer)</Text>
+          <TextInput
+            style={styles.input}
+            value={receiveAssetIssuer}
+            onChangeText={(value) => {
+              setReceiveAssetIssuer(value);
+              setQuote(null);
+            }}
+            autoCapitalize="characters"
+            testID="receive-asset-issuer-input"
+          />
+          {fieldErrors.receiveAssetIssuer && <Text style={styles.fieldError}>{fieldErrors.receiveAssetIssuer}</Text>}
+
+          <TouchableOpacity
+            style={styles.quoteButton}
+            onPress={() => void handleGetQuote()}
+            disabled={isQuoting}
+            testID="get-quote-button"
+          >
+            {isQuoting ? <ActivityIndicator /> : <Text style={styles.quoteButtonText}>Preview conversion</Text>}
+          </TouchableOpacity>
+
+          {quoteError && <Text style={styles.error}>{quoteError}</Text>}
+
+          {quote && (
+            <Text style={styles.quotePreview} testID="quote-preview">
+              You send {quote.sourceAmount}, recipient gets approximately {quote.destAmount}
+            </Text>
+          )}
+        </>
+      )}
+
       {error && <Text style={styles.error}>{error}</Text>}
 
       <TouchableOpacity style={styles.button} onPress={() => void handleSubmit()} disabled={isSubmitting} testID="send-button">
@@ -140,6 +247,16 @@ const styles = StyleSheet.create({
   fieldError: { color: '#e00', fontSize: 12, marginTop: 4 },
   link: { color: '#0066cc', fontSize: 14, marginTop: 16 },
   error: { color: '#e00', textAlign: 'center', marginTop: 12 },
+  quoteButton: {
+    borderWidth: 1,
+    borderColor: '#000',
+    borderRadius: 8,
+    paddingVertical: 10,
+    alignItems: 'center',
+    marginTop: 12,
+  },
+  quoteButtonText: { color: '#000', fontSize: 14, fontWeight: '600' },
+  quotePreview: { fontSize: 14, color: '#333', marginTop: 8, textAlign: 'center' },
   button: {
     backgroundColor: '#000',
     borderRadius: 8,

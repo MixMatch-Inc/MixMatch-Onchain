@@ -5,6 +5,7 @@ import { useAuth } from '../hooks/useAuth';
 import {
   getStellarAccount,
   getTransactionHistory,
+  quotePath,
   sendPayment,
 } from '../services/payments-client';
 import MyQrCode from './MyQrCode';
@@ -86,6 +87,17 @@ export default function PaymentsScreen() {
               const { transaction } = await sendPayment(values, accessToken);
               return transaction;
             }}
+            onQuote={(params) =>
+              quotePath(
+                {
+                  source: { assetCode: params.sourceAssetCode, assetIssuer: params.sourceAssetIssuer },
+                  dest: { assetCode: params.destAssetCode, assetIssuer: params.destAssetIssuer },
+                  amount: params.amount,
+                  mode: 'strictSend',
+                },
+                accessToken,
+              )
+            }
             onSuccess={() => {
               setScannedDestination(undefined);
               void loadHistory();

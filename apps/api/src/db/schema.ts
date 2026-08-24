@@ -7,6 +7,7 @@ import {
   jsonb,
   real,
   vector,
+  integer,
 } from 'drizzle-orm/pg-core';
 
 // Enums
@@ -20,6 +21,13 @@ export const transactionStatusEnum = pgEnum('transaction_status', [
   'SUCCESS',
   'FAILED',
   'NEEDS_REVIEW',
+]);
+export const escrowStatusEnum = pgEnum('escrow_status', [
+  'PENDING',
+  'LOCKED',
+  'RELEASED',
+  'REFUNDED',
+  'FAILED',
 ]);
 
 // Identity Models
@@ -96,6 +104,32 @@ export const transactions = pgTable('transactions', {
   assetIssuer: text('asset_issuer'),
   status: transactionStatusEnum('status').default('PENDING').notNull(),
   stellarTxHash: text('stellar_tx_hash'),
+  failureCode: text('failure_code'),
+  failureReason: text('failure_reason'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+// Soroban escrow: see contracts/escrow. Unlike `transactions`, the durable
+// idempotency row here is created *before* `deposit` is submitted, but the
+// on-chain escrow id is only known *after* it lands — so `onChainEscrowId`
+// starts null and is filled in once the deposit transaction succeeds.
+export const escrows = pgTable('escrows', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  idempotencyKey: text('idempotency_key').unique().notNull(),
+  payerStellarAccountId: uuid('payer_stellar_account_id')
+    .references(() => stellarAccounts.id, { onDelete: 'cascade' })
+    .notNull(),
+  payeePublicKey: text('payee_public_key').notNull(),
+  tokenContractId: text('token_contract_id').notNull(),
+  amount: text('amount').notNull(),
+  // The contract's u64 escrow id (stored as text — Postgres has no
+  // unsigned 64-bit type), null until the deposit transaction lands.
+  onChainEscrowId: text('on_chain_escrow_id'),
+  timeoutLedger: integer('timeout_ledger'),
+  status: escrowStatusEnum('status').default('PENDING').notNull(),
+  depositTxHash: text('deposit_tx_hash'),
+  finalizeTxHash: text('finalize_tx_hash'),
   failureCode: text('failure_code'),
   failureReason: text('failure_reason'),
   createdAt: timestamp('created_at').defaultNow().notNull(),

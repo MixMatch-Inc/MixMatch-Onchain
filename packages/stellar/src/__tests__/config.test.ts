@@ -28,4 +28,14 @@ describe('loadStellarConfig', () => {
     const config = loadStellarConfig({ STELLAR_NETWORK: 'not-a-real-network' });
     expect(config.network).toBe('testnet');
   });
+
+  it('leaves escrowContractId undefined when STELLAR_ESCROW_CONTRACT_ID is unset', () => {
+    const config = loadStellarConfig({});
+    expect(config.escrowContractId).toBeUndefined();
+  });
+
+  it('reads escrowContractId from STELLAR_ESCROW_CONTRACT_ID', () => {
+    const config = loadStellarConfig({ STELLAR_ESCROW_CONTRACT_ID: 'CABCDEF' });
+    expect(config.escrowContractId).toBe('CABCDEF');
+  });
 });

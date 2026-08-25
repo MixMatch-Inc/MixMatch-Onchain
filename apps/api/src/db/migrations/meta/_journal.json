@@ -43,6 +43,13 @@
       "when": 1787595700394,
       "tag": "0005_furry_songbird",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1787653676570,
+      "tag": "0006_grey_masque",
+      "breakpoints": true
     }
   ]
 }

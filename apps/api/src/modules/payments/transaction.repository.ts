@@ -31,6 +31,8 @@ export interface TransactionRecord {
   receiveAssetIssuer: string | null;
   /** Set only for a path payment: the exact amount the recipient receives. */
   destAmount: string | null;
+  /** Set only while status is PENDING_SIGNATURE, awaiting an admin co-signature. */
+  pendingEnvelopeXdr: string | null;
   status: TransactionStatus;
   stellarTxHash: string | null;
   failureCode: string | null;
@@ -79,6 +81,8 @@ export class TransactionRepository {
     receiveAssetCode?: string;
     receiveAssetIssuer?: string;
     destAmount?: string;
+    /** Set to create the row directly in PENDING_SIGNATURE, with the envelope awaiting co-signature. */
+    pendingEnvelopeXdr?: string;
   }): Promise<TransactionRecord> {
     try {
       const [row] = await this.db
@@ -91,7 +95,8 @@ export class TransactionRepository {
           receiveAssetCode: input.receiveAssetCode ?? null,
           receiveAssetIssuer: input.receiveAssetIssuer ?? null,
           destAmount: input.destAmount ?? null,
-          status: 'PENDING',
+          pendingEnvelopeXdr: input.pendingEnvelopeXdr ?? null,
+          status: input.pendingEnvelopeXdr ? 'PENDING_SIGNATURE' : 'PENDING',
         })
         .returning();
       if (!row) {
@@ -113,11 +118,18 @@ export class TransactionRepository {
       stellarTxHash?: string;
       failureCode?: string;
       failureReason?: string;
+      /** Pass true when resolving out of PENDING_SIGNATURE (approved or rejected) to clear the now-stale envelope. */
+      clearPendingEnvelope?: boolean;
     },
   ): Promise<TransactionRecord> {
+    const { clearPendingEnvelope, ...fields } = update;
     const [row] = await this.db
       .update(schema.transactions)
-      .set({ ...update, updatedAt: new Date() })
+      .set({
+        ...fields,
+        ...(clearPendingEnvelope ? { pendingEnvelopeXdr: null } : {}),
+        updatedAt: new Date(),
+      })
       .where(eq(schema.transactions.id, id))
       .returning();
     if (!row) {
@@ -146,6 +158,15 @@ export class TransactionRepository {
         .where(eq(schema.transactions.stellarAccountId, stellarAccountId)),
     ]);
     return { transactions: rows, total };
+  }
+
+  /** Admin-facing: every transaction awaiting a co-signature, across all users. */
+  async findPendingSignature(): Promise<TransactionRecord[]> {
+    return this.db
+      .select()
+      .from(schema.transactions)
+      .where(eq(schema.transactions.status, 'PENDING_SIGNATURE'))
+      .orderBy(desc(schema.transactions.createdAt));
   }
 
   async findStalePending(olderThan: Date): Promise<TransactionRecord[]> {

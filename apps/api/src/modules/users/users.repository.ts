@@ -1,4 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
+import type { UserRole } from '@mixmatch/shared';
 import { eq } from 'drizzle-orm';
 import { DATABASE } from '../../db/db.module';
 import * as schema from '../../db/schema';
@@ -8,6 +9,7 @@ export interface User {
   id: string;
   email: string;
   passwordHash: string | null;
+  role: UserRole;
   createdAt: Date;
   updatedAt: Date;
 }

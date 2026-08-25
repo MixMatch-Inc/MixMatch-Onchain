@@ -19,6 +19,7 @@ function buildTransaction(
     receiveAssetCode: null,
     receiveAssetIssuer: null,
     destAmount: null,
+    pendingEnvelopeXdr: null,
     status: 'SUCCESS',
     stellarTxHash: 'hash',
     failureCode: null,

@@ -81,6 +81,7 @@ function buildAccount(
     publicKey: 'GABCDEF',
     encryptedSecretKey: encryptSecretKey(REAL_TESTNET_SECRET, ENCRYPTION_KEY),
     network: 'testnet',
+    multisigConfigured: false,
     createdAt: new Date(),
     updatedAt: new Date(),
     ...overrides,

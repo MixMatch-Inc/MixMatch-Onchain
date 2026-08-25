@@ -49,6 +49,29 @@ const submitPathPaymentMock = jest.fn<
   Parameters<SubmitPathPaymentFn>
 >();
 
+type ConfigureMultisigFn = (input: {
+  adminPublicKey: string;
+}) => Promise<{ hash: string; ledger: number }>;
+type BuildHighValuePaymentEnvelopeFn = (input: {
+  amount: string;
+}) => Promise<{ envelopeXdr: string }>;
+type CoSignAndSubmitEnvelopeFn = (input: {
+  envelopeXdr: string;
+}) => Promise<{ hash: string; ledger: number }>;
+
+const configureMultisigMock = jest.fn<
+  Promise<{ hash: string; ledger: number }>,
+  Parameters<ConfigureMultisigFn>
+>();
+const buildHighValuePaymentEnvelopeMock = jest.fn<
+  Promise<{ envelopeXdr: string }>,
+  Parameters<BuildHighValuePaymentEnvelopeFn>
+>();
+const coSignAndSubmitEnvelopeMock = jest.fn<
+  Promise<{ hash: string; ledger: number }>,
+  Parameters<CoSignAndSubmitEnvelopeFn>
+>();
+
 jest.mock('@mixmatch/stellar', () => {
   const actual: object = jest.requireActual('@mixmatch/stellar');
   const establishTrustline: EstablishTrustlineFn = (input) =>
@@ -59,12 +82,22 @@ jest.mock('@mixmatch/stellar', () => {
     findStrictReceivePathMock(input);
   const submitPathPayment: SubmitPathPaymentFn = (input) =>
     submitPathPaymentMock(input);
+  const configureMultisig: ConfigureMultisigFn = (input) =>
+    configureMultisigMock(input);
+  const buildHighValuePaymentEnvelope: BuildHighValuePaymentEnvelopeFn = (
+    input,
+  ) => buildHighValuePaymentEnvelopeMock(input);
+  const coSignAndSubmitEnvelope: CoSignAndSubmitEnvelopeFn = (input) =>
+    coSignAndSubmitEnvelopeMock(input);
   return {
     ...actual,
     establishTrustline,
     findStrictSendPath,
     findStrictReceivePath,
     submitPathPayment,
+    configureMultisig,
+    buildHighValuePaymentEnvelope,
+    coSignAndSubmitEnvelope,
   };
 });
 import { encryptSecretKey } from './wallet-encryption';
@@ -100,6 +133,7 @@ function buildAccount(
     publicKey: 'GABCDEF',
     encryptedSecretKey: encryptSecretKey(REAL_TESTNET_SECRET, ENCRYPTION_KEY),
     network: 'testnet',
+    multisigConfigured: false,
     createdAt: new Date(),
     updatedAt: new Date(),
     ...overrides,
@@ -121,6 +155,7 @@ function buildTransaction(
     receiveAssetCode: null,
     receiveAssetIssuer: null,
     destAmount: null,
+    pendingEnvelopeXdr: null,
     status: 'PENDING',
     stellarTxHash: null,
     failureCode: null,
@@ -146,10 +181,14 @@ describe('PaymentsService', () => {
     findStrictSendPathMock.mockReset();
     findStrictReceivePathMock.mockReset();
     submitPathPaymentMock.mockReset();
+    configureMultisigMock.mockReset();
+    buildHighValuePaymentEnvelopeMock.mockReset();
+    coSignAndSubmitEnvelopeMock.mockReset();
     stellarAccountRepository = {
       findByUserId: jest.fn(),
       findById: jest.fn(),
       create: jest.fn(),
+      markMultisigConfigured: jest.fn(),
     };
     transactionRepository = {
       create: jest.fn(),
@@ -172,6 +211,7 @@ describe('PaymentsService', () => {
       paymentEngine as unknown as StellarPaymentEngine,
       {
         getOrThrow: jest.fn((key: string) => CONFIG_VALUES[key]),
+        get: jest.fn((key: string) => CONFIG_VALUES[key]),
       } as unknown as ConfigService,
     );
   });
@@ -438,6 +478,263 @@ describe('PaymentsService', () => {
           failureCode: 'slippage_exceeded',
         }),
       );
+    });
+  });
+
+  describe('sendPayment (high-value / multisig)', () => {
+    const ADMIN_SECRET = Keypair.random().secret();
+    const HIGH_VALUE_THRESHOLD_AMOUNT = '1000';
+
+    beforeEach(() => {
+      CONFIG_VALUES.adminSigningSecret = ADMIN_SECRET;
+      CONFIG_VALUES.highValueThresholdAmount = HIGH_VALUE_THRESHOLD_AMOUNT;
+    });
+
+    afterEach(() => {
+      delete CONFIG_VALUES.adminSigningSecret;
+      delete CONFIG_VALUES.highValueThresholdAmount;
+    });
+
+    it('leaves below-threshold payments unaffected — no multisig calls at all', async () => {
+      stellarAccountRepository.findByUserId.mockResolvedValue(buildAccount());
+      transactionRepository.create.mockResolvedValue(
+        buildTransaction({ amount: '10' }),
+      );
+      paymentEngine.submitPayment.mockResolvedValue({
+        hash: 'tx-hash',
+        ledger: 1,
+      });
+      transactionRepository.updateStatus.mockImplementation(
+        (_id: string, update: object) => buildTransaction({ ...update }),
+      );
+
+      const result = await service.sendPayment('user-1', {
+        destinationPublicKey: 'GDEST',
+        amount: '10',
+      });
+
+      expect(result.status).toBe('SUCCESS');
+      expect(configureMultisigMock).not.toHaveBeenCalled();
+      expect(buildHighValuePaymentEnvelopeMock).not.toHaveBeenCalled();
+      expect(paymentEngine.submitPayment).toHaveBeenCalled();
+    });
+
+    it('leaves a payment at exactly the threshold unaffected (strictly greater-than gates it)', async () => {
+      stellarAccountRepository.findByUserId.mockResolvedValue(buildAccount());
+      transactionRepository.create.mockResolvedValue(
+        buildTransaction({ amount: HIGH_VALUE_THRESHOLD_AMOUNT }),
+      );
+      paymentEngine.submitPayment.mockResolvedValue({
+        hash: 'tx-hash',
+        ledger: 1,
+      });
+      transactionRepository.updateStatus.mockImplementation(
+        (_id: string, update: object) => buildTransaction({ ...update }),
+      );
+
+      await service.sendPayment('user-1', {
+        destinationPublicKey: 'GDEST',
+        amount: HIGH_VALUE_THRESHOLD_AMOUNT,
+      });
+
+      expect(buildHighValuePaymentEnvelopeMock).not.toHaveBeenCalled();
+    });
+
+    it("configures multisig on the account's first high-value payment, then builds and persists a PENDING_SIGNATURE envelope without submitting", async () => {
+      const account = buildAccount({ multisigConfigured: false });
+      stellarAccountRepository.findByUserId.mockResolvedValue(account);
+      transactionRepository.findByIdempotencyKey.mockResolvedValue(null);
+      configureMultisigMock.mockResolvedValue({
+        hash: 'config-hash',
+        ledger: 1,
+      });
+      stellarAccountRepository.markMultisigConfigured.mockResolvedValue(
+        buildAccount({ multisigConfigured: true }),
+      );
+      buildHighValuePaymentEnvelopeMock.mockResolvedValue({
+        envelopeXdr: 'envelope-xdr',
+      });
+      transactionRepository.create.mockResolvedValue(
+        buildTransaction({ amount: '5000', status: 'PENDING_SIGNATURE' }),
+      );
+
+      const result = await service.sendPayment('user-1', {
+        destinationPublicKey: 'GDEST',
+        amount: '5000',
+      });
+
+      expect(result.status).toBe('PENDING_SIGNATURE');
+      expect(configureMultisigMock).toHaveBeenCalledTimes(1);
+      expect(
+        stellarAccountRepository.markMultisigConfigured,
+      ).toHaveBeenCalledWith('account-1');
+      expect(buildHighValuePaymentEnvelopeMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          amount: '5000',
+          destinationPublicKey: 'GDEST',
+        }),
+      );
+      expect(transactionRepository.create).toHaveBeenCalledWith(
+        expect.objectContaining({ pendingEnvelopeXdr: 'envelope-xdr' }),
+      );
+      expect(paymentEngine.submitPayment).not.toHaveBeenCalled();
+    });
+
+    it('skips re-configuring multisig when the account is already configured', async () => {
+      const account = buildAccount({ multisigConfigured: true });
+      stellarAccountRepository.findByUserId.mockResolvedValue(account);
+      transactionRepository.findByIdempotencyKey.mockResolvedValue(null);
+      buildHighValuePaymentEnvelopeMock.mockResolvedValue({
+        envelopeXdr: 'envelope-xdr',
+      });
+      transactionRepository.create.mockResolvedValue(
+        buildTransaction({ amount: '5000', status: 'PENDING_SIGNATURE' }),
+      );
+
+      await service.sendPayment('user-1', {
+        destinationPublicKey: 'GDEST',
+        amount: '5000',
+      });
+
+      expect(configureMultisigMock).not.toHaveBeenCalled();
+    });
+
+    it('returns the existing transaction on a duplicate idempotency key instead of building a new envelope', async () => {
+      stellarAccountRepository.findByUserId.mockResolvedValue(
+        buildAccount({ multisigConfigured: true }),
+      );
+      const existing = buildTransaction({
+        status: 'PENDING_SIGNATURE',
+        amount: '5000',
+      });
+      transactionRepository.findByIdempotencyKey.mockResolvedValue(existing);
+
+      const result = await service.sendPayment('user-1', {
+        destinationPublicKey: 'GDEST',
+        amount: '5000',
+        idempotencyKey: 'key-1',
+      });
+
+      expect(result).toBe(existing);
+      expect(buildHighValuePaymentEnvelopeMock).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('approvePendingSignature', () => {
+    it('co-signs and submits, marking the transaction SUCCESS and clearing the envelope', async () => {
+      const pending = buildTransaction({
+        status: 'PENDING_SIGNATURE',
+        pendingEnvelopeXdr: 'envelope-xdr',
+      });
+      transactionRepository.findById.mockResolvedValue(pending);
+      CONFIG_VALUES.adminSigningSecret = Keypair.random().secret();
+      coSignAndSubmitEnvelopeMock.mockResolvedValue({
+        hash: 'final-hash',
+        ledger: 1,
+      });
+      transactionRepository.updateStatus.mockResolvedValue(
+        buildTransaction({ status: 'SUCCESS', stellarTxHash: 'final-hash' }),
+      );
+
+      const result = await service.approvePendingSignature('tx-1');
+
+      expect(result.status).toBe('SUCCESS');
+      expect(coSignAndSubmitEnvelopeMock).toHaveBeenCalledWith(
+        expect.objectContaining({ envelopeXdr: 'envelope-xdr' }),
+      );
+      expect(transactionRepository.updateStatus).toHaveBeenCalledWith(
+        'tx-1',
+        expect.objectContaining({
+          status: 'SUCCESS',
+          stellarTxHash: 'final-hash',
+          clearPendingEnvelope: true,
+        }),
+      );
+      delete CONFIG_VALUES.adminSigningSecret;
+    });
+
+    it('marks the transaction FAILED when co-signed submission fails (e.g. rejected second signature)', async () => {
+      const pending = buildTransaction({
+        status: 'PENDING_SIGNATURE',
+        pendingEnvelopeXdr: 'envelope-xdr',
+      });
+      transactionRepository.findById.mockResolvedValue(pending);
+      CONFIG_VALUES.adminSigningSecret = Keypair.random().secret();
+      coSignAndSubmitEnvelopeMock.mockRejectedValue(
+        new StellarPaymentError('malformed_transaction', 'bad auth'),
+      );
+      transactionRepository.updateStatus.mockResolvedValue(
+        buildTransaction({ status: 'FAILED' }),
+      );
+
+      await expect(
+        service.approvePendingSignature('tx-1'),
+      ).rejects.toBeInstanceOf(PaymentFailedError);
+      expect(transactionRepository.updateStatus).toHaveBeenCalledWith(
+        'tx-1',
+        expect.objectContaining({
+          status: 'FAILED',
+          clearPendingEnvelope: true,
+        }),
+      );
+      delete CONFIG_VALUES.adminSigningSecret;
+    });
+
+    it('throws when the transaction is not awaiting a signature', async () => {
+      transactionRepository.findById.mockResolvedValue(
+        buildTransaction({ status: 'SUCCESS' }),
+      );
+
+      await expect(
+        service.approvePendingSignature('tx-1'),
+      ).rejects.toBeInstanceOf(PaymentFailedError);
+      expect(coSignAndSubmitEnvelopeMock).not.toHaveBeenCalled();
+    });
+
+    it('throws NotFoundException for a transaction that does not exist', async () => {
+      transactionRepository.findById.mockResolvedValue(null);
+
+      await expect(
+        service.approvePendingSignature('missing'),
+      ).rejects.toBeInstanceOf(NotFoundException);
+    });
+  });
+
+  describe('rejectPendingSignature', () => {
+    it('marks the transaction FAILED without ever attempting submission', async () => {
+      const pending = buildTransaction({
+        status: 'PENDING_SIGNATURE',
+        pendingEnvelopeXdr: 'envelope-xdr',
+      });
+      transactionRepository.findById.mockResolvedValue(pending);
+      transactionRepository.updateStatus.mockResolvedValue(
+        buildTransaction({ status: 'FAILED', failureCode: 'admin_rejected' }),
+      );
+
+      const result = await service.rejectPendingSignature('tx-1');
+
+      expect(result.status).toBe('FAILED');
+      expect(coSignAndSubmitEnvelopeMock).not.toHaveBeenCalled();
+      expect(transactionRepository.updateStatus).toHaveBeenCalledWith(
+        'tx-1',
+        expect.objectContaining({
+          status: 'FAILED',
+          failureCode: 'admin_rejected',
+          clearPendingEnvelope: true,
+        }),
+      );
+    });
+  });
+
+  describe('listPendingSignatures', () => {
+    it('returns every transaction awaiting a co-signature', async () => {
+      transactionRepository.findPendingSignature = jest
+        .fn()
+        .mockResolvedValue([buildTransaction({ status: 'PENDING_SIGNATURE' })]);
+
+      const result = await service.listPendingSignatures();
+
+      expect(result).toHaveLength(1);
     });
   });
 

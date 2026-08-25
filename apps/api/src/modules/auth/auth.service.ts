@@ -19,6 +19,7 @@ function toAuthUser(user: User): AuthUser {
   return {
     id: user.id,
     email: user.email,
+    role: user.role,
     createdAt: user.createdAt.toISOString(),
     updatedAt: user.updatedAt.toISOString(),
   };
@@ -69,7 +70,7 @@ export class AuthService {
   }
 
   private buildTokenResponse(user: User): AuthTokenResponse {
-    const accessToken = this.jwtService.sign({ sub: user.id });
+    const accessToken = this.jwtService.sign({ sub: user.id, role: user.role });
     return { user: toAuthUser(user), accessToken };
   }
 }

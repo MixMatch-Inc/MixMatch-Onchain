@@ -6,7 +6,10 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import {
+  buildHighValuePaymentEnvelope,
   classifyStellarPaymentError,
+  configureMultisig,
+  coSignAndSubmitEnvelope,
   DefaultStellarClient,
   establishTrustline,
   findStrictReceivePath,
@@ -120,6 +123,10 @@ export class PaymentsService {
       quote = await this.resolvePathQuote(input);
     }
 
+    if (this.isHighValuePayment(input, quote)) {
+      return this.sendHighValuePayment(account, input, idempotencyKey);
+    }
+
     let transaction: TransactionRecord;
     try {
       transaction = await this.transactionRepository.create({
@@ -187,6 +194,197 @@ export class PaymentsService {
       });
       throw new PaymentFailedError(classified.kind, classified.message);
     }
+  }
+
+  /**
+   * True if `input` needs an admin co-signature before it can be
+   * submitted — see `sendHighValuePayment`. Scoped deliberately narrowly
+   * for now: only plain native-XLM payments (no custom asset, no path
+   * payment) are gated, and only when `ADMIN_SIGNING_SECRET` is
+   * configured at all. Custom-asset and path-payment amounts aren't
+   * gated yet — a known limitation, not a silent gap, since extending the
+   * gate to those requires deciding what "value" means across assets
+   * (a price oracle), which is out of scope here.
+   */
+  private isHighValuePayment(
+    input: SendPaymentInput,
+    quote: PathQuote | undefined,
+  ): boolean {
+    if (!this.adminSigningSecret() || quote || input.assetCode) {
+      return false;
+    }
+    return Number(input.amount) > Number(this.highValueThresholdAmount());
+  }
+
+  /**
+   * Handles a payment above the high-value threshold: lazily configures
+   * the account for multisig on its first high-value payment (adds the
+   * platform's admin key as a co-signer, sets thresholds — see
+   * `@mixmatch/stellar`'s `configureMultisig`), builds a payment
+   * transaction that requires both signatures to authorize, signs it with
+   * only the account's own key, and persists it as `PENDING_SIGNATURE`
+   * *without* submitting. An admin must explicitly approve (co-sign and
+   * submit) or reject it — see `approvePendingSignature`/`rejectPendingSignature`.
+   */
+  private async sendHighValuePayment(
+    account: StellarAccountRecord,
+    input: SendPaymentInput,
+    idempotencyKey: string,
+  ): Promise<TransactionRecord> {
+    const existing =
+      await this.transactionRepository.findByIdempotencyKey(idempotencyKey);
+    if (existing) {
+      return existing;
+    }
+
+    let currentAccount = account;
+    if (!currentAccount.multisigConfigured) {
+      const wallet = this.walletForAccount(currentAccount);
+      await configureMultisig({
+        client: this.stellarClient,
+        wallet,
+        adminPublicKey: this.adminWallet().publicKey,
+      });
+      currentAccount =
+        await this.stellarAccountRepository.markMultisigConfigured(
+          currentAccount.id,
+        );
+    }
+
+    const wallet = this.walletForAccount(currentAccount);
+    const { envelopeXdr } = await buildHighValuePaymentEnvelope({
+      client: this.stellarClient,
+      sourceWallet: wallet,
+      destinationPublicKey: input.destinationPublicKey,
+      amount: input.amount,
+      memo: input.memo,
+    });
+
+    try {
+      return await this.transactionRepository.create({
+        idempotencyKey,
+        stellarAccountId: currentAccount.id,
+        destinationPublicKey: input.destinationPublicKey,
+        amount: input.amount,
+        memo: input.memo,
+        pendingEnvelopeXdr: envelopeXdr,
+      });
+    } catch (error) {
+      if (error instanceof DuplicateIdempotencyKeyError) {
+        const raced =
+          await this.transactionRepository.findByIdempotencyKey(idempotencyKey);
+        if (raced) {
+          return raced;
+        }
+      }
+      throw error;
+    }
+  }
+
+  /**
+   * Approves a `PENDING_SIGNATURE` transaction: co-signs its stored
+   * envelope with the admin key and submits it. Admin-only — see
+   * `modules/payments/admin.controller.ts`.
+   */
+  async approvePendingSignature(
+    transactionId: string,
+  ): Promise<TransactionRecord> {
+    const transaction =
+      await this.getPendingSignatureTransaction(transactionId);
+
+    try {
+      const result = await coSignAndSubmitEnvelope({
+        client: this.stellarClient,
+        envelopeXdr: transaction.pendingEnvelopeXdr as string,
+        adminWallet: this.adminWallet(),
+      });
+      return await this.transactionRepository.updateStatus(transaction.id, {
+        status: 'SUCCESS',
+        stellarTxHash: result.hash,
+        clearPendingEnvelope: true,
+      });
+    } catch (error) {
+      const classified =
+        error instanceof StellarPaymentError
+          ? error
+          : classifyStellarPaymentError(error);
+      await this.transactionRepository.updateStatus(transaction.id, {
+        status: 'FAILED',
+        failureCode: classified.kind,
+        failureReason: classified.message,
+        clearPendingEnvelope: true,
+      });
+      throw new PaymentFailedError(classified.kind, classified.message);
+    }
+  }
+
+  /**
+   * Rejects a `PENDING_SIGNATURE` transaction: marks it `FAILED` without
+   * ever attempting submission (the envelope, missing the admin's
+   * signature, was never valid to submit anyway). Admin-only.
+   */
+  async rejectPendingSignature(
+    transactionId: string,
+  ): Promise<TransactionRecord> {
+    const transaction =
+      await this.getPendingSignatureTransaction(transactionId);
+    return this.transactionRepository.updateStatus(transaction.id, {
+      status: 'FAILED',
+      failureCode: 'admin_rejected',
+      failureReason: 'An administrator declined to co-sign this payment',
+      clearPendingEnvelope: true,
+    });
+  }
+
+  /** Admin-facing: every transaction currently awaiting a co-signature, across all users. */
+  async listPendingSignatures(): Promise<TransactionRecord[]> {
+    return this.transactionRepository.findPendingSignature();
+  }
+
+  private async getPendingSignatureTransaction(
+    transactionId: string,
+  ): Promise<TransactionRecord> {
+    const transaction =
+      await this.transactionRepository.findById(transactionId);
+    if (!transaction) {
+      throw new NotFoundException('Transaction not found');
+    }
+    if (
+      transaction.status !== 'PENDING_SIGNATURE' ||
+      !transaction.pendingEnvelopeXdr
+    ) {
+      throw new PaymentFailedError(
+        'malformed_transaction',
+        `Transaction ${transactionId} is not awaiting a signature`,
+      );
+    }
+    return transaction;
+  }
+
+  private walletForAccount(account: StellarAccountRecord): KeypairWallet {
+    return KeypairWallet.fromSecret(
+      account.network,
+      decryptSecretKey(account.encryptedSecretKey, this.walletEncryptionKey()),
+    );
+  }
+
+  private adminWallet(): KeypairWallet {
+    return KeypairWallet.fromSecret(
+      this.stellarClient.getNetwork(),
+      this.adminSigningSecretOrThrow(),
+    );
+  }
+
+  private adminSigningSecret(): string | undefined {
+    return this.configService.get<string>('adminSigningSecret');
+  }
+
+  private adminSigningSecretOrThrow(): string {
+    return this.configService.getOrThrow<string>('adminSigningSecret');
+  }
+
+  private highValueThresholdAmount(): string {
+    return this.configService.getOrThrow<string>('highValueThresholdAmount');
   }
 
   /**

@@ -4,8 +4,13 @@
  * Horizon was unreachable for the whole escalation window), so the outcome
  * is genuinely unknown rather than a confirmed failure. It needs a human
  * to check the ledger directly.
+ *
+ * `PENDING_SIGNATURE` is for a payment above the high-value threshold: the
+ * caller's own signature is on file, but an admin co-signature is still
+ * required before it can be submitted to the network. See
+ * `@mixmatch/stellar`'s `buildHighValuePaymentEnvelope`/`configureMultisig`.
  */
-export type TransactionStatus = 'PENDING' | 'SUCCESS' | 'FAILED' | 'NEEDS_REVIEW';
+export type TransactionStatus = 'PENDING' | 'PENDING_SIGNATURE' | 'SUCCESS' | 'FAILED' | 'NEEDS_REVIEW';
 
 export interface TransactionRecord {
   id: string;
@@ -45,6 +50,11 @@ export interface TransactionHistoryResponse {
   total: number;
   page: number;
   limit: number;
+}
+
+/** Admin-facing: transactions awaiting a co-signature, across all users. */
+export interface PendingSignatureTransactionsResponse {
+  transactions: TransactionRecord[];
 }
 
 export interface StellarAccountResponse {

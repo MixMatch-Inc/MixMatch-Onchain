@@ -10,3 +10,6 @@ export * from './payment.js';
 export * from './trustline.js';
 export * from './escrow.js';
 export * from './path-payment.js';
+export * from './sep/sep1.js';
+export * from './sep/sep10.js';
+export * from './sep/sep24.js';

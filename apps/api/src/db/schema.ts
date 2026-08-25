@@ -29,6 +29,28 @@ export const escrowStatusEnum = pgEnum('escrow_status', [
   'REFUNDED',
   'FAILED',
 ]);
+export const anchorTransactionKindEnum = pgEnum('anchor_transaction_kind', [
+  'deposit',
+  'withdrawal',
+]);
+// Mirrors SEP-24's `status` field verbatim (see
+// @mixmatch/stellar's Sep24TransactionStatus) — not our own vocabulary,
+// so it round-trips exactly what the anchor reports.
+export const anchorTransactionStatusEnum = pgEnum('anchor_transaction_status', [
+  'incomplete',
+  'pending_user_transfer_start',
+  'pending_user_transfer_complete',
+  'pending_external',
+  'pending_anchor',
+  'pending_stellar',
+  'pending_trust',
+  'pending_user',
+  'on_hold',
+  'completed',
+  'refunded',
+  'expired',
+  'error',
+]);
 
 // Identity Models
 export const users = pgTable('users', {
@@ -116,6 +138,38 @@ export const transactions = pgTable('transactions', {
   stellarTxHash: text('stellar_tx_hash'),
   failureCode: text('failure_code'),
   failureReason: text('failure_reason'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+// SEP-24 anchor deposit/withdraw: a separate table rather than reusing
+// `transactions` — a SEP-24 transfer isn't a Stellar payment we build and
+// submit ourselves (there's no `destinationPublicKey`/`sendPayment`-style
+// flow), it's a multi-minute-to-multi-hour external process on an
+// anchor's own systems that we poll the status of. See
+// modules/payments/anchor.service.ts.
+export const anchorTransactions = pgTable('anchor_transactions', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  stellarAccountId: uuid('stellar_account_id')
+    .references(() => stellarAccounts.id, { onDelete: 'cascade' })
+    .notNull(),
+  kind: anchorTransactionKindEnum('kind').notNull(),
+  assetCode: text('asset_code').notNull(),
+  homeDomain: text('home_domain').notNull(),
+  // The anchor's own id for this transfer — what GET /transaction is
+  // polled with. Unique per anchor; scoped globally here since this
+  // codebase only integrates one anchor at a time (see ANCHOR_HOME_DOMAIN).
+  sep24TransactionId: text('sep24_transaction_id').unique().notNull(),
+  status: anchorTransactionStatusEnum('status').notNull(),
+  interactiveUrl: text('interactive_url'),
+  moreInfoUrl: text('more_info_url'),
+  amountIn: text('amount_in'),
+  amountOut: text('amount_out'),
+  stellarTransactionId: text('stellar_transaction_id'),
+  externalTransactionId: text('external_transaction_id'),
+  message: text('message'),
+  startedAt: timestamp('started_at').notNull(),
+  completedAt: timestamp('completed_at'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });

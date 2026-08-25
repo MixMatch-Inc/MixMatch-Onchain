@@ -19,7 +19,8 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@stellar/stellar-sdk": "^13.1.0"
+    "@stellar/stellar-sdk": "^13.1.0",
+    "toml": "^5.0.0"
   },
   "devDependencies": {
     "@repo/eslint-config": "workspace:*",

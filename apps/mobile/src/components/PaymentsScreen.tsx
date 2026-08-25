@@ -7,6 +7,7 @@ import {
   getTransactionHistory,
   quotePath,
   sendPayment,
+  subscribeToTransactionStream,
 } from '../services/payments-client';
 import MyQrCode from './MyQrCode';
 import QrScanner from './QrScanner';
@@ -29,6 +30,7 @@ export default function PaymentsScreen() {
   const [scannedDestination, setScannedDestination] = useState<string | undefined>(undefined);
   const [transactions, setTransactions] = useState<TransactionRecord[]>([]);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
+  const [streamAvailable, setStreamAvailable] = useState(true);
 
   const loadAccount = useCallback(async () => {
     if (!accessToken) return;
@@ -56,6 +58,41 @@ export default function PaymentsScreen() {
       void loadHistory();
     }
   }, [tab, loadHistory]);
+
+  // Real-time transaction status: subscribe once per session rather than
+  // per tab-visit, so an in-flight payment updates even while the user is
+  // elsewhere in the app. Falls back to the existing tab-focus poll above
+  // (and a slow background poll below) if the stream can't be opened.
+  useEffect(() => {
+    if (!accessToken) return;
+
+    const handle = subscribeToTransactionStream(
+      accessToken,
+      (transaction) => {
+        setStreamAvailable(true);
+        setTransactions((prev) => {
+          const index = prev.findIndex((existing) => existing.id === transaction.id);
+          if (index === -1) {
+            return [transaction, ...prev];
+          }
+          const next = [...prev];
+          next[index] = transaction;
+          return next;
+        });
+      },
+      () => setStreamAvailable(false),
+    );
+
+    return () => handle.close();
+  }, [accessToken]);
+
+  // Fallback only: re-poll periodically while viewing history if the
+  // stream connection isn't available, so status updates still arrive.
+  useEffect(() => {
+    if (streamAvailable || tab !== 'history') return;
+    const interval = setInterval(() => void loadHistory(), 15_000);
+    return () => clearInterval(interval);
+  }, [streamAvailable, tab, loadHistory]);
 
   const handleScanned = (data: string) => {
     setScannedDestination(data);

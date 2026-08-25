@@ -72,6 +72,31 @@ const coSignAndSubmitEnvelopeMock = jest.fn<
   Parameters<CoSignAndSubmitEnvelopeFn>
 >();
 
+interface FakeStreamEvent {
+  type: string;
+  to?: string;
+  amount?: string;
+  assetType?: string;
+  assetCode?: string;
+  assetIssuer?: string;
+  transactionHash: string;
+  createdAt: string;
+}
+
+interface FakeStreamParams {
+  accountPublicKey: string;
+  onEvent: (event: FakeStreamEvent) => void;
+}
+
+type StreamAccountPaymentsFn = (params: FakeStreamParams) => {
+  close: () => void;
+};
+
+const streamAccountPaymentsMock = jest.fn<
+  { close: () => void },
+  Parameters<StreamAccountPaymentsFn>
+>();
+
 jest.mock('@mixmatch/stellar', () => {
   const actual: object = jest.requireActual('@mixmatch/stellar');
   const establishTrustline: EstablishTrustlineFn = (input) =>
@@ -89,6 +114,8 @@ jest.mock('@mixmatch/stellar', () => {
   ) => buildHighValuePaymentEnvelopeMock(input);
   const coSignAndSubmitEnvelope: CoSignAndSubmitEnvelopeFn = (input) =>
     coSignAndSubmitEnvelopeMock(input);
+  const streamAccountPayments: StreamAccountPaymentsFn = (params) =>
+    streamAccountPaymentsMock(params);
   return {
     ...actual,
     establishTrustline,
@@ -98,6 +125,7 @@ jest.mock('@mixmatch/stellar', () => {
     configureMultisig,
     buildHighValuePaymentEnvelope,
     coSignAndSubmitEnvelope,
+    streamAccountPayments,
   };
 });
 import { encryptSecretKey } from './wallet-encryption';
@@ -138,6 +166,10 @@ function buildAccount(
     updatedAt: new Date(),
     ...overrides,
   };
+}
+
+function flushMicrotasks(): Promise<void> {
+  return new Promise((resolve) => setImmediate(resolve));
 }
 
 function buildTransaction(
@@ -184,6 +216,7 @@ describe('PaymentsService', () => {
     configureMultisigMock.mockReset();
     buildHighValuePaymentEnvelopeMock.mockReset();
     coSignAndSubmitEnvelopeMock.mockReset();
+    streamAccountPaymentsMock.mockReset();
     stellarAccountRepository = {
       findByUserId: jest.fn(),
       findById: jest.fn(),
@@ -197,6 +230,7 @@ describe('PaymentsService', () => {
       updateStatus: jest.fn(),
       listByStellarAccountId: jest.fn(),
       findStalePending: jest.fn(),
+      findPendingByStellarAccountId: jest.fn().mockResolvedValue([]),
     };
     paymentEngine = { submitPayment: jest.fn() };
     stellarClient = {
@@ -735,6 +769,137 @@ describe('PaymentsService', () => {
       const result = await service.listPendingSignatures();
 
       expect(result).toHaveLength(1);
+    });
+  });
+
+  describe('streamTransactionUpdates', () => {
+    it('completes without starting a Horizon stream when the caller has no Stellar account yet', async () => {
+      stellarAccountRepository.findByUserId.mockResolvedValue(null);
+
+      const events: TransactionRecord[] = [];
+      let completed = false;
+      service.streamTransactionUpdates('user-1').subscribe({
+        next: (t) => events.push(t),
+        complete: () => {
+          completed = true;
+        },
+      });
+
+      await flushMicrotasks();
+
+      expect(completed).toBe(true);
+      expect(events).toEqual([]);
+      expect(streamAccountPaymentsMock).not.toHaveBeenCalled();
+    });
+
+    it('starts a Horizon stream for the account and emits the matched transaction on a matching event', async () => {
+      stellarAccountRepository.findByUserId.mockResolvedValue(buildAccount());
+      transactionRepository.findPendingByStellarAccountId.mockResolvedValue([
+        buildTransaction({
+          id: 'tx-1',
+          destinationPublicKey: 'GDEST',
+          amount: '10.0000000',
+          createdAt: new Date('2026-01-01T00:00:00.000Z'),
+        }),
+      ]);
+      transactionRepository.updateStatus.mockResolvedValue(
+        buildTransaction({
+          id: 'tx-1',
+          status: 'SUCCESS',
+          stellarTxHash: 'stream-hash',
+        }),
+      );
+      const closeMock = jest.fn();
+      streamAccountPaymentsMock.mockImplementation((params) => {
+        setTimeout(() => {
+          params.onEvent({
+            type: 'payment',
+            to: 'GDEST',
+            amount: '10.0000000',
+            assetType: 'native',
+            transactionHash: 'stream-hash',
+            createdAt: '2026-01-01T00:01:00.000Z',
+          });
+        }, 0);
+        return { close: closeMock };
+      });
+
+      const events: TransactionRecord[] = [];
+      const subscription = service
+        .streamTransactionUpdates('user-1')
+        .subscribe((t) => events.push(t));
+
+      await flushMicrotasks();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      await flushMicrotasks();
+
+      expect(streamAccountPaymentsMock).toHaveBeenCalledWith(
+        expect.objectContaining({ accountPublicKey: 'GABCDEF' }),
+      );
+      expect(transactionRepository.updateStatus).toHaveBeenCalledWith(
+        'tx-1',
+        expect.objectContaining({
+          status: 'SUCCESS',
+          stellarTxHash: 'stream-hash',
+        }),
+      );
+      expect(events).toHaveLength(1);
+      expect(events[0]?.status).toBe('SUCCESS');
+
+      subscription.unsubscribe();
+      expect(closeMock).toHaveBeenCalled();
+    });
+
+    it('does not update or emit anything for an event that matches no pending transaction', async () => {
+      stellarAccountRepository.findByUserId.mockResolvedValue(buildAccount());
+      transactionRepository.findPendingByStellarAccountId.mockResolvedValue([
+        buildTransaction({
+          id: 'tx-1',
+          destinationPublicKey: 'GDEST',
+          amount: '10.0000000',
+        }),
+      ]);
+      streamAccountPaymentsMock.mockImplementation((params) => {
+        setTimeout(() => {
+          params.onEvent({
+            type: 'payment',
+            to: 'GDEST',
+            amount: '999.0000000',
+            assetType: 'native',
+            transactionHash: 'unrelated-hash',
+            createdAt: '2026-01-01T00:01:00.000Z',
+          });
+        }, 0);
+        return { close: jest.fn() };
+      });
+
+      const events: TransactionRecord[] = [];
+      const subscription = service
+        .streamTransactionUpdates('user-1')
+        .subscribe((t) => events.push(t));
+
+      await flushMicrotasks();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      await flushMicrotasks();
+
+      expect(transactionRepository.updateStatus).not.toHaveBeenCalled();
+      expect(events).toEqual([]);
+      subscription.unsubscribe();
+    });
+
+    it('closes the underlying Horizon stream when the caller unsubscribes', async () => {
+      stellarAccountRepository.findByUserId.mockResolvedValue(buildAccount());
+      const closeMock = jest.fn();
+      streamAccountPaymentsMock.mockReturnValue({ close: closeMock });
+
+      const subscription = service
+        .streamTransactionUpdates('user-1')
+        .subscribe();
+      await flushMicrotasks();
+
+      subscription.unsubscribe();
+
+      expect(closeMock).toHaveBeenCalled();
     });
   });
 

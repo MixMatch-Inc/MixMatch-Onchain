@@ -169,6 +169,21 @@ export class TransactionRepository {
       .orderBy(desc(schema.transactions.createdAt));
   }
 
+  /** Every PENDING transaction for one account — used to match against live Horizon stream events, see PaymentsService.streamTransactionUpdates. */
+  async findPendingByStellarAccountId(
+    stellarAccountId: string,
+  ): Promise<TransactionRecord[]> {
+    return this.db
+      .select()
+      .from(schema.transactions)
+      .where(
+        and(
+          eq(schema.transactions.stellarAccountId, stellarAccountId),
+          eq(schema.transactions.status, 'PENDING'),
+        ),
+      );
+  }
+
   async findStalePending(olderThan: Date): Promise<TransactionRecord[]> {
     return this.db
       .select()

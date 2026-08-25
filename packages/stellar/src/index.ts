@@ -13,3 +13,4 @@ export * from './path-payment.js';
 export * from './sep/sep1.js';
 export * from './sep/sep10.js';
 export * from './sep/sep24.js';
+export * from './multisig.js';

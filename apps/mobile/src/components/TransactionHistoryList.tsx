@@ -7,6 +7,7 @@ export interface TransactionHistoryListProps {
 
 const STATUS_COLOR: Record<TransactionRecord['status'], string> = {
   PENDING: '#b8860b',
+  PENDING_SIGNATURE: '#8860b8',
   SUCCESS: '#0a0',
   FAILED: '#e00',
   NEEDS_REVIEW: '#a05a00',

@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { AuthModule } from '../auth/auth.module';
 import { StellarModule } from '../stellar/stellar.module';
+import { AdminController } from './admin.controller';
 import { AnchorController } from './anchor.controller';
 import { AnchorService } from './anchor.service';
 import { AnchorTransactionRepository } from './anchor-transaction.repository';
@@ -15,7 +16,12 @@ import { TransactionRepository } from './transaction.repository';
 
 @Module({
   imports: [AuthModule, StellarModule],
-  controllers: [PaymentsController, EscrowController, AnchorController],
+  controllers: [
+    PaymentsController,
+    EscrowController,
+    AnchorController,
+    AdminController,
+  ],
   providers: [
     PaymentsService,
     StellarAccountRepository,

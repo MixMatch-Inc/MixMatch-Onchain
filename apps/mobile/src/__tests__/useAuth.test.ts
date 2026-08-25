@@ -2,8 +2,17 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { act, renderHook, waitFor } from '@testing-library/react-native';
 import { useAuth } from '../hooks/useAuth';
 
-const AUTH: { user: { id: string; email: string; createdAt: string; updatedAt: string }; accessToken: string } = {
-  user: { id: '1', email: 'alice@test.com', createdAt: '2025-01-01T00:00:00.000Z', updatedAt: '2025-01-01T00:00:00.000Z' },
+const AUTH: {
+  user: { id: string; email: string; role: 'USER' | 'ADMIN'; createdAt: string; updatedAt: string };
+  accessToken: string;
+} = {
+  user: {
+    id: '1',
+    email: 'alice@test.com',
+    role: 'USER',
+    createdAt: '2025-01-01T00:00:00.000Z',
+    updatedAt: '2025-01-01T00:00:00.000Z',
+  },
   accessToken: 'token-abc',
 };
 

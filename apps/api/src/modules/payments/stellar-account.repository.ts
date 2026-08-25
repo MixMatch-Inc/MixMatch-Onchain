@@ -11,6 +11,7 @@ export interface StellarAccountRecord {
   publicKey: string;
   encryptedSecretKey: string;
   network: StellarNetwork;
+  multisigConfigured: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -49,6 +50,18 @@ export class StellarAccountRepository {
       .returning();
     if (!row) {
       throw new Error('Failed to create Stellar account');
+    }
+    return row;
+  }
+
+  async markMultisigConfigured(id: string): Promise<StellarAccountRecord> {
+    const [row] = await this.db
+      .update(schema.stellarAccounts)
+      .set({ multisigConfigured: true, updatedAt: new Date() })
+      .where(eq(schema.stellarAccounts.id, id))
+      .returning();
+    if (!row) {
+      throw new Error(`Stellar account not found: ${id}`);
     }
     return row;
   }

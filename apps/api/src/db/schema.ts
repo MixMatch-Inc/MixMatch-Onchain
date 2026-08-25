@@ -8,16 +8,22 @@ import {
   real,
   vector,
   integer,
+  boolean,
 } from 'drizzle-orm/pg-core';
 
 // Enums
 export const providerEnum = pgEnum('provider', ['spotify', 'apple_music']);
+export const userRoleEnum = pgEnum('user_role', ['USER', 'ADMIN']);
 export const stellarNetworkEnum = pgEnum('stellar_network', [
   'testnet',
   'public',
 ]);
 export const transactionStatusEnum = pgEnum('transaction_status', [
   'PENDING',
+  // Above the high-value threshold: the caller's own signature is on file
+  // but an admin co-signature is still required before submission. See
+  // modules/payments/multisig — apps/api/src/modules/payments/payments.service.ts.
+  'PENDING_SIGNATURE',
   'SUCCESS',
   'FAILED',
   'NEEDS_REVIEW',
@@ -57,6 +63,7 @@ export const users = pgTable('users', {
   id: uuid('id').defaultRandom().primaryKey(),
   email: text('email').unique().notNull(),
   passwordHash: text('password_hash'),
+  role: userRoleEnum('role').default('USER').notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });
@@ -104,6 +111,11 @@ export const stellarAccounts = pgTable('stellar_accounts', {
   // modules/payments/wallet-encryption.ts. Never stored in plaintext.
   encryptedSecretKey: text('encrypted_secret_key').notNull(),
   network: stellarNetworkEnum('network').default('testnet').notNull(),
+  // True once the account has had the platform's admin key added as a
+  // co-signer and thresholds configured (see multisig.ts's
+  // configureMultisig) — done lazily on the account's first high-value
+  // payment, not at account creation.
+  multisigConfigured: boolean('multisig_configured').default(false).notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });
@@ -134,6 +146,11 @@ export const transactions = pgTable('transactions', {
   receiveAssetCode: text('receive_asset_code'),
   receiveAssetIssuer: text('receive_asset_issuer'),
   destAmount: text('dest_amount'),
+  // Set only while status is PENDING_SIGNATURE: the payment transaction,
+  // signed by the account's own key, awaiting an admin co-signature
+  // before it can be submitted. Cleared once resolved (approved or
+  // rejected) either way — never kept around once acted on.
+  pendingEnvelopeXdr: text('pending_envelope_xdr'),
   status: transactionStatusEnum('status').default('PENDING').notNull(),
   stellarTxHash: text('stellar_tx_hash'),
   failureCode: text('failure_code'),

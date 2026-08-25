@@ -19,10 +19,21 @@ export interface EnvConfig {
   reconciliationEscalationMs: number;
   /** Home domain of the SEP-24 anchor used for fiat deposit/withdraw (see modules/payments/anchor.service.ts). */
   anchorHomeDomain: string;
+  /**
+   * Secret key of the platform's admin co-signer, used to approve
+   * high-value payments (see modules/payments/payments.service.ts and
+   * `@mixmatch/stellar`'s multisig.ts). Left unset, the high-value gate is
+   * disabled entirely — payments proceed regardless of amount, exactly as
+   * before this feature existed. Set it to turn the gate on.
+   */
+  adminSigningSecret?: string;
+  /** Native-XLM amount above which a payment requires admin co-signature; only enforced if `adminSigningSecret` is set. */
+  highValueThresholdAmount: string;
 }
 
 const DEFAULT_PORT = 3000;
 const DEFAULT_ANCHOR_HOME_DOMAIN = 'testanchor.stellar.org';
+const DEFAULT_HIGH_VALUE_THRESHOLD_AMOUNT = '1000';
 const DEFAULT_JWT_EXPIRES_IN_SECONDS = 60 * 60; // 1 hour
 const MIN_JWT_SECRET_LENGTH = 32;
 const DEFAULT_RECONCILIATION_INTERVAL_MS = 2 * 60 * 1000; // 2 minutes
@@ -82,5 +93,9 @@ export function validateEnv(env: NodeJS.ProcessEnv = process.env): EnvConfig {
       DEFAULT_RECONCILIATION_ESCALATION_MS,
     anchorHomeDomain:
       env.ANCHOR_HOME_DOMAIN?.trim() || DEFAULT_ANCHOR_HOME_DOMAIN,
+    adminSigningSecret: env.ADMIN_SIGNING_SECRET?.trim() || undefined,
+    highValueThresholdAmount:
+      env.HIGH_VALUE_THRESHOLD_AMOUNT?.trim() ||
+      DEFAULT_HIGH_VALUE_THRESHOLD_AMOUNT,
   };
 }

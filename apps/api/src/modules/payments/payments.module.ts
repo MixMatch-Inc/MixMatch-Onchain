@@ -1,6 +1,9 @@
 import { Module } from '@nestjs/common';
 import { AuthModule } from '../auth/auth.module';
 import { StellarModule } from '../stellar/stellar.module';
+import { AnchorController } from './anchor.controller';
+import { AnchorService } from './anchor.service';
+import { AnchorTransactionRepository } from './anchor-transaction.repository';
 import { EscrowController } from './escrow.controller';
 import { EscrowRepository } from './escrow.repository';
 import { EscrowService } from './escrow.service';
@@ -12,7 +15,7 @@ import { TransactionRepository } from './transaction.repository';
 
 @Module({
   imports: [AuthModule, StellarModule],
-  controllers: [PaymentsController, EscrowController],
+  controllers: [PaymentsController, EscrowController, AnchorController],
   providers: [
     PaymentsService,
     StellarAccountRepository,
@@ -20,6 +23,8 @@ import { TransactionRepository } from './transaction.repository';
     ReconciliationJob,
     EscrowService,
     EscrowRepository,
+    AnchorService,
+    AnchorTransactionRepository,
   ],
   exports: [PaymentsService],
 })

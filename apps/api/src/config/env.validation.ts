@@ -17,9 +17,12 @@ export interface EnvConfig {
   reconciliationStaleMs: number;
   /** How long reconciliation keeps retrying before giving up and flagging NEEDS_REVIEW, in ms. */
   reconciliationEscalationMs: number;
+  /** Home domain of the SEP-24 anchor used for fiat deposit/withdraw (see modules/payments/anchor.service.ts). */
+  anchorHomeDomain: string;
 }
 
 const DEFAULT_PORT = 3000;
+const DEFAULT_ANCHOR_HOME_DOMAIN = 'testanchor.stellar.org';
 const DEFAULT_JWT_EXPIRES_IN_SECONDS = 60 * 60; // 1 hour
 const MIN_JWT_SECRET_LENGTH = 32;
 const DEFAULT_RECONCILIATION_INTERVAL_MS = 2 * 60 * 1000; // 2 minutes
@@ -77,5 +80,7 @@ export function validateEnv(env: NodeJS.ProcessEnv = process.env): EnvConfig {
     reconciliationEscalationMs:
       Number(env.RECONCILIATION_ESCALATION_MS) ||
       DEFAULT_RECONCILIATION_ESCALATION_MS,
+    anchorHomeDomain:
+      env.ANCHOR_HOME_DOMAIN?.trim() || DEFAULT_ANCHOR_HOME_DOMAIN,
   };
 }

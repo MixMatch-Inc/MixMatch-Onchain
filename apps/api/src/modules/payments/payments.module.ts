@@ -13,6 +13,7 @@ import { PaymentsService } from './payments.service';
 import { ReconciliationJob } from './reconciliation.job';
 import { StellarAccountRepository } from './stellar-account.repository';
 import { TransactionRepository } from './transaction.repository';
+import { WalletResolver } from './wallet-resolver';
 
 @Module({
   imports: [AuthModule, StellarModule],
@@ -31,6 +32,7 @@ import { TransactionRepository } from './transaction.repository';
     EscrowRepository,
     AnchorService,
     AnchorTransactionRepository,
+    WalletResolver,
   ],
   exports: [PaymentsService],
 })

@@ -39,7 +39,7 @@ export async function establishTrustline(params: EstablishTrustlineParams): Prom
       .setTimeout(TRANSACTION_TIMEOUT_SECONDS)
       .build();
 
-    transaction.sign(params.wallet.getKeypair());
+    await params.wallet.sign(transaction);
 
     const result = await params.client.horizon.submitTransaction(transaction);
     return { hash: result.hash, ledger: result.ledger };

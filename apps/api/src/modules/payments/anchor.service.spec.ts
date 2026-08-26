@@ -13,6 +13,7 @@ import {
   type StellarAccountRecord,
 } from './stellar-account.repository';
 import type { PaymentsService } from './payments.service';
+import { WalletResolver } from './wallet-resolver';
 
 const ENCRYPTION_KEY = 'ab'.repeat(32);
 const REAL_TESTNET_SECRET = Keypair.random().secret();
@@ -80,6 +81,7 @@ function buildAccount(
     userId: 'user-1',
     publicKey: 'GABCDEF',
     encryptedSecretKey: encryptSecretKey(REAL_TESTNET_SECRET, ENCRYPTION_KEY),
+    signingKeyId: null,
     network: 'testnet',
     multisigConfigured: false,
     createdAt: new Date(),
@@ -169,6 +171,11 @@ describe('AnchorService', () => {
     };
     paymentsService = { getOrCreateStellarAccount: jest.fn() };
 
+    const configService = {
+      getOrThrow: jest.fn((key: string) => CONFIG_VALUES[key]),
+      get: jest.fn((key: string) => CONFIG_VALUES[key]),
+    } as unknown as ConfigService;
+
     service = new AnchorService(
       anchorTransactionRepository as unknown as AnchorTransactionRepository,
       stellarAccountRepository as unknown as StellarAccountRepository,
@@ -176,9 +183,8 @@ describe('AnchorService', () => {
       {
         networkPassphrase: Networks.TESTNET,
       } as unknown as DefaultStellarClient,
-      {
-        getOrThrow: jest.fn((key: string) => CONFIG_VALUES[key]),
-      } as unknown as ConfigService,
+      configService,
+      new WalletResolver(configService),
     );
   });
 

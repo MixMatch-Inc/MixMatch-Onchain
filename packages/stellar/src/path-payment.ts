@@ -182,7 +182,7 @@ export async function submitPathPayment(params: SubmitPathPaymentParams): Promis
     }
 
     const transaction = builder.setTimeout(TRANSACTION_TIMEOUT_SECONDS).build();
-    transaction.sign(params.sourceWallet.getKeypair());
+    await params.sourceWallet.sign(transaction);
 
     const result = await params.client.horizon.submitTransaction(transaction);
     return { hash: result.hash, ledger: result.ledger };

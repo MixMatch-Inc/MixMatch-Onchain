@@ -57,7 +57,7 @@ export async function authenticateSep10(params: Sep10AuthParams): Promise<string
     throw new Error("SEP-10 challenge transaction is not signed by the anchor's signing key");
   }
 
-  transaction.sign(params.wallet.getKeypair());
+  await params.wallet.sign(transaction);
 
   const tokenResponse = await fetch(params.webAuthEndpoint, {
     method: 'POST',

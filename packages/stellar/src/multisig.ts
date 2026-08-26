@@ -54,7 +54,7 @@ export async function configureMultisig(params: ConfigureMultisigParams): Promis
       .setTimeout(TRANSACTION_TIMEOUT_SECONDS)
       .build();
 
-    transaction.sign(params.wallet.getKeypair());
+    await params.wallet.sign(transaction);
 
     const result = await params.client.horizon.submitTransaction(transaction);
     return { hash: result.hash, ledger: result.ledger };
@@ -116,7 +116,7 @@ export async function buildHighValuePaymentEnvelope(
     }
 
     const transaction = builder.setTimeout(TRANSACTION_TIMEOUT_SECONDS).build();
-    transaction.sign(params.sourceWallet.getKeypair());
+    await params.sourceWallet.sign(transaction);
 
     return { envelopeXdr: transaction.toXDR() };
   } catch (error) {
@@ -137,7 +137,7 @@ export async function coSignAndSubmitEnvelope(
 ): Promise<StellarPaymentResult> {
   try {
     const transaction = new Transaction(params.envelopeXdr, params.client.networkPassphrase);
-    transaction.sign(params.adminWallet.getKeypair());
+    await params.adminWallet.sign(transaction);
 
     const result = await params.client.horizon.submitTransaction(transaction);
     return { hash: result.hash, ledger: result.ledger };

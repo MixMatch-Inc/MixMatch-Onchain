@@ -20,6 +20,7 @@
     "test:e2e": "jest --config ./test/jest-e2e.json"
   },
   "dependencies": {
+    "@mixmatch/kms": "workspace:*",
     "@mixmatch/shared": "workspace:*",
     "@mixmatch/stellar": "workspace:*",
     "@nestjs/common": "^11.0.1",

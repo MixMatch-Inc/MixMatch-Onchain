@@ -20,6 +20,9 @@ importers:
 
   apps/api:
     dependencies:
+      '@mixmatch/kms':
+        specifier: workspace:*
+        version: link:../../packages/kms
       '@mixmatch/shared':
         specifier: workspace:*
         version: link:../../packages/shared
@@ -296,6 +299,27 @@ importers:
       typescript-eslint:
         specifier: ^8.50.0
         version: 8.50.0(eslint@9.39.1)(typescript@5.9.2)
+
+  packages/kms:
+    devDependencies:
+      '@repo/eslint-config':
+        specifier: workspace:*
+        version: link:../eslint-config
+      '@repo/typescript-config':
+        specifier: workspace:*
+        version: link:../typescript-config
+      '@types/node':
+        specifier: ^22.15.3
+        version: 22.15.3
+      eslint:
+        specifier: ^9.39.1
+        version: 9.39.1
+      typescript:
+        specifier: 5.9.2
+        version: 5.9.2
+      vitest:
+        specifier: ^2.1.8
+        version: 2.1.9(@types/node@22.15.3)(jsdom@20.0.3)(lightningcss@1.33.0)(terser@5.49.0)
 
   packages/shared:
     dependencies:

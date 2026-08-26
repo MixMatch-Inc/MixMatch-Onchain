@@ -9,7 +9,10 @@ export interface StellarAccountRecord {
   id: string;
   userId: string;
   publicKey: string;
-  encryptedSecretKey: string;
+  /** Set only for legacy accounts predating the Vault/KMS migration. */
+  encryptedSecretKey: string | null;
+  /** Vault transit key name; set for every account created after the Vault/KMS migration. */
+  signingKeyId: string | null;
   network: StellarNetwork;
   multisigConfigured: boolean;
   createdAt: Date;
@@ -38,12 +41,21 @@ export class StellarAccountRepository {
     return row ?? null;
   }
 
-  async create(input: {
-    userId: string;
-    publicKey: string;
-    encryptedSecretKey: string;
-    network: StellarNetwork;
-  }): Promise<StellarAccountRecord> {
+  async create(
+    input:
+      | {
+          userId: string;
+          publicKey: string;
+          encryptedSecretKey: string;
+          network: StellarNetwork;
+        }
+      | {
+          userId: string;
+          publicKey: string;
+          signingKeyId: string;
+          network: StellarNetwork;
+        },
+  ): Promise<StellarAccountRecord> {
     const [row] = await this.db
       .insert(schema.stellarAccounts)
       .values(input)

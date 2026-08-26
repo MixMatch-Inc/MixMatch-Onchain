@@ -29,6 +29,28 @@ export interface EnvConfig {
   adminSigningSecret?: string;
   /** Native-XLM amount above which a payment requires admin co-signature; only enforced if `adminSigningSecret` is set. */
   highValueThresholdAmount: string;
+  /**
+   * Address of the HashiCorp Vault server whose transit secrets engine
+   * holds Stellar account signing keys (see `@mixmatch/kms`'s
+   * VaultTransitClient and modules/payments/wallet-resolver.ts). Set
+   * together with `vaultToken` to move new-account signing off the
+   * `walletEncryptionKey` symmetric-key model entirely — key material for
+   * every new account then never exists outside Vault, not even
+   * transiently in this process. Left unset, new accounts fall back to
+   * the legacy encrypted-secret path (e.g. local dev without Vault
+   * installed); existing accounts on that path keep working regardless.
+   */
+  vaultAddr?: string;
+  /** Vault token authorized for the transit mount's create/read/sign paths. Required if `vaultAddr` is set. */
+  vaultToken?: string;
+  /** Vault transit mount path. Defaults to "transit". */
+  vaultTransitMountPath?: string;
+  /**
+   * Name of the platform's admin co-signing key inside Vault, used in
+   * place of `adminSigningSecret` once Vault is configured. Required if
+   * `vaultAddr` is set and the high-value-payment gate is used.
+   */
+  adminSigningKeyName?: string;
 }
 
 const DEFAULT_PORT = 3000;
@@ -71,6 +93,12 @@ export function validateEnv(env: NodeJS.ProcessEnv = process.env): EnvConfig {
   const stellarNetwork =
     env.STELLAR_NETWORK?.trim() === 'public' ? 'public' : 'testnet';
 
+  const vaultAddr = env.VAULT_ADDR?.trim() || undefined;
+  const vaultToken = env.VAULT_TOKEN?.trim() || undefined;
+  if (vaultAddr && !vaultToken) {
+    throw new Error('VAULT_TOKEN is required when VAULT_ADDR is set');
+  }
+
   return {
     nodeEnv,
     port: Number(env.PORT) || DEFAULT_PORT,
@@ -97,5 +125,9 @@ export function validateEnv(env: NodeJS.ProcessEnv = process.env): EnvConfig {
     highValueThresholdAmount:
       env.HIGH_VALUE_THRESHOLD_AMOUNT?.trim() ||
       DEFAULT_HIGH_VALUE_THRESHOLD_AMOUNT,
+    vaultAddr,
+    vaultToken,
+    vaultTransitMountPath: env.VAULT_TRANSIT_MOUNT_PATH?.trim() || undefined,
+    adminSigningKeyName: env.ADMIN_SIGNING_KEY_NAME?.trim() || undefined,
   };
 }

@@ -11,13 +11,11 @@ import {
   depositToEscrow,
   DefaultStellarClient,
   getEscrow,
-  KeypairWallet,
   refundEscrow,
   releaseEscrow,
   SorobanInvocationError,
 } from '@mixmatch/stellar';
 import type { DepositEscrowInput } from '@mixmatch/shared';
-import { decryptSecretKey } from './wallet-encryption';
 import { PaymentsService } from './payments.service';
 import {
   DuplicateEscrowIdempotencyKeyError,
@@ -25,6 +23,7 @@ import {
   type EscrowRecord,
 } from './escrow.repository';
 import { StellarAccountRepository } from './stellar-account.repository';
+import { WalletResolver } from './wallet-resolver';
 
 /** Mirrors `PaymentFailedError`'s HTTP-facing shape for Soroban escrow invocation failures. */
 export class EscrowFailedError extends HttpException {
@@ -41,6 +40,7 @@ export class EscrowService {
     private readonly paymentsService: PaymentsService,
     private readonly stellarClient: DefaultStellarClient,
     private readonly configService: ConfigService,
+    private readonly walletResolver: WalletResolver,
   ) {}
 
   /**
@@ -78,10 +78,7 @@ export class EscrowService {
       throw error;
     }
 
-    const wallet = KeypairWallet.fromSecret(
-      account.network,
-      decryptSecretKey(account.encryptedSecretKey, this.walletEncryptionKey()),
-    );
+    const wallet = await this.walletResolver.walletForAccount(account);
 
     try {
       const result = await depositToEscrow({
@@ -138,10 +135,7 @@ export class EscrowService {
     if (!account) {
       throw new NotFoundException('Stellar account not found');
     }
-    const wallet = KeypairWallet.fromSecret(
-      account.network,
-      decryptSecretKey(account.encryptedSecretKey, this.walletEncryptionKey()),
-    );
+    const wallet = await this.walletResolver.walletForAccount(account);
 
     try {
       const result = await releaseEscrow({
@@ -176,10 +170,7 @@ export class EscrowService {
     if (!account) {
       throw new NotFoundException('Stellar account not found');
     }
-    const wallet = KeypairWallet.fromSecret(
-      account.network,
-      decryptSecretKey(account.encryptedSecretKey, this.walletEncryptionKey()),
-    );
+    const wallet = await this.walletResolver.walletForAccount(account);
 
     try {
       const result = await refundEscrow({
@@ -225,9 +216,5 @@ export class EscrowService {
 
   private escrowContractId(): string {
     return this.configService.getOrThrow<string>('stellarEscrowContractId');
-  }
-
-  private walletEncryptionKey(): string {
-    return this.configService.getOrThrow<string>('walletEncryptionKey');
   }
 }

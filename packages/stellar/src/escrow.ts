@@ -107,7 +107,7 @@ async function submitInvocation(
     .build();
 
   const prepared = await client.soroban.prepareTransaction(transaction);
-  prepared.sign(signerWallet.getKeypair());
+  await signerWallet.sign(prepared);
 
   const sendResult = await client.soroban.sendTransaction(prepared);
   if (sendResult.status === 'ERROR') {

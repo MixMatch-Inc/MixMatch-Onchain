@@ -52,7 +52,7 @@ export class StellarPaymentService {
 
       const transaction = builder.setTimeout(TRANSACTION_TIMEOUT_SECONDS).build();
 
-      transaction.sign(params.sourceWallet.getKeypair());
+      await params.sourceWallet.sign(transaction);
 
       const result = await this.client.horizon.submitTransaction(transaction);
       return { hash: result.hash, ledger: result.ledger };

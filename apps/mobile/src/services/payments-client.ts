@@ -7,9 +7,10 @@ import type {
   SendPaymentResponse,
   StellarAccountResponse,
   TransactionHistoryResponse,
+  TransactionRecord,
   TransactionStatusResponse,
 } from '@mixmatch/shared';
-import { authHeaders, request } from './api-client';
+import { API_URL, authHeaders, request } from './api-client';
 
 export function sendPayment(input: SendPaymentInput, accessToken: string): Promise<SendPaymentResponse> {
   return request<SendPaymentResponse>('/payments/send', {
@@ -74,4 +75,80 @@ export function quotePath(input: PathQuoteInput, accessToken: string): Promise<P
     headers: authHeaders(accessToken),
     body: JSON.stringify(input),
   });
+}
+
+export interface TransactionStreamHandle {
+  close: () => void;
+}
+
+/**
+ * Subscribes to `GET /payments/stream` (Server-Sent Events) for real-time
+ * transaction status updates, instead of polling `getTransactionStatus`.
+ * Authenticates via `?token=` in the URL since `fetch`/`EventSource` can't
+ * attach a custom Authorization header to an SSE request.
+ *
+ * Requires the runtime's `fetch` to support streaming response bodies
+ * (`response.body` as a `ReadableStream`) — true on recent Hermes/React
+ * Native, but not guaranteed on every device. If the stream can't be
+ * opened or drops permanently, `onError` fires; callers should fall back
+ * to polling `getTransactionStatus`/`getTransactionHistory` in that case
+ * rather than assume the stream will recover on its own.
+ */
+export function subscribeToTransactionStream(
+  accessToken: string,
+  onTransaction: (transaction: TransactionRecord) => void,
+  onError?: (error: unknown) => void,
+): TransactionStreamHandle {
+  const controller = new AbortController();
+  let closed = false;
+
+  void (async () => {
+    try {
+      const response = await fetch(`${API_URL}/payments/stream?token=${encodeURIComponent(accessToken)}`, {
+        headers: { Accept: 'text/event-stream' },
+        signal: controller.signal,
+      });
+
+      if (!response.ok || !response.body) {
+        throw new Error(`Transaction stream request failed: HTTP ${response.status}`);
+      }
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+
+      while (!closed) {
+        const { done, value } = await reader.read();
+        if (done) {
+          break;
+        }
+        buffer += decoder.decode(value, { stream: true });
+
+        let boundary = buffer.indexOf('\n\n');
+        while (boundary !== -1) {
+          const rawEvent = buffer.slice(0, boundary);
+          buffer = buffer.slice(boundary + 2);
+          const dataLine = rawEvent.split('\n').find((line) => line.startsWith('data:'));
+          if (dataLine) {
+            const payload = JSON.parse(dataLine.slice('data:'.length).trim()) as {
+              transaction: TransactionRecord;
+            };
+            onTransaction(payload.transaction);
+          }
+          boundary = buffer.indexOf('\n\n');
+        }
+      }
+    } catch (error) {
+      if (!closed) {
+        onError?.(error);
+      }
+    }
+  })();
+
+  return {
+    close: () => {
+      closed = true;
+      controller.abort();
+    },
+  };
 }

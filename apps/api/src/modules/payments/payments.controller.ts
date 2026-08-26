@@ -2,10 +2,12 @@ import {
   Body,
   Controller,
   Get,
+  MessageEvent,
   NotFoundException,
   Param,
   Post,
   Query,
+  Sse,
   UseGuards,
   UsePipes,
 } from '@nestjs/common';
@@ -20,6 +22,7 @@ import {
   type SendPaymentInput,
   type StellarAccountResponse,
 } from '@mixmatch/shared';
+import { map, type Observable } from 'rxjs';
 import { ZodValidationPipe } from '../../common/zod-validation.pipe';
 import { CurrentUserId } from '../auth/current-user.decorator';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
@@ -60,6 +63,22 @@ export class PaymentsController {
     const account =
       await this.paymentsService.getOrCreateStellarAccount(userId);
     return { publicKey: account.publicKey, network: account.network };
+  }
+
+  /**
+   * Server-Sent Events stream of the caller's transaction status changes,
+   * pushed the moment Horizon's payment stream reports them — an
+   * alternative to polling `GET /:id/status`. Authenticates via
+   * `?token=` since `EventSource` can't set an Authorization header (see
+   * `JwtAuthGuard`). Clients should keep polling as a fallback if the
+   * stream connection can't be established at all; once connected, the
+   * underlying Horizon stream reconnects on its own after a drop.
+   */
+  @Sse('stream')
+  stream(@CurrentUserId() userId: string): Observable<MessageEvent> {
+    return this.paymentsService
+      .streamTransactionUpdates(userId)
+      .pipe(map((transaction) => ({ data: { transaction } })));
   }
 
   @Get('history')

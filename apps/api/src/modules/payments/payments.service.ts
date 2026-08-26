@@ -19,9 +19,13 @@ import {
   KeypairWallet,
   StellarPaymentError,
   StellarPaymentService as StellarPaymentEngine,
+  streamAccountPayments,
   submitPathPayment,
   type PathQuote,
+  type PaymentStreamEvent,
+  type PaymentStreamHandle,
 } from '@mixmatch/stellar';
+import { Observable } from 'rxjs';
 import type {
   EstablishTrustlineInput,
   EstablishTrustlineResponse,
@@ -722,6 +726,97 @@ export class PaymentsService {
       'asset_issuer' in operation &&
       operation.asset_issuer === expectedIssuer
     );
+  }
+
+  /**
+   * Pushes a transaction's status the moment Horizon's payment stream for
+   * the caller's account reports it — an alternative to `getTransactionStatus`
+   * polling. Bridged to clients over SSE, see `PaymentsController`'s
+   * `stream` route. Completes if the caller has no Stellar account yet;
+   * otherwise stays open until the subscriber unsubscribes (client
+   * disconnects), at which point the underlying Horizon stream — which
+   * reconnects on its own using the last-seen event's cursor, see
+   * `@mixmatch/stellar`'s `streamAccountPayments` — is torn down too.
+   */
+  streamTransactionUpdates(userId: string): Observable<TransactionRecord> {
+    return new Observable<TransactionRecord>((subscriber) => {
+      let unsubscribed = false;
+      let handle: PaymentStreamHandle | undefined;
+
+      void this.stellarAccountRepository.findByUserId(userId).then(
+        (account) => {
+          if (unsubscribed) {
+            return;
+          }
+          if (!account) {
+            subscriber.complete();
+            return;
+          }
+
+          handle = streamAccountPayments({
+            client: this.stellarClient,
+            accountPublicKey: account.publicKey,
+            onEvent: (event) => {
+              void this.resolveStreamEvent(account.id, event)
+                .then((updated) => {
+                  if (updated && !unsubscribed) {
+                    subscriber.next(updated);
+                  }
+                })
+                .catch((error: unknown) => subscriber.error(error));
+            },
+          });
+        },
+        (error: unknown) => subscriber.error(error),
+      );
+
+      return () => {
+        unsubscribed = true;
+        handle?.close();
+      };
+    });
+  }
+
+  /** Checks a single streamed Horizon event against the account's still-PENDING transactions, updating and returning the one it matches, if any. */
+  private async resolveStreamEvent(
+    stellarAccountId: string,
+    event: PaymentStreamEvent,
+  ): Promise<TransactionRecord | null> {
+    if (!MATCHABLE_OPERATION_TYPES.has(event.type)) {
+      return null;
+    }
+
+    const pending =
+      await this.transactionRepository.findPendingByStellarAccountId(
+        stellarAccountId,
+      );
+    const expectedAmount = event.amount
+      ? Number(event.amount).toFixed(7)
+      : undefined;
+
+    const match = pending.find((transaction) => {
+      const pseudoOperation = {
+        asset_type: event.assetType,
+        asset_code: event.assetCode,
+        asset_issuer: event.assetIssuer,
+      };
+      return (
+        this.matchesTransactionAsset(pseudoOperation, transaction) &&
+        event.to === transaction.destinationPublicKey &&
+        expectedAmount ===
+          normalizeAmount(transaction.destAmount ?? transaction.amount) &&
+        new Date(event.createdAt) >= transaction.createdAt
+      );
+    });
+
+    if (!match) {
+      return null;
+    }
+
+    return this.transactionRepository.updateStatus(match.id, {
+      status: 'SUCCESS',
+      stellarTxHash: event.transactionHash,
+    });
   }
 
   private reconciliationStaleMs(): number {

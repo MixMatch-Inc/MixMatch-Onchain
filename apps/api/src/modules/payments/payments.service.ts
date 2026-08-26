@@ -15,8 +15,6 @@ import {
   findStrictReceivePath,
   findStrictSendPath,
   fundTestnetAccount,
-  generateStellarAccount,
-  KeypairWallet,
   StellarPaymentError,
   StellarPaymentService as StellarPaymentEngine,
   streamAccountPayments,
@@ -34,7 +32,6 @@ import type {
   SendPaymentInput,
 } from '@mixmatch/shared';
 import { PaymentFailedError } from './payment-errors';
-import { decryptSecretKey, encryptSecretKey } from './wallet-encryption';
 import {
   StellarAccountRepository,
   type StellarAccountRecord,
@@ -44,6 +41,7 @@ import {
   TransactionRepository,
   type TransactionRecord,
 } from './transaction.repository';
+import { WalletResolver } from './wallet-resolver';
 
 function normalizeAmount(amount: string): string {
   return Number(amount).toFixed(7);
@@ -64,6 +62,7 @@ export class PaymentsService {
     private readonly stellarClient: DefaultStellarClient,
     private readonly paymentEngine: StellarPaymentEngine,
     private readonly configService: ConfigService,
+    private readonly walletResolver: WalletResolver,
   ) {}
 
   /** Returns the caller's Stellar account, provisioning (and, on testnet, funding) one on first use. */
@@ -76,24 +75,23 @@ export class PaymentsService {
     }
 
     const network = this.stellarClient.getNetwork();
-    const generated = generateStellarAccount();
+    const signer = await this.walletResolver.createAccountSigner();
 
     if (network === 'testnet') {
       await fundTestnetAccount(
         this.stellarClient.horizon,
         network,
-        generated.publicKey,
+        signer.publicKey,
       );
     }
 
     return this.stellarAccountRepository.create({
       userId,
-      publicKey: generated.publicKey,
-      encryptedSecretKey: encryptSecretKey(
-        generated.wallet.secretKey,
-        this.walletEncryptionKey(),
-      ),
+      publicKey: signer.publicKey,
       network,
+      ...('signingKeyId' in signer
+        ? { signingKeyId: signer.signingKeyId }
+        : { encryptedSecretKey: signer.encryptedSecretKey }),
     });
   }
 
@@ -156,10 +154,7 @@ export class PaymentsService {
       throw error;
     }
 
-    const wallet = KeypairWallet.fromSecret(
-      account.network,
-      decryptSecretKey(account.encryptedSecretKey, this.walletEncryptionKey()),
-    );
+    const wallet = await this.walletResolver.walletForAccount(account);
 
     try {
       const result = quote
@@ -214,7 +209,11 @@ export class PaymentsService {
     input: SendPaymentInput,
     quote: PathQuote | undefined,
   ): boolean {
-    if (!this.adminSigningSecret() || quote || input.assetCode) {
+    if (
+      !this.walletResolver.adminSigningConfigured() ||
+      quote ||
+      input.assetCode
+    ) {
       return false;
     }
     return Number(input.amount) > Number(this.highValueThresholdAmount());
@@ -243,11 +242,12 @@ export class PaymentsService {
 
     let currentAccount = account;
     if (!currentAccount.multisigConfigured) {
-      const wallet = this.walletForAccount(currentAccount);
+      const wallet = await this.walletResolver.walletForAccount(currentAccount);
+      const admin = await this.walletResolver.adminWallet();
       await configureMultisig({
         client: this.stellarClient,
         wallet,
-        adminPublicKey: this.adminWallet().publicKey,
+        adminPublicKey: admin.publicKey,
       });
       currentAccount =
         await this.stellarAccountRepository.markMultisigConfigured(
@@ -255,7 +255,7 @@ export class PaymentsService {
         );
     }
 
-    const wallet = this.walletForAccount(currentAccount);
+    const wallet = await this.walletResolver.walletForAccount(currentAccount);
     const { envelopeXdr } = await buildHighValuePaymentEnvelope({
       client: this.stellarClient,
       sourceWallet: wallet,
@@ -300,7 +300,7 @@ export class PaymentsService {
       const result = await coSignAndSubmitEnvelope({
         client: this.stellarClient,
         envelopeXdr: transaction.pendingEnvelopeXdr as string,
-        adminWallet: this.adminWallet(),
+        adminWallet: await this.walletResolver.adminWallet(),
       });
       return await this.transactionRepository.updateStatus(transaction.id, {
         status: 'SUCCESS',
@@ -363,28 +363,6 @@ export class PaymentsService {
       );
     }
     return transaction;
-  }
-
-  private walletForAccount(account: StellarAccountRecord): KeypairWallet {
-    return KeypairWallet.fromSecret(
-      account.network,
-      decryptSecretKey(account.encryptedSecretKey, this.walletEncryptionKey()),
-    );
-  }
-
-  private adminWallet(): KeypairWallet {
-    return KeypairWallet.fromSecret(
-      this.stellarClient.getNetwork(),
-      this.adminSigningSecretOrThrow(),
-    );
-  }
-
-  private adminSigningSecret(): string | undefined {
-    return this.configService.get<string>('adminSigningSecret');
-  }
-
-  private adminSigningSecretOrThrow(): string {
-    return this.configService.getOrThrow<string>('adminSigningSecret');
   }
 
   private highValueThresholdAmount(): string {
@@ -493,10 +471,7 @@ export class PaymentsService {
     input: EstablishTrustlineInput,
   ): Promise<EstablishTrustlineResponse> {
     const account = await this.getOrCreateStellarAccount(userId);
-    const wallet = KeypairWallet.fromSecret(
-      account.network,
-      decryptSecretKey(account.encryptedSecretKey, this.walletEncryptionKey()),
-    );
+    const wallet = await this.walletResolver.walletForAccount(account);
 
     try {
       const result = await establishTrustline({
@@ -825,9 +800,5 @@ export class PaymentsService {
 
   private reconciliationEscalationMs(): number {
     return this.configService.getOrThrow<number>('reconciliationEscalationMs');
-  }
-
-  private walletEncryptionKey(): string {
-    return this.configService.getOrThrow<string>('walletEncryptionKey');
   }
 }

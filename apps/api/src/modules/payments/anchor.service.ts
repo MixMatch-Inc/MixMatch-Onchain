@@ -13,7 +13,6 @@ import {
   getSep24Transaction,
   initiateSep24Deposit,
   initiateSep24Withdraw,
-  KeypairWallet,
   SEP24_IN_PROGRESS_STATUSES,
   type Sep24Transaction,
 } from '@mixmatch/stellar';
@@ -23,13 +22,13 @@ import type {
   DepositAnchorInput,
   WithdrawAnchorInput,
 } from '@mixmatch/shared';
-import { decryptSecretKey } from './wallet-encryption';
 import { PaymentsService } from './payments.service';
 import {
   AnchorTransactionRepository,
   type AnchorTransactionRecord,
 } from './anchor-transaction.repository';
 import { StellarAccountRepository } from './stellar-account.repository';
+import { WalletResolver } from './wallet-resolver';
 
 /** Anchor unreachable, misconfigured (missing required SEP-1 fields), or rejected a SEP-10/SEP-24 call. */
 export class AnchorError extends HttpException {
@@ -50,6 +49,7 @@ export class AnchorService {
     private readonly paymentsService: PaymentsService,
     private readonly stellarClient: DefaultStellarClient,
     private readonly configService: ConfigService,
+    private readonly walletResolver: WalletResolver,
   ) {}
 
   /** Starts a SEP-24 interactive deposit — returns the anchor's interactive URL for the user to open and complete KYC/payment details. */
@@ -127,10 +127,7 @@ export class AnchorService {
       );
     }
 
-    const wallet = KeypairWallet.fromSecret(
-      account.network,
-      decryptSecretKey(account.encryptedSecretKey, this.walletEncryptionKey()),
-    );
+    const wallet = await this.walletResolver.walletForAccount(account);
 
     try {
       const jwt = await authenticateSep10({
@@ -197,10 +194,7 @@ export class AnchorService {
       return transaction;
     }
 
-    const wallet = KeypairWallet.fromSecret(
-      account.network,
-      decryptSecretKey(account.encryptedSecretKey, this.walletEncryptionKey()),
-    );
+    const wallet = await this.walletResolver.walletForAccount(account);
 
     const jwt = await authenticateSep10({
       webAuthEndpoint: toml.webAuthEndpoint,
@@ -250,10 +244,6 @@ export class AnchorService {
 
   private anchorHomeDomain(): string {
     return this.configService.getOrThrow<string>('anchorHomeDomain');
-  }
-
-  private walletEncryptionKey(): string {
-    return this.configService.getOrThrow<string>('walletEncryptionKey');
   }
 }
 

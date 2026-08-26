@@ -107,9 +107,18 @@ export const stellarAccounts = pgTable('stellar_accounts', {
     .unique()
     .notNull(),
   publicKey: text('public_key').unique().notNull(),
-  // AES-256-GCM ciphertext of the account's Stellar secret key, see
-  // modules/payments/wallet-encryption.ts. Never stored in plaintext.
-  encryptedSecretKey: text('encrypted_secret_key').notNull(),
+  // Legacy key-custody path: AES-256-GCM ciphertext of the account's
+  // Stellar secret key (modules/payments/wallet-encryption.ts). Null for
+  // every account created after the Vault/KMS migration — exactly one of
+  // encryptedSecretKey/signingKeyId is set, enforced at the application
+  // layer (see modules/payments/wallet-resolver.ts), since Drizzle has no
+  // portable XOR column constraint.
+  encryptedSecretKey: text('encrypted_secret_key'),
+  // Name of this account's ed25519 signing key inside Vault's transit
+  // secrets engine (see @mixmatch/kms's VaultTransitClient). The actual
+  // key material never leaves Vault — this column is just a reference.
+  // Null for legacy accounts still on encryptedSecretKey.
+  signingKeyId: text('signing_key_id'),
   network: stellarNetworkEnum('network').default('testnet').notNull(),
   // True once the account has had the platform's admin key added as a
   // co-signer and thresholds configured (see multisig.ts's

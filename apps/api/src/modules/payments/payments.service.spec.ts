@@ -1,5 +1,6 @@
 import { ForbiddenException, NotFoundException } from '@nestjs/common';
 import type { ConfigService } from '@nestjs/config';
+import { WalletResolver } from './wallet-resolver';
 import { Keypair } from '@stellar/stellar-sdk';
 import {
   StellarPaymentError,
@@ -160,6 +161,7 @@ function buildAccount(
     userId: 'user-1',
     publicKey: 'GABCDEF',
     encryptedSecretKey: encryptSecretKey(REAL_TESTNET_SECRET, ENCRYPTION_KEY),
+    signingKeyId: null,
     network: 'testnet',
     multisigConfigured: false,
     createdAt: new Date(),
@@ -238,15 +240,18 @@ describe('PaymentsService', () => {
       horizon: { friendbot: jest.fn() },
     };
 
+    const configService = {
+      getOrThrow: jest.fn((key: string) => CONFIG_VALUES[key]),
+      get: jest.fn((key: string) => CONFIG_VALUES[key]),
+    } as unknown as ConfigService;
+
     service = new PaymentsService(
       stellarAccountRepository as unknown as StellarAccountRepository,
       transactionRepository as unknown as TransactionRepository,
       stellarClient as unknown as DefaultStellarClient,
       paymentEngine as unknown as StellarPaymentEngine,
-      {
-        getOrThrow: jest.fn((key: string) => CONFIG_VALUES[key]),
-        get: jest.fn((key: string) => CONFIG_VALUES[key]),
-      } as unknown as ConfigService,
+      configService,
+      new WalletResolver(configService),
     );
   });
 

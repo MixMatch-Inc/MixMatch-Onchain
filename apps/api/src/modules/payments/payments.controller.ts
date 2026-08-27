@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Get,
@@ -87,6 +88,9 @@ export class PaymentsController {
     @Query() query: Record<string, unknown>,
   ) {
     const { page, limit } = parseHistoryQuery(query);
+    if (limit > 100) {
+      throw new BadRequestException('Max history limit is 100');
+    }
     const { transactions, total } =
       await this.paymentsService.listTransactionHistory(userId, page, limit);
     return { transactions, total, page, limit };

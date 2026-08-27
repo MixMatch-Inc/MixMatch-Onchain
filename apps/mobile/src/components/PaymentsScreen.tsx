@@ -29,6 +29,7 @@ export default function PaymentsScreen() {
   const [publicKey, setPublicKey] = useState<string | null>(null);
   const [scannedDestination, setScannedDestination] = useState<string | undefined>(undefined);
   const [transactions, setTransactions] = useState<TransactionRecord[]>([]);
+  const [pollInterval, setPollInterval] = useState(15_000);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
   const [streamAvailable, setStreamAvailable] = useState(true);
 
@@ -90,9 +91,19 @@ export default function PaymentsScreen() {
   // stream connection isn't available, so status updates still arrive.
   useEffect(() => {
     if (streamAvailable || tab !== 'history') return;
-    const interval = setInterval(() => void loadHistory(), 15_000);
-    return () => clearInterval(interval);
-  }, [streamAvailable, tab, loadHistory]);
+    const runPoll = async () => {
+      await loadHistory();
+      setPollInterval((prev) => Math.min(prev + 10_000, 60_000));
+    };
+    const timer = setTimeout(runPoll, pollInterval);
+    return () => clearTimeout(timer);
+  }, [streamAvailable, tab, loadHistory, pollInterval]);
+
+  useEffect(() => {
+    if (tab === 'history') {
+      setPollInterval(15_000);
+    }
+  }, [tab]);
 
   const handleScanned = (data: string) => {
     setScannedDestination(data);

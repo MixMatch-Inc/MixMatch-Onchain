@@ -1,6 +1,6 @@
 import { sendPaymentSchema, type PathQuoteResponse, type SendPaymentInput, type TransactionRecord } from '@mixmatch/shared';
 import { useState } from 'react';
-import { ActivityIndicator, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Alert, ActivityIndicator, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
 type PaymentField =
   | 'destinationPublicKey'
@@ -68,9 +68,35 @@ export default function SendPaymentForm({ onSubmit, onSuccess, onQuote, initialD
       return;
     }
 
-    setIsSubmitting(true);
-    try {
-      const transaction = await onSubmit(result.data);
+    Alert.alert(
+      'Confirm Payment',
+      `Are you sure you want to send ${amount} XLM to ${destinationPublicKey}?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Send',
+          onPress: async () => {
+            setIsSubmitting(true);
+            try {
+              const transaction = await onSubmit(result.data);
+              setDestinationPublicKey('');
+              setAmount('');
+              setMemo('');
+              setAssetCode('');
+              setAssetIssuer('');
+              setReceiveAssetCode('');
+              setReceiveAssetIssuer('');
+              setQuote(null);
+              onSuccess?.(transaction);
+            } catch (err) {
+              setError(err instanceof Error ? err.message : 'Something went wrong');
+            } finally {
+              setIsSubmitting(false);
+            }
+          }
+        }
+      ]
+    );
       setDestinationPublicKey('');
       setAmount('');
       setMemo('');

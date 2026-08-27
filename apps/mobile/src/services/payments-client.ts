@@ -101,8 +101,9 @@ export function subscribeToTransactionStream(
 ): TransactionStreamHandle {
   const controller = new AbortController();
   let closed = false;
+  let retryDelay = 1000;
 
-  void (async () => {
+  const connect = async () => {
     try {
       const response = await fetch(`${API_URL}/payments/stream?token=${encodeURIComponent(accessToken)}`, {
         headers: { Accept: 'text/event-stream' },
@@ -113,6 +114,7 @@ export function subscribeToTransactionStream(
         throw new Error(`Transaction stream request failed: HTTP ${response.status}`);
       }
 
+      retryDelay = 1000; // Reset retry delay on success
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
       let buffer = '';
@@ -141,9 +143,15 @@ export function subscribeToTransactionStream(
     } catch (error) {
       if (!closed) {
         onError?.(error);
+        setTimeout(() => {
+          if (!closed) void connect();
+        }, retryDelay);
+        retryDelay = Math.min(retryDelay * 2, 30000);
       }
     }
-  })();
+  };
+
+  void connect();
 
   return {
     close: () => {

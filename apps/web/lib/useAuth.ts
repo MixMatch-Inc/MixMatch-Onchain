@@ -16,17 +16,19 @@ export function useAuth() {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
-    if (raw) {
-      try {
+    try {
+      const raw = window.localStorage.getItem(STORAGE_KEY);
+      if (raw) {
         const stored = JSON.parse(raw) as StoredAuth;
         if (stored.user && stored.accessToken) {
           setUser(stored.user);
           setAccessToken(stored.accessToken);
         }
-      } catch {
-        window.localStorage.removeItem(STORAGE_KEY);
       }
+    } catch {
+      try {
+        window.localStorage.removeItem(STORAGE_KEY);
+      } catch {}
     }
     setIsLoading(false);
   }, []);

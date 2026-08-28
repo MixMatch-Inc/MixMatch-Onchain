@@ -541,11 +541,31 @@ export class PaymentsService {
     const stale = await this.transactionRepository.findStalePending(
       new Date(Date.now() - this.reconciliationStaleMs()),
     );
-    const reconciled: TransactionRecord[] = [];
-    for (const transaction of stale) {
-      reconciled.push(await this.reconcileTransaction(transaction));
-    }
-    return reconciled;
+    const recentPaymentsCache = new Map<string, Promise<unknown[]>>();
+    return Promise.all(
+      stale.map(async (transaction) => {
+        const account = await this.stellarAccountRepository.findById(
+          transaction.stellarAccountId,
+        );
+        if (!account) {
+          return this.transactionRepository.updateStatus(transaction.id, {
+            status: 'FAILED',
+            failureCode: 'reconciliation_account_missing',
+            failureReason: 'Source Stellar account no longer exists',
+          });
+        }
+
+        const recentPayments = await this.recentPaymentsForAccount(
+          account.publicKey,
+          recentPaymentsCache,
+        );
+        return this.reconcileTransactionWithAccount(
+          transaction,
+          account.publicKey,
+          recentPayments,
+        );
+      }),
+    );
   }
 
   private isStale(transaction: TransactionRecord): boolean {
@@ -601,9 +621,25 @@ export class PaymentsService {
       });
     }
 
-    const matchedTxHash = await this.findMatchingPayment(
-      account.publicKey,
+    return this.reconcileTransactionWithAccount(
       transaction,
+      account.publicKey,
+    );
+  }
+
+  private async reconcileTransactionWithAccount(
+    transaction: TransactionRecord,
+    sourcePublicKey: string,
+    recentPayments?: unknown[],
+  ): Promise<TransactionRecord> {
+    if (transaction.status !== 'PENDING') {
+      return transaction;
+    }
+
+    const matchedTxHash = await this.findMatchingPayment(
+      sourcePublicKey,
+      transaction,
+      recentPayments,
     );
     if (matchedTxHash) {
       return this.transactionRepository.updateStatus(transaction.id, {
@@ -632,14 +668,19 @@ export class PaymentsService {
   private async findMatchingPayment(
     sourcePublicKey: string,
     transaction: TransactionRecord,
+    recentPayments?: Array<Record<string, unknown>>,
   ): Promise<string | null> {
     try {
-      const page = await this.stellarClient.horizon
-        .payments()
-        .forAccount(sourcePublicKey)
-        .order('desc')
-        .limit(50)
-        .call();
+      const records: Array<Record<string, unknown>> =
+        recentPayments ??
+        (
+          await this.stellarClient.horizon
+            .payments()
+            .forAccount(sourcePublicKey)
+            .order('desc')
+            .limit(50)
+            .call()
+        ).records as Array<Record<string, unknown>>;
 
       // For a path payment, the recipient receives destAmount of the
       // receive asset — that's what shows up as `amount`/`asset_*` on the
@@ -648,7 +689,7 @@ export class PaymentsService {
         transaction.destAmount ?? transaction.amount,
       );
 
-      for (const operation of page.records) {
+      for (const operation of records) {
         if (
           MATCHABLE_OPERATION_TYPES.has(String(operation.type)) &&
           'asset_type' in operation &&
@@ -666,6 +707,26 @@ export class PaymentsService {
       // Horizon unreachable or query failed — leave PENDING, retry on the next pass.
     }
     return null;
+  }
+
+  private async recentPaymentsForAccount(
+    sourcePublicKey: string,
+    cache: Map<string, Promise<Array<Record<string, unknown>>>>,
+  ): Promise<Array<Record<string, unknown>>> {
+    const cached = cache.get(sourcePublicKey);
+    if (cached) {
+      return cached;
+    }
+
+    const fetchPromise = this.stellarClient.horizon
+      .payments()
+      .forAccount(sourcePublicKey)
+      .order('desc')
+      .limit(50)
+      .call()
+      .then((page) => page.records as Array<Record<string, unknown>>);
+    cache.set(sourcePublicKey, fetchPromise);
+    return fetchPromise;
   }
 
   /**
@@ -717,30 +778,43 @@ export class PaymentsService {
     return new Observable<TransactionRecord>((subscriber) => {
       let unsubscribed = false;
       let handle: PaymentStreamHandle | undefined;
+      let pendingTransactions: TransactionRecord[] = [];
 
       void this.stellarAccountRepository.findByUserId(userId).then(
-        (account) => {
-          if (unsubscribed) {
-            return;
-          }
-          if (!account) {
-            subscriber.complete();
-            return;
-          }
+        async (account) => {
+          try {
+            if (unsubscribed) {
+              return;
+            }
+            if (!account) {
+              subscriber.complete();
+              return;
+            }
 
-          handle = streamAccountPayments({
-            client: this.stellarClient,
-            accountPublicKey: account.publicKey,
-            onEvent: (event) => {
-              void this.resolveStreamEvent(account.id, event)
-                .then((updated) => {
-                  if (updated && !unsubscribed) {
-                    subscriber.next(updated);
-                  }
-                })
-                .catch((error: unknown) => subscriber.error(error));
-            },
-          });
+            pendingTransactions =
+              await this.transactionRepository.findPendingByStellarAccountId(
+                account.id,
+              );
+
+            handle = streamAccountPayments({
+              client: this.stellarClient,
+              accountPublicKey: account.publicKey,
+              onEvent: (event) => {
+                void this.resolveStreamEvent(pendingTransactions, event)
+                  .then((updated) => {
+                    if (updated && !unsubscribed) {
+                      pendingTransactions = pendingTransactions.filter(
+                        (transaction) => transaction.id !== updated.id,
+                      );
+                      subscriber.next(updated);
+                    }
+                  })
+                  .catch((error: unknown) => subscriber.error(error));
+              },
+            });
+          } catch (error) {
+            subscriber.error(error);
+          }
         },
         (error: unknown) => subscriber.error(error),
       );
@@ -754,17 +828,13 @@ export class PaymentsService {
 
   /** Checks a single streamed Horizon event against the account's still-PENDING transactions, updating and returning the one it matches, if any. */
   private async resolveStreamEvent(
-    stellarAccountId: string,
+    pending: TransactionRecord[],
     event: PaymentStreamEvent,
   ): Promise<TransactionRecord | null> {
     if (!MATCHABLE_OPERATION_TYPES.has(event.type)) {
       return null;
     }
 
-    const pending =
-      await this.transactionRepository.findPendingByStellarAccountId(
-        stellarAccountId,
-      );
     const expectedAmount = event.amount
       ? Number(event.amount).toFixed(7)
       : undefined;

@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ConflictException,
   Injectable,
   UnauthorizedException,
@@ -34,6 +35,9 @@ export class AuthService {
   ) {}
 
   async register(input: RegisterInput): Promise<AuthTokenResponse> {
+    // #918: enforce password strength server-side as defense in depth
+    assertPasswordStrength(input.password);
+
     const existing = await this.usersRepository.findByEmail(input.email);
     if (existing) {
       throw new ConflictException('An account with this email already exists');

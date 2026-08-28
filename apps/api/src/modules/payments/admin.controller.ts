@@ -12,6 +12,7 @@ import { Roles } from '../auth/roles.decorator';
 import { RolesGuard } from '../auth/roles.guard';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { PaymentsService } from './payments.service';
+import { AdminRateLimitGuard } from '../../common/admin-rate-limit.guard';
 
 /**
  * #917: Simple in-process set of consumed idempotency keys so that a replayed
@@ -24,7 +25,7 @@ const consumedIdempotencyKeys = new Set<string>();
 
 /** Admin-only endpoints for approving/rejecting high-value payments awaiting a co-signature. */
 @Controller('admin/transactions')
-@UseGuards(JwtAuthGuard, RolesGuard)
+@UseGuards(JwtAuthGuard, RolesGuard, AdminRateLimitGuard) // #919: stricter rate limit on admin routes
 @Roles('ADMIN')
 export class AdminController {
   constructor(private readonly paymentsService: PaymentsService) {}

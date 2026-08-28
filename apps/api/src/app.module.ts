@@ -17,7 +17,8 @@ import { CorrelationIdMiddleware } from './common/correlation-id.middleware';
     PaymentsModule,
     TasteModule,
   ],
-  controllers: [AppController],
+  // #921: HealthController registered here so GET /health is unauthenticated
+  controllers: [AppController, HealthController],
   providers: [AppService],
 })
 // #915: apply correlation ID middleware to every route

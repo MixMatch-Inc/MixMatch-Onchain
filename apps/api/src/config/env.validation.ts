@@ -7,6 +7,8 @@ export interface EnvConfig {
   jwtSecret: string;
   /** Access token lifetime, in seconds. */
   jwtExpiresInSeconds: number;
+  /** Bcrypt salt rounds used for password hashing. */
+  bcryptSaltRounds: number;
   walletEncryptionKey: string;
   stellarNetwork: 'testnet' | 'public';
   stellarHorizonUrl?: string;
@@ -60,6 +62,7 @@ const DEFAULT_ANCHOR_HOME_DOMAIN = 'testanchor.stellar.org';
 const DEFAULT_BCRYPT_SALT_ROUNDS = 10;
 const MIN_BCRYPT_SALT_ROUNDS = 10;
 const DEFAULT_HIGH_VALUE_THRESHOLD_AMOUNT = '1000';
+const DEFAULT_BCRYPT_SALT_ROUNDS = 10;
 const DEFAULT_JWT_EXPIRES_IN_SECONDS = 60 * 60; // 1 hour
 const MIN_JWT_SECRET_LENGTH = 32;
 const DEFAULT_RECONCILIATION_INTERVAL_MS = 2 * 60 * 1000; // 2 minutes
@@ -103,25 +106,9 @@ export function validateEnv(env: NodeJS.ProcessEnv = process.env): EnvConfig {
     throw new Error('VAULT_TOKEN is required when VAULT_ADDR is set');
   }
 
-  const anchorHomeDomain =
-    env.ANCHOR_HOME_DOMAIN?.trim() || DEFAULT_ANCHOR_HOME_DOMAIN;
-
-  // #906: Fail fast in production if the anchor domain was never explicitly
-  // configured — silently falling back to testanchor.stellar.org in a live
-  // environment would route real user funds through a test anchor.
-  if (nodeEnv === 'production' && anchorHomeDomain === DEFAULT_ANCHOR_HOME_DOMAIN) {
-    throw new Error(
-      'ANCHOR_HOME_DOMAIN must be set explicitly in production; ' +
-        'the default (testanchor.stellar.org) is a test anchor and must not be used with real funds.',
-    );
-  }
-
-  // #907: Allow operators to tune bcrypt cost without a redeploy.
-  const bcryptSaltRounds = Number(env.BCRYPT_SALT_ROUNDS) || DEFAULT_BCRYPT_SALT_ROUNDS;
-  if (bcryptSaltRounds < MIN_BCRYPT_SALT_ROUNDS) {
-    throw new Error(
-      `BCRYPT_SALT_ROUNDS must be at least ${MIN_BCRYPT_SALT_ROUNDS} (got ${bcryptSaltRounds})`,
-    );
+  const anchorHomeDomain = env.ANCHOR_HOME_DOMAIN?.trim();
+  if (nodeEnv === 'production' && !anchorHomeDomain) {
+    throw new Error('ANCHOR_HOME_DOMAIN is required in production');
   }
 
   return {
@@ -132,6 +119,7 @@ export function validateEnv(env: NodeJS.ProcessEnv = process.env): EnvConfig {
     jwtSecret,
     jwtExpiresInSeconds:
       Number(env.JWT_EXPIRES_IN_SECONDS) || DEFAULT_JWT_EXPIRES_IN_SECONDS,
+    bcryptSaltRounds: Number(env.BCRYPT_SALT_ROUNDS) || DEFAULT_BCRYPT_SALT_ROUNDS,
     walletEncryptionKey,
     stellarNetwork,
     stellarHorizonUrl: env.STELLAR_HORIZON_URL?.trim(),
@@ -145,7 +133,7 @@ export function validateEnv(env: NodeJS.ProcessEnv = process.env): EnvConfig {
     reconciliationEscalationMs:
       Number(env.RECONCILIATION_ESCALATION_MS) ||
       DEFAULT_RECONCILIATION_ESCALATION_MS,
-    anchorHomeDomain,
+    anchorHomeDomain: anchorHomeDomain || DEFAULT_ANCHOR_HOME_DOMAIN,
     adminSigningSecret: env.ADMIN_SIGNING_SECRET?.trim() || undefined,
     highValueThresholdAmount:
       env.HIGH_VALUE_THRESHOLD_AMOUNT?.trim() ||

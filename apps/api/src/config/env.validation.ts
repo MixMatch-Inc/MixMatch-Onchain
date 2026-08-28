@@ -1,6 +1,8 @@
 export interface EnvConfig {
   nodeEnv: string;
   port: number;
+  /** Number of bcrypt salt rounds used when hashing passwords. Defaults to 10; raise to 12+ in production for stronger hashing. */
+  bcryptSaltRounds: number;
   databaseUrl: string;
   jwtSecret: string;
   /** Access token lifetime, in seconds. */
@@ -55,6 +57,8 @@ export interface EnvConfig {
 
 const DEFAULT_PORT = 3000;
 const DEFAULT_ANCHOR_HOME_DOMAIN = 'testanchor.stellar.org';
+const DEFAULT_BCRYPT_SALT_ROUNDS = 10;
+const MIN_BCRYPT_SALT_ROUNDS = 10;
 const DEFAULT_HIGH_VALUE_THRESHOLD_AMOUNT = '1000';
 const DEFAULT_JWT_EXPIRES_IN_SECONDS = 60 * 60; // 1 hour
 const MIN_JWT_SECRET_LENGTH = 32;
@@ -99,9 +103,31 @@ export function validateEnv(env: NodeJS.ProcessEnv = process.env): EnvConfig {
     throw new Error('VAULT_TOKEN is required when VAULT_ADDR is set');
   }
 
+  const anchorHomeDomain =
+    env.ANCHOR_HOME_DOMAIN?.trim() || DEFAULT_ANCHOR_HOME_DOMAIN;
+
+  // #906: Fail fast in production if the anchor domain was never explicitly
+  // configured — silently falling back to testanchor.stellar.org in a live
+  // environment would route real user funds through a test anchor.
+  if (nodeEnv === 'production' && anchorHomeDomain === DEFAULT_ANCHOR_HOME_DOMAIN) {
+    throw new Error(
+      'ANCHOR_HOME_DOMAIN must be set explicitly in production; ' +
+        'the default (testanchor.stellar.org) is a test anchor and must not be used with real funds.',
+    );
+  }
+
+  // #907: Allow operators to tune bcrypt cost without a redeploy.
+  const bcryptSaltRounds = Number(env.BCRYPT_SALT_ROUNDS) || DEFAULT_BCRYPT_SALT_ROUNDS;
+  if (bcryptSaltRounds < MIN_BCRYPT_SALT_ROUNDS) {
+    throw new Error(
+      `BCRYPT_SALT_ROUNDS must be at least ${MIN_BCRYPT_SALT_ROUNDS} (got ${bcryptSaltRounds})`,
+    );
+  }
+
   return {
     nodeEnv,
     port: Number(env.PORT) || DEFAULT_PORT,
+    bcryptSaltRounds,
     databaseUrl: required(env, 'DATABASE_URL'),
     jwtSecret,
     jwtExpiresInSeconds:
@@ -119,8 +145,7 @@ export function validateEnv(env: NodeJS.ProcessEnv = process.env): EnvConfig {
     reconciliationEscalationMs:
       Number(env.RECONCILIATION_ESCALATION_MS) ||
       DEFAULT_RECONCILIATION_ESCALATION_MS,
-    anchorHomeDomain:
-      env.ANCHOR_HOME_DOMAIN?.trim() || DEFAULT_ANCHOR_HOME_DOMAIN,
+    anchorHomeDomain,
     adminSigningSecret: env.ADMIN_SIGNING_SECRET?.trim() || undefined,
     highValueThresholdAmount:
       env.HIGH_VALUE_THRESHOLD_AMOUNT?.trim() ||

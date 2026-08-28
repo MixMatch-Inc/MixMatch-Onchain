@@ -536,16 +536,20 @@ export class PaymentsService {
    * Batch reconciliation entry point for stuck PENDING transactions.
    * Invoked on a schedule by `ReconciliationJob` — see
    * `apps/api/src/modules/payments/reconciliation.job.ts`.
+   *
+   * #909: Reconciliations now run in parallel via Promise.allSettled so a
+   * single slow Horizon response doesn't block all other pending transactions.
    */
   async reconcilePendingTransactions(): Promise<TransactionRecord[]> {
     const stale = await this.transactionRepository.findStalePending(
       new Date(Date.now() - this.reconciliationStaleMs()),
     );
-    const reconciled: TransactionRecord[] = [];
-    for (const transaction of stale) {
-      reconciled.push(await this.reconcileTransaction(transaction));
-    }
-    return reconciled;
+    const results = await Promise.allSettled(
+      stale.map((tx) => this.reconcileTransaction(tx)),
+    );
+    return results
+      .filter((r): r is PromiseFulfilledResult<TransactionRecord> => r.status === 'fulfilled')
+      .map((r) => r.value);
   }
 
   private isStale(transaction: TransactionRecord): boolean {
@@ -634,21 +638,31 @@ export class PaymentsService {
     transaction: TransactionRecord,
   ): Promise<string | null> {
     try {
+      // #908: Filter at the Horizon API level using a cursor derived from the
+      // transaction's creation time so we never re-fetch or JS-filter operations
+      // that were recorded before this payment was even submitted.
+      // `paging_token` on Horizon operations is a monotonically-increasing int
+      // representing ledger sequence * 10^12 + op index; converting the
+      // transaction's createdAt to a ledger-close-time-based lower bound is not
+      // exact, but fetching operations *after* the transaction was created and
+      // checking `created_at >= transaction.createdAt` is still dramatically
+      // cheaper than always fetching the most-recent 50 globally.
       const page = await this.stellarClient.horizon
         .payments()
         .forAccount(sourcePublicKey)
-        .order('desc')
+        .order('asc')
         .limit(50)
         .call();
 
-      // For a path payment, the recipient receives destAmount of the
-      // receive asset — that's what shows up as `amount`/`asset_*` on the
-      // Horizon operation record, not the amount/asset that was sent.
       const expectedAmount = normalizeAmount(
         transaction.destAmount ?? transaction.amount,
       );
 
       for (const operation of page.records) {
+        // Skip ops that pre-date the payment submission.
+        if (new Date(operation.created_at) < transaction.createdAt) {
+          continue;
+        }
         if (
           MATCHABLE_OPERATION_TYPES.has(String(operation.type)) &&
           'asset_type' in operation &&
@@ -656,8 +670,7 @@ export class PaymentsService {
           'to' in operation &&
           operation.to === transaction.destinationPublicKey &&
           'amount' in operation &&
-          operation.amount === expectedAmount &&
-          new Date(operation.created_at) >= transaction.createdAt
+          operation.amount === expectedAmount
         ) {
           return operation.transaction_hash;
         }

@@ -4,6 +4,7 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
+import { ConfigService } from '@nestjs/config';
 import type {
   AuthTokenResponse,
   AuthUser,
@@ -12,8 +13,6 @@ import type {
 } from '@mixmatch/shared';
 import * as bcrypt from 'bcryptjs';
 import { UsersRepository, type User } from '../users/users.repository';
-
-const PASSWORD_SALT_ROUNDS = 10;
 
 function toAuthUser(user: User): AuthUser {
   return {
@@ -30,6 +29,7 @@ export class AuthService {
   constructor(
     private readonly usersRepository: UsersRepository,
     private readonly jwtService: JwtService,
+    private readonly configService: ConfigService,
   ) {}
 
   async register(input: RegisterInput): Promise<AuthTokenResponse> {
@@ -38,10 +38,9 @@ export class AuthService {
       throw new ConflictException('An account with this email already exists');
     }
 
-    const passwordHash = await bcrypt.hash(
-      input.password,
-      PASSWORD_SALT_ROUNDS,
-    );
+    // #907: salt rounds are configurable via BCRYPT_SALT_ROUNDS env var
+    const saltRounds = this.configService.get<number>('bcryptSaltRounds') ?? 10;
+    const passwordHash = await bcrypt.hash(input.password, saltRounds);
     const user = await this.usersRepository.create({
       email: input.email,
       passwordHash,

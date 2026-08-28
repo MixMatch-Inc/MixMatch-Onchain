@@ -13,7 +13,13 @@ export interface MyQrCodeProps {
  */
 export default function MyQrCode({ publicKey }: MyQrCodeProps) {
   return (
-    <View style={styles.container} testID="my-qr-code">
+    <View
+      style={styles.container}
+      testID="my-qr-code"
+      accessible
+      accessibilityRole="image"
+      accessibilityLabel={`QR code for receiving payments to Stellar account ${publicKey}`}
+    >
       <QRCode value={publicKey} size={220} />
       <Text style={styles.publicKey} selectable numberOfLines={1}>
         {publicKey}

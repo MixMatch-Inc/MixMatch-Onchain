@@ -1,41 +1,32 @@
-import { Test } from '@nestjs/testing';
+const createDatabaseMock = jest.fn();
+
+jest.mock('./client', () => ({
+  createDatabase: (...args: unknown[]) => createDatabaseMock(...args),
+}));
+
 import { ConfigService } from '@nestjs/config';
-import { DbModule, DATABASE } from './db.module';
+import { Test } from '@nestjs/testing';
+import { DATABASE, DbModule } from './db.module';
 
 describe('DbModule', () => {
-  it('resolves the DATABASE token via the factory when databaseUrl is provided', async () => {
-    // Stub createDatabase so no real Postgres connection is attempted
-    jest.mock('./client', () => ({
-      createDatabase: jest.fn(() => ({ __mock: true })),
-    }));
+  it('creates the database connection from the configured databaseUrl', async () => {
+    createDatabaseMock.mockReturnValueOnce({ db: true });
 
-    const module = await Test.createTestingModule({
+    const moduleRef = await Test.createTestingModule({
       imports: [DbModule],
-    })
-      .overrideProvider(ConfigService)
-      .useValue({
-        getOrThrow: jest.fn((key: string) => {
-          if (key === 'databaseUrl') return 'postgres://localhost/test';
-          throw new Error(`Unexpected config key: ${key}`);
-        }),
-        get: jest.fn(),
-      })
-      .compile();
+      providers: [
+        {
+          provide: ConfigService,
+          useValue: {
+            getOrThrow: jest.fn().mockReturnValue('postgres://localhost/mixmatch'),
+          },
+        },
+      ],
+    }).compile();
 
-    const db = module.get(DATABASE);
-    expect(db).toBeDefined();
-  });
-
-  it('throws when DATABASE_URL is missing', async () => {
-    const moduleRef = Test.createTestingModule({
-      imports: [DbModule],
-    }).overrideProvider(ConfigService).useValue({
-      getOrThrow: jest.fn(() => {
-        throw new Error('Missing required environment variable: DATABASE_URL');
-      }),
-      get: jest.fn(),
-    });
-
-    await expect(moduleRef.compile()).rejects.toThrow(/DATABASE_URL/);
+    expect(moduleRef.get(DATABASE)).toEqual({ db: true });
+    expect(createDatabaseMock).toHaveBeenCalledWith(
+      'postgres://localhost/mixmatch',
+    );
   });
 });

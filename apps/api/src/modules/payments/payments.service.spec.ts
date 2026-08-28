@@ -841,6 +841,9 @@ describe('PaymentsService', () => {
       expect(streamAccountPaymentsMock).toHaveBeenCalledWith(
         expect.objectContaining({ accountPublicKey: 'GABCDEF' }),
       );
+      expect(
+        transactionRepository.findPendingByStellarAccountId,
+      ).toHaveBeenCalledTimes(1);
       expect(transactionRepository.updateStatus).toHaveBeenCalledWith(
         'tx-1',
         expect.objectContaining({
@@ -888,6 +891,9 @@ describe('PaymentsService', () => {
       await flushMicrotasks();
 
       expect(transactionRepository.updateStatus).not.toHaveBeenCalled();
+      expect(
+        transactionRepository.findPendingByStellarAccountId,
+      ).toHaveBeenCalledTimes(1);
       expect(events).toEqual([]);
       subscription.unsubscribe();
     });

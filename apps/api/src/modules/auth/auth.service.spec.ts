@@ -1,4 +1,5 @@
 import { ConflictException, UnauthorizedException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { Test } from '@nestjs/testing';
 import * as bcrypt from 'bcryptjs';
@@ -43,6 +44,17 @@ describe('AuthService', () => {
         {
           provide: JwtService,
           useValue: { sign: jest.fn().mockReturnValue('signed-token') },
+        },
+        {
+          provide: ConfigService,
+          useValue: {
+            getOrThrow: jest.fn((key: string) => {
+              if (key === 'bcryptSaltRounds') {
+                return 10;
+              }
+              throw new Error(`Unexpected config lookup: ${key}`);
+            }),
+          },
         },
       ],
     }).compile();

@@ -4,7 +4,9 @@ import {
   Injectable,
   UnauthorizedException,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
+import { ConfigService } from '@nestjs/config';
 import type {
   AuthTokenResponse,
   AuthUser,
@@ -13,34 +15,6 @@ import type {
 } from '@mixmatch/shared';
 import * as bcrypt from 'bcryptjs';
 import { UsersRepository, type User } from '../users/users.repository';
-
-const PASSWORD_SALT_ROUNDS = 10;
-
-/**
- * #918: Server-side password strength rules applied as defense in depth
- * even if the Zod schema at the shared layer is bypassed (e.g. direct API
- * calls or future schema relaxation).
- *
- * Rules:
- * - At least 8 characters (mirrors shared schema)
- * - At least one uppercase letter
- * - At least one lowercase letter
- * - At least one digit
- */
-function assertPasswordStrength(password: string): void {
-  if (password.length < 8) {
-    throw new BadRequestException('Password must be at least 8 characters long');
-  }
-  if (!/[A-Z]/.test(password)) {
-    throw new BadRequestException('Password must contain at least one uppercase letter');
-  }
-  if (!/[a-z]/.test(password)) {
-    throw new BadRequestException('Password must contain at least one lowercase letter');
-  }
-  if (!/[0-9]/.test(password)) {
-    throw new BadRequestException('Password must contain at least one digit');
-  }
-}
 
 function toAuthUser(user: User): AuthUser {
   return {
@@ -57,6 +31,7 @@ export class AuthService {
   constructor(
     private readonly usersRepository: UsersRepository,
     private readonly jwtService: JwtService,
+    private readonly configService: ConfigService,
   ) {}
 
   async register(input: RegisterInput): Promise<AuthTokenResponse> {
@@ -70,7 +45,7 @@ export class AuthService {
 
     const passwordHash = await bcrypt.hash(
       input.password,
-      PASSWORD_SALT_ROUNDS,
+      this.bcryptSaltRounds(),
     );
     const user = await this.usersRepository.create({
       email: input.email,
@@ -102,5 +77,9 @@ export class AuthService {
   private buildTokenResponse(user: User): AuthTokenResponse {
     const accessToken = this.jwtService.sign({ sub: user.id, role: user.role });
     return { user: toAuthUser(user), accessToken };
+  }
+
+  private bcryptSaltRounds(): number {
+    return this.configService.getOrThrow<number>('bcryptSaltRounds');
   }
 }

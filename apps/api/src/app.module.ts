@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
@@ -7,7 +7,7 @@ import { DbModule } from './db/db.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { PaymentsModule } from './modules/payments/payments.module';
 import { TasteModule } from './modules/taste/taste.module';
-import { HealthController } from './health/health.controller';
+import { CorrelationIdMiddleware } from './common/correlation-id.middleware';
 
 @Module({
   imports: [
@@ -21,4 +21,9 @@ import { HealthController } from './health/health.controller';
   controllers: [AppController, HealthController],
   providers: [AppService],
 })
-export class AppModule {}
+// #915: apply correlation ID middleware to every route
+export class AppModule implements NestModule {
+  configure(consumer: MiddlewareConsumer) {
+    consumer.apply(CorrelationIdMiddleware).forRoutes('*');
+  }
+}

@@ -15,6 +15,7 @@ import SendPaymentForm from './SendPaymentForm';
 import TransactionHistoryList from './TransactionHistoryList';
 
 type Tab = 'send' | 'history' | 'receive' | 'scan';
+const HISTORY_LIMIT = 20;
 
 const TABS: { key: Tab; label: string }[] = [
   { key: 'send', label: 'Send' },
@@ -30,7 +31,10 @@ export default function PaymentsScreen() {
   const [scannedDestination, setScannedDestination] = useState<string | undefined>(undefined);
   const [transactions, setTransactions] = useState<TransactionRecord[]>([]);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
+  const [isLoadingMoreHistory, setIsLoadingMoreHistory] = useState(false);
   const [streamAvailable, setStreamAvailable] = useState(true);
+  const [historyPage, setHistoryPage] = useState(1);
+  const [historyTotal, setHistoryTotal] = useState(0);
 
   const loadAccount = useCallback(async () => {
     if (!accessToken) return;
@@ -38,16 +42,44 @@ export default function PaymentsScreen() {
     setPublicKey(account.publicKey);
   }, [accessToken]);
 
-  const loadHistory = useCallback(async () => {
+  const loadHistory = useCallback(
+    async (page: number, append = false) => {
+      if (!accessToken) return;
+      if (append) {
+        setIsLoadingMoreHistory(true);
+      } else {
+        setIsLoadingHistory(true);
+      }
+      try {
+        const { transactions: rows, total } = await getTransactionHistory(
+          { page, limit: HISTORY_LIMIT },
+          accessToken,
+        );
+        setHistoryPage(page);
+        setHistoryTotal(total);
+        setTransactions((prev) => (append ? [...prev, ...rows] : rows));
+      } finally {
+        setIsLoadingHistory(false);
+        setIsLoadingMoreHistory(false);
+      }
+    },
+    [accessToken],
+  );
+
+  const loadMoreHistory = useCallback(() => {
     if (!accessToken) return;
-    setIsLoadingHistory(true);
-    try {
-      const { transactions: rows } = await getTransactionHistory({}, accessToken);
-      setTransactions(rows);
-    } finally {
-      setIsLoadingHistory(false);
-    }
-  }, [accessToken]);
+    if (isLoadingHistory || isLoadingMoreHistory) return;
+    if (transactions.length >= historyTotal) return;
+    void loadHistory(historyPage + 1, true);
+  }, [
+    accessToken,
+    historyPage,
+    historyTotal,
+    isLoadingHistory,
+    isLoadingMoreHistory,
+    loadHistory,
+    transactions.length,
+  ]);
 
   useEffect(() => {
     void loadAccount();
@@ -55,7 +87,7 @@ export default function PaymentsScreen() {
 
   useEffect(() => {
     if (tab === 'history') {
-      void loadHistory();
+      void loadHistory(1);
     }
   }, [tab, loadHistory]);
 
@@ -90,9 +122,9 @@ export default function PaymentsScreen() {
   // stream connection isn't available, so status updates still arrive.
   useEffect(() => {
     if (streamAvailable || tab !== 'history') return;
-    const interval = setInterval(() => void loadHistory(), 15_000);
+    const interval = setInterval(() => void loadHistory(historyPage), 15_000);
     return () => clearInterval(interval);
-  }, [streamAvailable, tab, loadHistory]);
+  }, [historyPage, streamAvailable, tab, loadHistory]);
 
   const handleScanned = (data: string) => {
     setScannedDestination(data);
@@ -137,7 +169,7 @@ export default function PaymentsScreen() {
             }
             onSuccess={() => {
               setScannedDestination(undefined);
-              void loadHistory();
+              void loadHistory(1);
             }}
           />
         )}
@@ -146,7 +178,12 @@ export default function PaymentsScreen() {
           (isLoadingHistory ? (
             <ActivityIndicator style={styles.loading} />
           ) : (
-            <TransactionHistoryList transactions={transactions} />
+            <TransactionHistoryList
+              transactions={transactions}
+              hasMore={transactions.length < historyTotal}
+              isLoadingMore={isLoadingMoreHistory}
+              onLoadMore={loadMoreHistory}
+            />
           ))}
 
         {tab === 'receive' && (publicKey ? <MyQrCode publicKey={publicKey} /> : <ActivityIndicator style={styles.loading} />)}

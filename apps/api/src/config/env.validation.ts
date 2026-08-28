@@ -1,10 +1,14 @@
 export interface EnvConfig {
   nodeEnv: string;
   port: number;
+  /** Number of bcrypt salt rounds used when hashing passwords. Defaults to 10; raise to 12+ in production for stronger hashing. */
+  bcryptSaltRounds: number;
   databaseUrl: string;
   jwtSecret: string;
   /** Access token lifetime, in seconds. */
   jwtExpiresInSeconds: number;
+  /** Bcrypt salt rounds used for password hashing. */
+  bcryptSaltRounds: number;
   walletEncryptionKey: string;
   stellarNetwork: 'testnet' | 'public';
   stellarHorizonUrl?: string;
@@ -55,7 +59,10 @@ export interface EnvConfig {
 
 const DEFAULT_PORT = 3000;
 const DEFAULT_ANCHOR_HOME_DOMAIN = 'testanchor.stellar.org';
+const DEFAULT_BCRYPT_SALT_ROUNDS = 10;
+const MIN_BCRYPT_SALT_ROUNDS = 10;
 const DEFAULT_HIGH_VALUE_THRESHOLD_AMOUNT = '1000';
+const DEFAULT_BCRYPT_SALT_ROUNDS = 10;
 const DEFAULT_JWT_EXPIRES_IN_SECONDS = 60 * 60; // 1 hour
 const MIN_JWT_SECRET_LENGTH = 32;
 const DEFAULT_RECONCILIATION_INTERVAL_MS = 2 * 60 * 1000; // 2 minutes
@@ -93,19 +100,36 @@ export function validateEnv(env: NodeJS.ProcessEnv = process.env): EnvConfig {
   const stellarNetwork =
     env.STELLAR_NETWORK?.trim() === 'public' ? 'public' : 'testnet';
 
+  // #906: ANCHOR_HOME_DOMAIN must be explicitly set in production to prevent
+  // silent fallback to the testnet anchor in live deployments.
+  const anchorHomeDomain = env.ANCHOR_HOME_DOMAIN?.trim();
+  if (stellarNetwork === 'public' && !anchorHomeDomain) {
+    throw new Error(
+      'ANCHOR_HOME_DOMAIN is required when STELLAR_NETWORK=public. ' +
+        'Setting it to the testnet anchor in production would route real user funds to a testnet anchor.',
+    );
+  }
+
   const vaultAddr = env.VAULT_ADDR?.trim() || undefined;
   const vaultToken = env.VAULT_TOKEN?.trim() || undefined;
   if (vaultAddr && !vaultToken) {
     throw new Error('VAULT_TOKEN is required when VAULT_ADDR is set');
   }
 
+  const anchorHomeDomain = env.ANCHOR_HOME_DOMAIN?.trim();
+  if (nodeEnv === 'production' && !anchorHomeDomain) {
+    throw new Error('ANCHOR_HOME_DOMAIN is required in production');
+  }
+
   return {
     nodeEnv,
     port: Number(env.PORT) || DEFAULT_PORT,
+    bcryptSaltRounds,
     databaseUrl: required(env, 'DATABASE_URL'),
     jwtSecret,
     jwtExpiresInSeconds:
       Number(env.JWT_EXPIRES_IN_SECONDS) || DEFAULT_JWT_EXPIRES_IN_SECONDS,
+    bcryptSaltRounds: Number(env.BCRYPT_SALT_ROUNDS) || DEFAULT_BCRYPT_SALT_ROUNDS,
     walletEncryptionKey,
     stellarNetwork,
     stellarHorizonUrl: env.STELLAR_HORIZON_URL?.trim(),
@@ -119,8 +143,7 @@ export function validateEnv(env: NodeJS.ProcessEnv = process.env): EnvConfig {
     reconciliationEscalationMs:
       Number(env.RECONCILIATION_ESCALATION_MS) ||
       DEFAULT_RECONCILIATION_ESCALATION_MS,
-    anchorHomeDomain:
-      env.ANCHOR_HOME_DOMAIN?.trim() || DEFAULT_ANCHOR_HOME_DOMAIN,
+    anchorHomeDomain: anchorHomeDomain || DEFAULT_ANCHOR_HOME_DOMAIN,
     adminSigningSecret: env.ADMIN_SIGNING_SECRET?.trim() || undefined,
     highValueThresholdAmount:
       env.HIGH_VALUE_THRESHOLD_AMOUNT?.trim() ||

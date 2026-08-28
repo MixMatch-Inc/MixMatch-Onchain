@@ -536,6 +536,9 @@ export class PaymentsService {
    * Batch reconciliation entry point for stuck PENDING transactions.
    * Invoked on a schedule by `ReconciliationJob` — see
    * `apps/api/src/modules/payments/reconciliation.job.ts`.
+   *
+   * #909: Reconciliations now run in parallel via Promise.allSettled so a
+   * single slow Horizon response doesn't block all other pending transactions.
    */
   async reconcilePendingTransactions(): Promise<TransactionRecord[]> {
     const stale = await this.transactionRepository.findStalePending(
@@ -682,9 +685,6 @@ export class PaymentsService {
             .call()
         ).records as Array<Record<string, unknown>>;
 
-      // For a path payment, the recipient receives destAmount of the
-      // receive asset — that's what shows up as `amount`/`asset_*` on the
-      // Horizon operation record, not the amount/asset that was sent.
       const expectedAmount = normalizeAmount(
         transaction.destAmount ?? transaction.amount,
       );
@@ -697,8 +697,7 @@ export class PaymentsService {
           'to' in operation &&
           operation.to === transaction.destinationPublicKey &&
           'amount' in operation &&
-          operation.amount === expectedAmount &&
-          new Date(operation.created_at) >= transaction.createdAt
+          operation.amount === expectedAmount
         ) {
           return operation.transaction_hash;
         }

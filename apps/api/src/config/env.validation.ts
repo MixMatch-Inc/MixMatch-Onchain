@@ -1,6 +1,8 @@
 export interface EnvConfig {
   nodeEnv: string;
   port: number;
+  /** Number of bcrypt salt rounds used when hashing passwords. Defaults to 10; raise to 12+ in production for stronger hashing. */
+  bcryptSaltRounds: number;
   databaseUrl: string;
   jwtSecret: string;
   /** Access token lifetime, in seconds. */
@@ -57,6 +59,8 @@ export interface EnvConfig {
 
 const DEFAULT_PORT = 3000;
 const DEFAULT_ANCHOR_HOME_DOMAIN = 'testanchor.stellar.org';
+const DEFAULT_BCRYPT_SALT_ROUNDS = 10;
+const MIN_BCRYPT_SALT_ROUNDS = 10;
 const DEFAULT_HIGH_VALUE_THRESHOLD_AMOUNT = '1000';
 const DEFAULT_BCRYPT_SALT_ROUNDS = 10;
 const DEFAULT_JWT_EXPIRES_IN_SECONDS = 60 * 60; // 1 hour
@@ -110,6 +114,7 @@ export function validateEnv(env: NodeJS.ProcessEnv = process.env): EnvConfig {
   return {
     nodeEnv,
     port: Number(env.PORT) || DEFAULT_PORT,
+    bcryptSaltRounds,
     databaseUrl: required(env, 'DATABASE_URL'),
     jwtSecret,
     jwtExpiresInSeconds:

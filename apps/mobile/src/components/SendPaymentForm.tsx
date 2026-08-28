@@ -119,6 +119,8 @@ export default function SendPaymentForm({ onSubmit, onSuccess, onQuote, initialD
         onChangeText={setDestinationPublicKey}
         autoCapitalize="characters"
         testID="destination-input"
+        accessibilityLabel="Recipient Stellar address"
+        accessibilityHint="Enter the Stellar public key of the recipient"
       />
       {fieldErrors.destinationPublicKey && <Text style={styles.fieldError}>{fieldErrors.destinationPublicKey}</Text>}
 
@@ -129,16 +131,27 @@ export default function SendPaymentForm({ onSubmit, onSuccess, onQuote, initialD
         onChangeText={setAmount}
         keyboardType="decimal-pad"
         testID="amount-input"
+        accessibilityLabel="Payment amount in XLM"
+        accessibilityHint="Enter the amount to send"
       />
       {fieldErrors.amount && <Text style={styles.fieldError}>{fieldErrors.amount}</Text>}
 
       <Text style={styles.label}>Memo (optional)</Text>
-      <TextInput style={styles.input} value={memo} onChangeText={setMemo} testID="memo-input" />
+      <TextInput
+        style={styles.input}
+        value={memo}
+        onChangeText={setMemo}
+        testID="memo-input"
+        accessibilityLabel="Memo"
+        accessibilityHint="Optional note to include with the payment"
+      />
       {fieldErrors.memo && <Text style={styles.fieldError}>{fieldErrors.memo}</Text>}
 
       <TouchableOpacity
         onPress={() => setShowAssetFields((prev) => !prev)}
         testID="toggle-asset-fields"
+        accessibilityRole="button"
+        accessibilityLabel={showAssetFields ? 'Send XLM instead' : 'Send a different asset'}
       >
         <Text style={styles.link}>{showAssetFields ? 'Send XLM instead' : 'Send a different asset'}</Text>
       </TouchableOpacity>
@@ -152,6 +165,8 @@ export default function SendPaymentForm({ onSubmit, onSuccess, onQuote, initialD
             onChangeText={setAssetCode}
             autoCapitalize="characters"
             testID="asset-code-input"
+            accessibilityLabel="Asset code"
+            accessibilityHint="Enter the asset code, for example USDC"
           />
           {fieldErrors.assetCode && <Text style={styles.fieldError}>{fieldErrors.assetCode}</Text>}
 
@@ -162,6 +177,8 @@ export default function SendPaymentForm({ onSubmit, onSuccess, onQuote, initialD
             onChangeText={setAssetIssuer}
             autoCapitalize="characters"
             testID="asset-issuer-input"
+            accessibilityLabel="Asset issuer public key"
+            accessibilityHint="Enter the Stellar public key of the asset issuer"
           />
           {fieldErrors.assetIssuer && <Text style={styles.fieldError}>{fieldErrors.assetIssuer}</Text>}
         </>
@@ -171,6 +188,8 @@ export default function SendPaymentForm({ onSubmit, onSuccess, onQuote, initialD
         <TouchableOpacity
           onPress={() => setShowReceiveAssetFields((prev) => !prev)}
           testID="toggle-receive-asset-fields"
+          accessibilityRole="button"
+          accessibilityLabel={showReceiveAssetFields ? "Recipient gets the same asset I send" : "Recipient should get a different asset"}
         >
           <Text style={styles.link}>
             {showReceiveAssetFields ? "Recipient gets the same asset I send" : "Recipient should get a different asset"}
@@ -190,6 +209,8 @@ export default function SendPaymentForm({ onSubmit, onSuccess, onQuote, initialD
             }}
             autoCapitalize="characters"
             testID="receive-asset-code-input"
+            accessibilityLabel="Recipient asset code"
+            accessibilityHint="Asset code the recipient should receive"
           />
           {fieldErrors.receiveAssetCode && <Text style={styles.fieldError}>{fieldErrors.receiveAssetCode}</Text>}
 
@@ -203,6 +224,8 @@ export default function SendPaymentForm({ onSubmit, onSuccess, onQuote, initialD
             }}
             autoCapitalize="characters"
             testID="receive-asset-issuer-input"
+            accessibilityLabel="Recipient asset issuer public key"
+            accessibilityHint="Stellar public key of the recipient asset issuer"
           />
           {fieldErrors.receiveAssetIssuer && <Text style={styles.fieldError}>{fieldErrors.receiveAssetIssuer}</Text>}
 
@@ -211,6 +234,9 @@ export default function SendPaymentForm({ onSubmit, onSuccess, onQuote, initialD
             onPress={() => void handleGetQuote()}
             disabled={isQuoting}
             testID="get-quote-button"
+            accessibilityRole="button"
+            accessibilityLabel="Preview conversion rate"
+            accessibilityState={{ disabled: isQuoting }}
           >
             {isQuoting ? <ActivityIndicator /> : <Text style={styles.quoteButtonText}>Preview conversion</Text>}
           </TouchableOpacity>
@@ -227,7 +253,7 @@ export default function SendPaymentForm({ onSubmit, onSuccess, onQuote, initialD
 
       {error && <Text style={styles.error}>{error}</Text>}
 
-      <TouchableOpacity style={styles.button} onPress={() => void handleSubmit()} disabled={isSubmitting} testID="send-button">
+      <TouchableOpacity style={styles.button} onPress={() => void handleSubmit()} disabled={isSubmitting} testID="send-button" accessibilityRole="button" accessibilityLabel="Send payment" accessibilityState={{ disabled: isSubmitting }}>
         {isSubmitting ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Send payment</Text>}
       </TouchableOpacity>
     </View>

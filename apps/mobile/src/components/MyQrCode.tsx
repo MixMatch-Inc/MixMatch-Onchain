@@ -14,7 +14,13 @@ export interface MyQrCodeProps {
 export default function MyQrCode({ publicKey }: MyQrCodeProps) {
   return (
     <View style={styles.container} testID="my-qr-code">
-      <QRCode value={publicKey} size={220} />
+      <View
+        accessible
+        accessibilityRole="image"
+        accessibilityLabel={`QR code for your Stellar public key: ${publicKey}. Ask the sender to scan this to pay you.`}
+      >
+        <QRCode value={publicKey} size={220} />
+      </View>
       <Text style={styles.publicKey} selectable numberOfLines={1}>
         {publicKey}
       </Text>

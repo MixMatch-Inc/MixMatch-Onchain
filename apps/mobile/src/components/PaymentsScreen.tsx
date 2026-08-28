@@ -30,6 +30,10 @@ export default function PaymentsScreen() {
   const [scannedDestination, setScannedDestination] = useState<string | undefined>(undefined);
   const [transactions, setTransactions] = useState<TransactionRecord[]>([]);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [historyPage, setHistoryPage] = useState(1);
+  const [historyHasMore, setHistoryHasMore] = useState(false);
+  const HISTORY_PAGE_SIZE = 20;
   const [streamAvailable, setStreamAvailable] = useState(true);
 
   const loadAccount = useCallback(async () => {
@@ -42,12 +46,34 @@ export default function PaymentsScreen() {
     if (!accessToken) return;
     setIsLoadingHistory(true);
     try {
-      const { transactions: rows } = await getTransactionHistory({}, accessToken);
+      const { transactions: rows, total } = await getTransactionHistory(
+        { page: 1, limit: HISTORY_PAGE_SIZE },
+        accessToken,
+      );
       setTransactions(rows);
+      setHistoryPage(1);
+      setHistoryHasMore(rows.length < total);
     } finally {
       setIsLoadingHistory(false);
     }
   }, [accessToken]);
+
+  const loadMoreHistory = useCallback(async () => {
+    if (!accessToken || isLoadingMore) return;
+    const nextPage = historyPage + 1;
+    setIsLoadingMore(true);
+    try {
+      const { transactions: rows, total } = await getTransactionHistory(
+        { page: nextPage, limit: HISTORY_PAGE_SIZE },
+        accessToken,
+      );
+      setTransactions((prev) => [...prev, ...rows]);
+      setHistoryPage(nextPage);
+      setHistoryHasMore(transactions.length + rows.length < total);
+    } finally {
+      setIsLoadingMore(false);
+    }
+  }, [accessToken, historyPage, isLoadingMore, transactions.length]);
 
   useEffect(() => {
     void loadAccount();
@@ -146,7 +172,12 @@ export default function PaymentsScreen() {
           (isLoadingHistory ? (
             <ActivityIndicator style={styles.loading} />
           ) : (
-            <TransactionHistoryList transactions={transactions} />
+            <TransactionHistoryList
+              transactions={transactions}
+              isLoadingMore={isLoadingMore}
+              hasMore={historyHasMore}
+              onLoadMore={() => void loadMoreHistory()}
+            />
           ))}
 
         {tab === 'receive' && (publicKey ? <MyQrCode publicKey={publicKey} /> : <ActivityIndicator style={styles.loading} />)}

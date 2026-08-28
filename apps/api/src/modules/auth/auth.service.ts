@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ConflictException,
   Injectable,
   UnauthorizedException,
@@ -14,6 +15,32 @@ import * as bcrypt from 'bcryptjs';
 import { UsersRepository, type User } from '../users/users.repository';
 
 const PASSWORD_SALT_ROUNDS = 10;
+
+/**
+ * #918: Server-side password strength rules applied as defense in depth
+ * even if the Zod schema at the shared layer is bypassed (e.g. direct API
+ * calls or future schema relaxation).
+ *
+ * Rules:
+ * - At least 8 characters (mirrors shared schema)
+ * - At least one uppercase letter
+ * - At least one lowercase letter
+ * - At least one digit
+ */
+function assertPasswordStrength(password: string): void {
+  if (password.length < 8) {
+    throw new BadRequestException('Password must be at least 8 characters long');
+  }
+  if (!/[A-Z]/.test(password)) {
+    throw new BadRequestException('Password must contain at least one uppercase letter');
+  }
+  if (!/[a-z]/.test(password)) {
+    throw new BadRequestException('Password must contain at least one lowercase letter');
+  }
+  if (!/[0-9]/.test(password)) {
+    throw new BadRequestException('Password must contain at least one digit');
+  }
+}
 
 function toAuthUser(user: User): AuthUser {
   return {
@@ -33,6 +60,9 @@ export class AuthService {
   ) {}
 
   async register(input: RegisterInput): Promise<AuthTokenResponse> {
+    // #918: enforce password strength server-side as defense in depth
+    assertPasswordStrength(input.password);
+
     const existing = await this.usersRepository.findByEmail(input.email);
     if (existing) {
       throw new ConflictException('An account with this email already exists');

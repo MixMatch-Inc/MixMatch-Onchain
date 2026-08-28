@@ -59,7 +59,7 @@ export default function LoginPage() {
             value={email}
             onChange={(event) => setEmail(event.target.value)}
             style={{ display: 'block', width: '100%', padding: 8, marginTop: 4 }}
-            data-testid="email-input"
+            data-testid="email-input" aria-invalid={Boolean(error)} aria-describedby={error ? "form-error" : undefined}
           />
         </label>
         <label style={{ display: 'block', marginBottom: 12 }}>
@@ -69,10 +69,10 @@ export default function LoginPage() {
             value={password}
             onChange={(event) => setPassword(event.target.value)}
             style={{ display: 'block', width: '100%', padding: 8, marginTop: 4 }}
-            data-testid="password-input"
+            data-testid="password-input" aria-invalid={Boolean(error)} aria-describedby={error ? "form-error" : undefined}
           />
         </label>
-        {error && <p style={{ color: 'crimson' }}>{error}</p>}
+        {error && <p id="form-error" style={{ color: 'crimson' }}>{error}</p>}
         <button type="submit" disabled={isSubmitting} data-testid="submit-button">
           {mode === 'login' ? 'Log in' : 'Register'}
         </button>

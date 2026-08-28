@@ -75,8 +75,13 @@ export const streamingConnections = pgTable('streaming_connections', {
     .notNull(),
   provider: providerEnum('provider').notNull(),
   providerAccountId: text('provider_account_id').notNull(),
-  accessToken: text('access_token').notNull(),
-  refreshToken: text('refresh_token'),
+  // AES-256-GCM ciphertext of the OAuth access token — encrypted at the
+  // application layer using the same walletEncryptionKey used for Stellar
+  // secrets, so plaintext tokens never reach the database. Mirrors the
+  // pattern used for stellarAccounts.encryptedSecretKey.
+  encryptedAccessToken: text('encrypted_access_token').notNull(),
+  // Nullable: not all OAuth flows return a refresh token.
+  encryptedRefreshToken: text('encrypted_refresh_token'),
   expiresAt: timestamp('expires_at'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),

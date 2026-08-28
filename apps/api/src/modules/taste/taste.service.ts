@@ -1,4 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 
 /**
  * #903: `TasteService.ingestTasteProfiles` is currently a non-functional stub.

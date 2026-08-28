@@ -1,3 +1,6 @@
+if (process.env.NODE_ENV !== 'production' && !process.env.EXPO_PUBLIC_API_URL) {
+  console.warn('Warning: API_URL is defaulting to http://localhost:3000. Ensure your backend is running locally.');
+}
 export const API_URL = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:3000';
 
 export class ApiError extends Error {

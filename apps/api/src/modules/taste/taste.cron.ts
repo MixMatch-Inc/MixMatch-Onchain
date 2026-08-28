@@ -20,6 +20,14 @@ export class TasteCron {
       return;
     }
     this.logger.log('CRON: Triggering daily taste profile ingestion');
-    this.tasteService.ingestTasteProfiles();
+    try {
+      this.tasteService.ingestTasteProfiles();
+    } catch (err) {
+      // #903: surface the error from the not-yet-implemented stub as a warning
+      // rather than letting it propagate and crash the scheduler.
+      this.logger.warn(
+        `CRON: taste ingestion skipped — ${err instanceof Error ? err.message : String(err)}`,
+      );
+    }
   }
 }

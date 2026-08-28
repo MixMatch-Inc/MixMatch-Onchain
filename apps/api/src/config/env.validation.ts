@@ -93,6 +93,16 @@ export function validateEnv(env: NodeJS.ProcessEnv = process.env): EnvConfig {
   const stellarNetwork =
     env.STELLAR_NETWORK?.trim() === 'public' ? 'public' : 'testnet';
 
+  // #906: ANCHOR_HOME_DOMAIN must be explicitly set in production to prevent
+  // silent fallback to the testnet anchor in live deployments.
+  const anchorHomeDomain = env.ANCHOR_HOME_DOMAIN?.trim();
+  if (stellarNetwork === 'public' && !anchorHomeDomain) {
+    throw new Error(
+      'ANCHOR_HOME_DOMAIN is required when STELLAR_NETWORK=public. ' +
+        'Setting it to the testnet anchor in production would route real user funds to a testnet anchor.',
+    );
+  }
+
   const vaultAddr = env.VAULT_ADDR?.trim() || undefined;
   const vaultToken = env.VAULT_TOKEN?.trim() || undefined;
   if (vaultAddr && !vaultToken) {
@@ -120,7 +130,7 @@ export function validateEnv(env: NodeJS.ProcessEnv = process.env): EnvConfig {
       Number(env.RECONCILIATION_ESCALATION_MS) ||
       DEFAULT_RECONCILIATION_ESCALATION_MS,
     anchorHomeDomain:
-      env.ANCHOR_HOME_DOMAIN?.trim() || DEFAULT_ANCHOR_HOME_DOMAIN,
+      anchorHomeDomain ?? DEFAULT_ANCHOR_HOME_DOMAIN,
     adminSigningSecret: env.ADMIN_SIGNING_SECRET?.trim() || undefined,
     highValueThresholdAmount:
       env.HIGH_VALUE_THRESHOLD_AMOUNT?.trim() ||

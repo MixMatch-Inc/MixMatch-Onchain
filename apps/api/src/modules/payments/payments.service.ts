@@ -536,15 +536,37 @@ export class PaymentsService {
    * Batch reconciliation entry point for stuck PENDING transactions.
    * Invoked on a schedule by `ReconciliationJob` — see
    * `apps/api/src/modules/payments/reconciliation.job.ts`.
+   * Runs all reconciliation attempts in parallel (bounded to avoid
+   * overwhelming Horizon) using Promise.allSettled so a single failure
+   * doesn't abort the entire batch (#909).
    */
   async reconcilePendingTransactions(): Promise<TransactionRecord[]> {
     const stale = await this.transactionRepository.findStalePending(
       new Date(Date.now() - this.reconciliationStaleMs()),
     );
+
+    // Bounded concurrency: process up to CONCURRENCY transactions at a time
+    // to avoid hammering Horizon with too many simultaneous requests.
+    const CONCURRENCY = 5;
     const reconciled: TransactionRecord[] = [];
-    for (const transaction of stale) {
-      reconciled.push(await this.reconcileTransaction(transaction));
+    // Shared Horizon page cache for the entire pass: transactions from the
+    // same account reuse the same page fetch (#908).
+    const horizonCache = new Map<string, Awaited<ReturnType<typeof this.fetchHorizonPayments>>>();
+
+    for (let i = 0; i < stale.length; i += CONCURRENCY) {
+      const batch = stale.slice(i, i + CONCURRENCY);
+      const results = await Promise.allSettled(
+        batch.map((transaction) => this.reconcileTransaction(transaction, horizonCache)),
+      );
+      for (const result of results) {
+        if (result.status === 'fulfilled') {
+          reconciled.push(result.value);
+        }
+        // rejected results are silently skipped; the transaction stays PENDING
+        // and will be retried on the next scheduled pass
+      }
     }
+
     return reconciled;
   }
 
@@ -585,6 +607,7 @@ export class PaymentsService {
 
   private async reconcileTransaction(
     transaction: TransactionRecord,
+    horizonCache?: Map<string, Awaited<ReturnType<typeof this.fetchHorizonPayments>>>,
   ): Promise<TransactionRecord> {
     if (transaction.status !== 'PENDING') {
       return transaction;
@@ -604,6 +627,7 @@ export class PaymentsService {
     const matchedTxHash = await this.findMatchingPayment(
       account.publicKey,
       transaction,
+      horizonCache,
     );
     if (matchedTxHash) {
       return this.transactionRepository.updateStatus(transaction.id, {
@@ -632,14 +656,21 @@ export class PaymentsService {
   private async findMatchingPayment(
     sourcePublicKey: string,
     transaction: TransactionRecord,
+    /** Optional per-pass cache of Horizon payment pages keyed by account public key. */
+    horizonCache?: Map<string, Awaited<ReturnType<typeof this.fetchHorizonPayments>>>,
   ): Promise<string | null> {
     try {
-      const page = await this.stellarClient.horizon
-        .payments()
-        .forAccount(sourcePublicKey)
-        .order('desc')
-        .limit(50)
-        .call();
+      // Reuse the cached page if we already fetched for this account during
+      // the current reconciliation pass (#908), otherwise fetch and cache.
+      let records: Awaited<ReturnType<typeof this.fetchHorizonPayments>>;
+      if (horizonCache) {
+        if (!horizonCache.has(sourcePublicKey)) {
+          horizonCache.set(sourcePublicKey, await this.fetchHorizonPayments(sourcePublicKey));
+        }
+        records = horizonCache.get(sourcePublicKey)!;
+      } else {
+        records = await this.fetchHorizonPayments(sourcePublicKey);
+      }
 
       // For a path payment, the recipient receives destAmount of the
       // receive asset — that's what shows up as `amount`/`asset_*` on the
@@ -648,7 +679,7 @@ export class PaymentsService {
         transaction.destAmount ?? transaction.amount,
       );
 
-      for (const operation of page.records) {
+      for (const operation of records) {
         if (
           MATCHABLE_OPERATION_TYPES.has(String(operation.type)) &&
           'asset_type' in operation &&
@@ -666,6 +697,16 @@ export class PaymentsService {
       // Horizon unreachable or query failed — leave PENDING, retry on the next pass.
     }
     return null;
+  }
+
+  private async fetchHorizonPayments(sourcePublicKey: string) {
+    const page = await this.stellarClient.horizon
+      .payments()
+      .forAccount(sourcePublicKey)
+      .order('desc')
+      .limit(50)
+      .call();
+    return page.records;
   }
 
   /**
@@ -717,6 +758,10 @@ export class PaymentsService {
     return new Observable<TransactionRecord>((subscriber) => {
       let unsubscribed = false;
       let handle: PaymentStreamHandle | undefined;
+      // In-memory cache of the pending transaction set for the duration of
+      // this SSE subscription — avoids a DB roundtrip per Horizon event
+      // (#912). Invalidated whenever we write a status update.
+      let pendingCache: TransactionRecord[] | undefined;
 
       void this.stellarAccountRepository.findByUserId(userId).then(
         (account) => {
@@ -732,7 +777,15 @@ export class PaymentsService {
             client: this.stellarClient,
             accountPublicKey: account.publicKey,
             onEvent: (event) => {
-              void this.resolveStreamEvent(account.id, event)
+              void this.resolveStreamEvent(account.id, event, {
+                getCache: () => pendingCache,
+                setCache: (updated) => {
+                  pendingCache = updated;
+                },
+                invalidate: () => {
+                  pendingCache = undefined;
+                },
+              })
                 .then((updated) => {
                   if (updated && !unsubscribed) {
                     subscriber.next(updated);
@@ -756,15 +809,25 @@ export class PaymentsService {
   private async resolveStreamEvent(
     stellarAccountId: string,
     event: PaymentStreamEvent,
+    cache?: {
+      getCache: () => TransactionRecord[] | undefined;
+      setCache: (t: TransactionRecord[]) => void;
+      invalidate: () => void;
+    },
   ): Promise<TransactionRecord | null> {
     if (!MATCHABLE_OPERATION_TYPES.has(event.type)) {
       return null;
     }
 
-    const pending =
-      await this.transactionRepository.findPendingByStellarAccountId(
+    // Use the in-memory cache when available to avoid a DB hit per event.
+    let pending = cache?.getCache();
+    if (!pending) {
+      pending = await this.transactionRepository.findPendingByStellarAccountId(
         stellarAccountId,
       );
+      cache?.setCache(pending);
+    }
+
     const expectedAmount = event.amount
       ? Number(event.amount).toFixed(7)
       : undefined;
@@ -787,6 +850,10 @@ export class PaymentsService {
     if (!match) {
       return null;
     }
+
+    // Invalidate the cache so the next event re-fetches the updated set
+    // (the matched transaction is now SUCCESS, not PENDING).
+    cache?.invalidate();
 
     return this.transactionRepository.updateStatus(match.id, {
       status: 'SUCCESS',

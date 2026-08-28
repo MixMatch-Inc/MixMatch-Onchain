@@ -90,12 +90,18 @@ export class AnchorService {
       return { transactions: [], total: 0 };
     }
 
+    // Return the current cached state immediately so the caller doesn't
+    // block on anchor round-trips (#910). Fire off background refreshes
+    // for any in-progress transactions — the next poll will see the updated
+    // state if it arrives in time, otherwise the subsequent request will.
     const inProgress =
       await this.anchorTransactionRepository.findInProgressByStellarAccountId(
         account.id,
         IN_PROGRESS_STATUSES,
       );
-    await Promise.all(
+
+    // Background refresh: intentionally not awaited
+    void Promise.allSettled(
       inProgress.map((transaction) =>
         this.refreshFromAnchor(transaction).catch(() => undefined),
       ),

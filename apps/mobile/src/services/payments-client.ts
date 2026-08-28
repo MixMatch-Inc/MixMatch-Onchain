@@ -9,6 +9,7 @@ import type {
   TransactionHistoryResponse,
   TransactionRecord,
   TransactionStatusResponse,
+  TransactionStreamEvent,
 } from '@mixmatch/shared';
 import { API_URL, authHeaders, request } from './api-client';
 
@@ -130,9 +131,7 @@ export function subscribeToTransactionStream(
           buffer = buffer.slice(boundary + 2);
           const dataLine = rawEvent.split('\n').find((line) => line.startsWith('data:'));
           if (dataLine) {
-            const payload = JSON.parse(dataLine.slice('data:'.length).trim()) as {
-              transaction: TransactionRecord;
-            };
+            const payload = JSON.parse(dataLine.slice('data:'.length).trim()) as TransactionStreamEvent;
             onTransaction(payload.transaction);
           }
           boundary = buffer.indexOf('\n\n');

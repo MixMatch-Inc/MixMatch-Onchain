@@ -57,6 +57,19 @@ export interface PendingSignatureTransactionsResponse {
   transactions: TransactionRecord[];
 }
 
+/**
+ * Wire format for a single event emitted on the `GET /payments/stream` SSE endpoint.
+ * The server wraps each event as `{ "data": TransactionStreamEvent }` in the SSE `data:` field.
+ * Clients should parse the JSON payload and call their transaction update handler.
+ *
+ * Both the API (`payments.controller.ts` / `payments.service.ts`) and the mobile client
+ * (`payments-client.ts`) use this type so the contract stays in sync (#914).
+ */
+export interface TransactionStreamEvent {
+  /** The updated transaction record. */
+  transaction: TransactionRecord;
+}
+
 export interface StellarAccountResponse {
   publicKey: string;
   network: 'testnet' | 'public';

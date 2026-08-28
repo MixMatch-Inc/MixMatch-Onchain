@@ -21,6 +21,7 @@ import {
   type PathQuoteResponse,
   type SendPaymentInput,
   type StellarAccountResponse,
+  type TransactionStreamEvent,
 } from '@mixmatch/shared';
 import { map, type Observable } from 'rxjs';
 import { ZodValidationPipe } from '../../common/zod-validation.pipe';
@@ -78,7 +79,7 @@ export class PaymentsController {
   stream(@CurrentUserId() userId: string): Observable<MessageEvent> {
     return this.paymentsService
       .streamTransactionUpdates(userId)
-      .pipe(map((transaction) => ({ data: { transaction } })));
+      .pipe(map((transaction): MessageEvent => ({ data: { transaction } satisfies TransactionStreamEvent })));
   }
 
   @Get('history')

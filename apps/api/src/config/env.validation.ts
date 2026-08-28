@@ -119,8 +119,13 @@ export function validateEnv(env: NodeJS.ProcessEnv = process.env): EnvConfig {
     reconciliationEscalationMs:
       Number(env.RECONCILIATION_ESCALATION_MS) ||
       DEFAULT_RECONCILIATION_ESCALATION_MS,
-    anchorHomeDomain:
-      env.ANCHOR_HOME_DOMAIN?.trim() || DEFAULT_ANCHOR_HOME_DOMAIN,
+    anchorHomeDomain: (() => {
+      const val = env.ANCHOR_HOME_DOMAIN?.trim() || DEFAULT_ANCHOR_HOME_DOMAIN;
+      if (!/^[a-zA-Z0-9][-a-zA-Z0-9]{0,62}(\.[a-zA-Z0-9][-a-zA-Z0-9]{0,62})+$/.test(val)) {
+        throw new Error(`ANCHOR_HOME_DOMAIN must be a valid domain name: ${val}`);
+      }
+      return val;
+    })(),
     adminSigningSecret: env.ADMIN_SIGNING_SECRET?.trim() || undefined,
     highValueThresholdAmount:
       env.HIGH_VALUE_THRESHOLD_AMOUNT?.trim() ||

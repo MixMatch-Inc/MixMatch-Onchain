@@ -7,6 +7,7 @@ import {
   UseGuards,
   UsePipes,
 } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import {
   loginSchema,
   registerSchema,
@@ -20,6 +21,9 @@ import { AuthService } from './auth.service';
 import { CurrentUserId } from './current-user.decorator';
 import { JwtAuthGuard } from './jwt-auth.guard';
 
+// Stricter throttle on auth endpoints: 10 requests per minute to limit
+// credential-stuffing and brute-force attempts (#919).
+@Throttle({ default: { ttl: 60_000, limit: 10 } })
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}

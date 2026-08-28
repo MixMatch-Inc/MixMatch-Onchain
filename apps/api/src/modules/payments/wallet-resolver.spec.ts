@@ -69,6 +69,17 @@ describe('WalletResolver', () => {
       expect(wallet.publicKey).toBe(Keypair.fromSecret(secret).publicKey());
     });
 
+    it('throws a controlled error (not an unhandled 500) when encryptedSecretKey is corrupted (#920)', async () => {
+      const resolver = new WalletResolver(
+        buildConfigService({ walletEncryptionKey: ENCRYPTION_KEY }),
+      );
+      const account = buildAccount({ encryptedSecretKey: 'not-valid-ciphertext' });
+
+      // The error should be a regular Error (not a crash or unhandled rejection),
+      // so callers can catch and translate it into a controlled HTTP response.
+      await expect(resolver.walletForAccount(account)).rejects.toThrow(Error);
+    });
+
     it('creates a new account via a locally-generated encrypted keypair', async () => {
       const resolver = new WalletResolver(
         buildConfigService({ walletEncryptionKey: ENCRYPTION_KEY }),

@@ -9,6 +9,7 @@ import {
   vector,
   integer,
   boolean,
+  index,
 } from 'drizzle-orm/pg-core';
 
 // Enums
@@ -129,44 +130,53 @@ export const stellarAccounts = pgTable('stellar_accounts', {
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });
 
-export const transactions = pgTable('transactions', {
-  id: uuid('id').defaultRandom().primaryKey(),
-  // Client-supplied (or server-generated, if omitted) key used to dedupe
-  // repeated payment requests at the database layer.
-  idempotencyKey: text('idempotency_key').unique().notNull(),
-  stellarAccountId: uuid('stellar_account_id')
-    .references(() => stellarAccounts.id, { onDelete: 'cascade' })
-    .notNull(),
-  destinationPublicKey: text('destination_public_key').notNull(),
-  amount: text('amount').notNull(),
-  memo: text('memo'),
-  // Null means native XLM. When set, assetIssuer is always set too (and
-  // vice versa) — enforced at the application layer, see
-  // @mixmatch/shared's sendPaymentSchema.
-  assetCode: text('asset_code'),
-  assetIssuer: text('asset_issuer'),
-  // Set only for path payments, where the recipient receives a different
-  // asset than assetCode/assetIssuer. Null means "same asset as sent"
-  // (a plain payment). destAmount is the exact amount the recipient
-  // receives — known up front for strictReceive, resolved from the quote
-  // at submission time for strictSend — used to match reconciliation
-  // against the recipient-side Horizon record, which reports the
-  // *destination* asset/amount for path payment operations.
-  receiveAssetCode: text('receive_asset_code'),
-  receiveAssetIssuer: text('receive_asset_issuer'),
-  destAmount: text('dest_amount'),
-  // Set only while status is PENDING_SIGNATURE: the payment transaction,
-  // signed by the account's own key, awaiting an admin co-signature
-  // before it can be submitted. Cleared once resolved (approved or
-  // rejected) either way — never kept around once acted on.
-  pendingEnvelopeXdr: text('pending_envelope_xdr'),
-  status: transactionStatusEnum('status').default('PENDING').notNull(),
-  stellarTxHash: text('stellar_tx_hash'),
-  failureCode: text('failure_code'),
-  failureReason: text('failure_reason'),
-  createdAt: timestamp('created_at').defaultNow().notNull(),
-  updatedAt: timestamp('updated_at').defaultNow().notNull(),
-});
+export const transactions = pgTable(
+  'transactions',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    // Client-supplied (or server-generated, if omitted) key used to dedupe
+    // repeated payment requests at the database layer.
+    idempotencyKey: text('idempotency_key').unique().notNull(),
+    stellarAccountId: uuid('stellar_account_id')
+      .references(() => stellarAccounts.id, { onDelete: 'cascade' })
+      .notNull(),
+    destinationPublicKey: text('destination_public_key').notNull(),
+    amount: text('amount').notNull(),
+    memo: text('memo'),
+    // Null means native XLM. When set, assetIssuer is always set too (and
+    // vice versa) — enforced at the application layer, see
+    // @mixmatch/shared's sendPaymentSchema.
+    assetCode: text('asset_code'),
+    assetIssuer: text('asset_issuer'),
+    // Set only for path payments, where the recipient receives a different
+    // asset than assetCode/assetIssuer. Null means "same asset as sent"
+    // (a plain payment). destAmount is the exact amount the recipient
+    // receives — known up front for strictReceive, resolved from the quote
+    // at submission time for strictSend — used to match reconciliation
+    // against the recipient-side Horizon record, which reports the
+    // *destination* asset/amount for path payment operations.
+    receiveAssetCode: text('receive_asset_code'),
+    receiveAssetIssuer: text('receive_asset_issuer'),
+    destAmount: text('dest_amount'),
+    // Set only while status is PENDING_SIGNATURE: the payment transaction,
+    // signed by the account's own key, awaiting an admin co-signature
+    // before it can be submitted. Cleared once resolved (approved or
+    // rejected) either way — never kept around once acted on.
+    pendingEnvelopeXdr: text('pending_envelope_xdr'),
+    status: transactionStatusEnum('status').default('PENDING').notNull(),
+    stellarTxHash: text('stellar_tx_hash'),
+    failureCode: text('failure_code'),
+    failureReason: text('failure_reason'),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+  },
+  (table) => [
+    index('transactions_stellar_account_created_at_idx').on(
+      table.stellarAccountId,
+      table.createdAt,
+    ),
+  ],
+);
 
 // SEP-24 anchor deposit/withdraw: a separate table rather than reusing
 // `transactions` — a SEP-24 transfer isn't a Stellar payment we build and

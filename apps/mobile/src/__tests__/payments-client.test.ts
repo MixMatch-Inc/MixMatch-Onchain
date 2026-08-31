@@ -73,10 +73,26 @@ describe('payments-client', () => {
   });
 });
 
+/**
+ * The stream mints a single-use token via POST /auth/sse-token before
+ * opening the stream, so fetch is called twice: token first, stream second.
+ */
+function mockSseFetch(streamResponse: unknown): jest.Mock {
+  return jest.fn().mockImplementation((url: string) => {
+    if (typeof url === 'string' && url.includes('/auth/sse-token')) {
+      return Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve({ token: 'stream-tok', expiresInSeconds: 60 }),
+      });
+    }
+    return Promise.resolve(streamResponse);
+  });
+}
+
 describe('subscribeToTransactionStream', () => {
   it('authenticates via a ?token= query param and parses SSE events into transaction updates', async () => {
     const transaction = { id: 'tx-1', status: 'SUCCESS' };
-    globalThis.fetch = jest.fn().mockResolvedValue({
+    globalThis.fetch = mockSseFetch({
       ok: true,
       body: sseBodyStream([`data: ${JSON.stringify({ transaction })}\n\n`]),
     }) as unknown as typeof fetch;
@@ -91,8 +107,13 @@ describe('subscribeToTransactionStream', () => {
     expect(onTransaction).toHaveBeenCalledWith(transaction);
     expect(onError).not.toHaveBeenCalled();
 
-    const [url] = (globalThis.fetch as jest.Mock).mock.calls[0];
-    expect(url).toContain('/payments/stream?token=tok');
+    // The access token is never put in a URL; the minted single-use one is.
+    const [tokenUrl] = (globalThis.fetch as jest.Mock).mock.calls[0];
+    expect(tokenUrl).toContain('/auth/sse-token');
+
+    const [streamUrl] = (globalThis.fetch as jest.Mock).mock.calls[1];
+    expect(streamUrl).toContain('/payments/stream?token=stream-tok');
+    expect(streamUrl).not.toContain('token=tok&');
 
     handle.close();
   });
@@ -100,7 +121,7 @@ describe('subscribeToTransactionStream', () => {
   it('parses multiple SSE events split across chunks', async () => {
     const first = { id: 'tx-1', status: 'PENDING' };
     const second = { id: 'tx-1', status: 'SUCCESS' };
-    globalThis.fetch = jest.fn().mockResolvedValue({
+    globalThis.fetch = mockSseFetch({
       ok: true,
       body: sseBodyStream([
         `data: ${JSON.stringify({ transaction: first })}\n\n`,

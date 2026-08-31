@@ -11,6 +11,7 @@ import type {
   TransactionStatusResponse,
 } from '@mixmatch/shared';
 import { API_URL, authHeaders, request } from './api-client';
+import { createSseToken } from './auth-client';
 
 export function sendPayment(input: SendPaymentInput, accessToken: string): Promise<SendPaymentResponse> {
   return request<SendPaymentResponse>('/payments/send', {
@@ -84,8 +85,13 @@ export interface TransactionStreamHandle {
 /**
  * Subscribes to `GET /payments/stream` (Server-Sent Events) for real-time
  * transaction status updates, instead of polling `getTransactionStatus`.
- * Authenticates via `?token=` in the URL since `fetch`/`EventSource` can't
- * attach a custom Authorization header to an SSE request.
+ *
+ * `fetch`/`EventSource` can't attach a custom Authorization header to an SSE
+ * request, so the stream authenticates via `?token=`. That token is NOT the
+ * access token: a short-lived single-use one is minted first via
+ * `POST /auth/sse-token`, so nothing durable ends up in a URL that proxies
+ * and access logs will record. A fresh token is minted per connection,
+ * including on reconnect, since each is accepted only once.
  *
  * Requires the runtime's `fetch` to support streaming response bodies
  * (`response.body` as a `ReadableStream`) — true on recent Hermes/React
@@ -104,7 +110,8 @@ export function subscribeToTransactionStream(
 
   void (async () => {
     try {
-      const response = await fetch(`${API_URL}/payments/stream?token=${encodeURIComponent(accessToken)}`, {
+      const { token: streamToken } = await createSseToken(accessToken);
+      const response = await fetch(`${API_URL}/payments/stream?token=${encodeURIComponent(streamToken)}`, {
         headers: { Accept: 'text/event-stream' },
         signal: controller.signal,
       });

@@ -68,11 +68,17 @@ export class PaymentsController {
   /**
    * Server-Sent Events stream of the caller's transaction status changes,
    * pushed the moment Horizon's payment stream reports them — an
-   * alternative to polling `GET /:id/status`. Authenticates via
-   * `?token=` since `EventSource` can't set an Authorization header (see
-   * `JwtAuthGuard`). Clients should keep polling as a fallback if the
-   * stream connection can't be established at all; once connected, the
-   * underlying Horizon stream reconnects on its own after a drop.
+   * alternative to polling `GET /:id/status`.
+   *
+   * Authenticates via `?token=` since `EventSource` can't set an
+   * Authorization header. That token must be a short-lived single-use one
+   * from `POST /auth/sse-token`, not the standard access token — a URL is
+   * routinely logged by proxies and browser history, so nothing long-lived
+   * belongs in one (see `JwtAuthGuard`). Mint a fresh token per connection.
+   *
+   * Clients should keep polling as a fallback if the stream connection
+   * can't be established at all; once connected, the underlying Horizon
+   * stream reconnects on its own after a drop.
    */
   @Sse('stream')
   stream(@CurrentUserId() userId: string): Observable<MessageEvent> {

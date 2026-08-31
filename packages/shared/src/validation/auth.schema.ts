@@ -34,5 +34,36 @@ export const loginSchema = z
   })
   .strict('Login payload contains unexpected fields');
 
+/**
+ * Email verification tokens are 32 random bytes, hex-encoded, so the length
+ * is fixed. Bounding it keeps a multi-megabyte body from ever reaching the
+ * hash-and-lookup path.
+ */
+const VERIFICATION_TOKEN_LENGTH = 64;
+
+export const verifyEmailSchema = z
+  .object({
+    token: z
+      .string({
+        invalid_type_error: 'Verification token must be a string',
+        required_error: 'Verification token is required',
+      })
+      .trim()
+      .length(
+        VERIFICATION_TOKEN_LENGTH,
+        'Verification token is malformed',
+      )
+      .regex(/^[0-9a-f]+$/i, 'Verification token is malformed'),
+  })
+  .strict('Verification payload contains unexpected fields');
+
+export const resendVerificationSchema = z
+  .object({
+    email: emailSchema,
+  })
+  .strict('Resend payload contains unexpected fields');
+
 export type RegisterInput = z.infer<typeof registerSchema>;
 export type LoginInput = z.infer<typeof loginSchema>;
+export type VerifyEmailInput = z.infer<typeof verifyEmailSchema>;
+export type ResendVerificationInput = z.infer<typeof resendVerificationSchema>;

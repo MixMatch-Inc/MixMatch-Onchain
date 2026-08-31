@@ -43,8 +43,21 @@ import {
 } from './transaction.repository';
 import { WalletResolver } from './wallet-resolver';
 
+/**
+ * Normalizes an amount string to exactly 7 decimal places without losing
+ * precision.  Unlike `Number(x).toFixed(7)` — which silently truncates or
+ * rounds values that exceed IEEE-754 safe-integer range — this function
+ * operates entirely on the string representation, so arbitrary-precision
+ * decimal strings are handled correctly.
+ *
+ * Stellar amounts are capped at 7 decimal places on-ledger; extra decimals
+ * are not permitted.  Values with fewer than 7 decimals are zero-padded on
+ * the right.
+ */
 function normalizeAmount(amount: string): string {
-  return Number(amount).toFixed(7);
+  const [integer, decimal = ''] = amount.split('.');
+  const padded = (decimal + '0000000').slice(0, 7);
+  return `${integer}.${padded}`;
 }
 
 /** Horizon operation types whose `to`/`asset_*`/`amount` fields describe the destination side — matched by `findMatchingPayment`. */
@@ -835,7 +848,7 @@ export class PaymentsService {
     }
 
     const expectedAmount = event.amount
-      ? Number(event.amount).toFixed(7)
+      ? normalizeAmount(event.amount)
       : undefined;
 
     const match = pending.find((transaction) => {

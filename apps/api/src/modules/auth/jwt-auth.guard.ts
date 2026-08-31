@@ -1,4 +1,5 @@
 import {
+  Logger,
   type CanActivate,
   type ExecutionContext,
   Injectable,
@@ -51,8 +52,31 @@ export class JwtAuthGuard implements CanActivate {
       request.userId = payload.sub;
       request.userRole = payload.role;
       return true;
-    } catch {
-      throw new UnauthorizedException('Invalid or expired token');
+    } catch (err) {
+      const name =
+        err instanceof Error ? err.name : '';
+
+      if (name === 'TokenExpiredError') {
+        throw new UnauthorizedException({
+          message: 'Token has expired',
+          code: 'TOKEN_EXPIRED',
+        });
+      }
+      if (
+        name === 'JsonWebTokenError' ||
+        name === 'NotBeforeError'
+      ) {
+        Logger.warn(
+          `JWT verification failed: ${err instanceof Error ? err.message : String(err)}`,
+          JwtAuthGuard.name,
+        );
+        throw new UnauthorizedException({
+          message: 'Invalid token',
+          code: 'TOKEN_INVALID',
+        });
+      }
+      // Unexpected error — re-throw so the global exception filter handles it.
+      throw err;
     }
   }
 }

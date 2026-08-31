@@ -3,6 +3,7 @@ import {
   Controller,
   Get,
   Param,
+  ParseUUIDPipe,
   Post,
   UseGuards,
   UsePipes,
@@ -29,19 +30,28 @@ export class EscrowController {
   }
 
   @Get(':id')
-  async get(@CurrentUserId() userId: string, @Param('id') id: string) {
+  async get(
+    @CurrentUserId() userId: string,
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
     const escrow = await this.escrowService.getEscrowForUser(userId, id);
     return { escrow };
   }
 
   @Post(':id/release')
-  async release(@CurrentUserId() userId: string, @Param('id') id: string) {
+  async release(
+    @CurrentUserId() userId: string,
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
     const escrow = await this.escrowService.releaseForUser(userId, id);
     return { escrow };
   }
 
   @Post(':id/refund')
-  async refund(@CurrentUserId() userId: string, @Param('id') id: string) {
+  async refund(
+    @CurrentUserId() userId: string,
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
     const escrow = await this.escrowService.refundForUser(userId, id);
     return { escrow };
   }

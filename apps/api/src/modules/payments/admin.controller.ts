@@ -5,6 +5,7 @@ import {
   Get,
   Headers,
   Param,
+  ParseUUIDPipe,
   Post,
   UseGuards,
 } from '@nestjs/common';
@@ -38,7 +39,7 @@ export class AdminController {
 
   @Post(':id/approve')
   async approve(
-    @Param('id') id: string,
+    @Param('id', ParseUUIDPipe) id: string,
     @Headers('idempotency-key') idempotencyKey?: string,
   ) {
     this.checkIdempotencyKey(idempotencyKey, id, 'approve');
@@ -48,7 +49,7 @@ export class AdminController {
 
   @Post(':id/reject')
   async reject(
-    @Param('id') id: string,
+    @Param('id', ParseUUIDPipe) id: string,
     @Body() body: { reason?: string },
     @Headers('idempotency-key') idempotencyKey?: string,
   ) {

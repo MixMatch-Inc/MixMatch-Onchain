@@ -3,6 +3,7 @@ import {
   Controller,
   Get,
   Param,
+  ParseUUIDPipe,
   Post,
   Query,
   UseGuards,
@@ -44,7 +45,10 @@ export class AnchorController {
   }
 
   @Get(':id/status')
-  async status(@CurrentUserId() userId: string, @Param('id') id: string) {
+  async status(
+    @CurrentUserId() userId: string,
+    @Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
+  ) {
     const transaction = await this.anchorService.getStatusForUser(userId, id);
     return { transaction };
   }

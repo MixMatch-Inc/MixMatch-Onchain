@@ -9,7 +9,6 @@ import {
   Query,
   Sse,
   UseGuards,
-  UsePipes,
 } from '@nestjs/common';
 import {
   establishTrustlineSchema,
@@ -23,6 +22,7 @@ import {
   type StellarAccountResponse,
 } from '@mixmatch/shared';
 import { map, type Observable } from 'rxjs';
+import { ReconcileThrottleGuard } from '../../common/reconcile-throttle.guard';
 import { ZodValidationPipe } from '../../common/zod-validation.pipe';
 import { CurrentUserId } from '../auth/current-user.decorator';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
@@ -34,24 +34,29 @@ import { parseHistoryQuery } from './payments.validators';
 export class PaymentsController {
   constructor(private readonly paymentsService: PaymentsService) {}
 
+  // The Zod pipe is bound to the body param (not the method) so it doesn't
+  // also validate the `@CurrentUserId()` string against the schema.
   @Post('send')
-  @UsePipes(new ZodValidationPipe(sendPaymentSchema))
-  async send(@CurrentUserId() userId: string, @Body() body: SendPaymentInput) {
+  async send(
+    @CurrentUserId() userId: string,
+    @Body(new ZodValidationPipe(sendPaymentSchema)) body: SendPaymentInput,
+  ) {
     const transaction = await this.paymentsService.sendPayment(userId, body);
     return { transaction };
   }
 
   @Post('quote')
-  @UsePipes(new ZodValidationPipe(pathQuoteSchema))
-  async quote(@Body() body: PathQuoteInput): Promise<PathQuoteResponse> {
+  async quote(
+    @Body(new ZodValidationPipe(pathQuoteSchema)) body: PathQuoteInput,
+  ): Promise<PathQuoteResponse> {
     return this.paymentsService.previewPath(body);
   }
 
   @Post('trustlines')
-  @UsePipes(new ZodValidationPipe(establishTrustlineSchema))
   async establishTrustline(
     @CurrentUserId() userId: string,
-    @Body() body: EstablishTrustlineInput,
+    @Body(new ZodValidationPipe(establishTrustlineSchema))
+    body: EstablishTrustlineInput,
   ): Promise<EstablishTrustlineResponse> {
     return this.paymentsService.establishTrustlineForUser(userId, body);
   }
@@ -104,7 +109,9 @@ export class PaymentsController {
     return { transaction };
   }
 
+  // #889: each call triggers a live Horizon query — throttle repeats per transaction.
   @Post(':id/reconcile')
+  @UseGuards(ReconcileThrottleGuard)
   async reconcile(@CurrentUserId() userId: string, @Param('id') id: string) {
     const transaction = await this.paymentsService.reconcileTransactionById(
       userId,

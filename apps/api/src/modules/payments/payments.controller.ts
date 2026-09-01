@@ -3,8 +3,8 @@ import {
   Controller,
   Get,
   MessageEvent,
-  NotFoundException,
   Param,
+  ParseUUIDPipe,
   Post,
   Query,
   Sse,
@@ -99,10 +99,10 @@ export class PaymentsController {
   }
 
   @Get(':id/status')
-  async status(@CurrentUserId() userId: string, @Param('id') id: string) {
-    if (!id) {
-      throw new NotFoundException('Missing transaction id');
-    }
+  async status(
+    @CurrentUserId() userId: string,
+    @Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
+  ) {
     const transaction = await this.paymentsService.getTransactionStatus(
       userId,
       id,
@@ -111,7 +111,10 @@ export class PaymentsController {
   }
 
   @Post(':id/reconcile')
-  async reconcile(@CurrentUserId() userId: string, @Param('id') id: string) {
+  async reconcile(
+    @CurrentUserId() userId: string,
+    @Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
+  ) {
     const transaction = await this.paymentsService.reconcileTransactionById(
       userId,
       id,

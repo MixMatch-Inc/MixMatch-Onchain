@@ -3,6 +3,7 @@ import {
   HttpException,
   HttpStatus,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -43,6 +44,8 @@ const IN_PROGRESS_STATUSES = [
 
 @Injectable()
 export class AnchorService {
+  private readonly logger = new Logger(AnchorService.name);
+
   constructor(
     private readonly anchorTransactionRepository: AnchorTransactionRepository,
     private readonly stellarAccountRepository: StellarAccountRepository,
@@ -97,7 +100,14 @@ export class AnchorService {
       );
     await Promise.all(
       inProgress.map((transaction) =>
-        this.refreshFromAnchor(transaction).catch(() => undefined),
+        this.refreshFromAnchor(transaction).catch((error: unknown) => {
+          // Refresh failed — surface it instead of swallowing it silently so
+          // repeated anchor outages are observable (issue #888).
+          this.logger.warn(
+            `Failed to refresh anchor transaction ${transaction.id} from ${transaction.homeDomain} (status ${transaction.status}): ${error instanceof Error ? error.message : String(error)}`,
+            error instanceof Error ? error.stack : undefined,
+          );
+        }),
       ),
     );
 

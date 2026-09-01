@@ -798,8 +798,14 @@ export class PaymentsService {
           return String(operation.transaction_hash);
         }
       }
-    } catch {
-      // Horizon unreachable or query failed — leave PENDING, retry on the next pass.
+    } catch (error) {
+      // Horizon unreachable or query failed — leave PENDING, retry on the next
+      // pass, but log the failure so silent reconciliation no-ops are observable
+      // (issue #887).
+      this.logger.warn(
+        `Horizon payments lookup failed for account ${sourcePublicKey} while reconciling transaction ${transaction.id} — leaving it PENDING until the next pass`,
+        error instanceof Error ? error.stack : String(error),
+      );
     }
     return null;
   }

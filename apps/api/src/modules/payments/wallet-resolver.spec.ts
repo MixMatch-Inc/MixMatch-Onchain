@@ -1,3 +1,4 @@
+import { InternalServerErrorException } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
 import { WalletResolver } from './wallet-resolver';
@@ -62,7 +63,9 @@ describe('WalletResolver', () => {
 
   describe('#920: walletForAccount with a malformed account record', () => {
     it('throws an error when account has neither signingKeyId nor encryptedSecretKey', async () => {
-      await expect(resolver.walletForAccount(malformedAccount as never)).rejects.toThrow(
+      await expect(
+        resolver.walletForAccount(malformedAccount as never),
+      ).rejects.toThrow(
         `Stellar account ${malformedAccount.id} has neither signingKeyId nor encryptedSecretKey`,
       );
     });
@@ -74,6 +77,17 @@ describe('WalletResolver', () => {
       await expect(
         resolver.walletForAccount(validAccount as never),
       ).rejects.toThrow(); // throws from decryptSecretKey with the mock key — not the malformed-key error
+    });
+
+    // #891: a corrupted/tampered DB value must surface as a controlled
+    // InternalServerErrorException, not a raw Error bubbling up unhandled.
+    it('converts a malformed encrypted secret key into a controlled InternalServerErrorException', async () => {
+      await expect(
+        resolver.walletForAccount(validAccount as never),
+      ).rejects.toBeInstanceOf(InternalServerErrorException);
+      await expect(
+        resolver.walletForAccount(validAccount as never),
+      ).rejects.toThrow('Stored signing key could not be decrypted');
     });
   });
 });

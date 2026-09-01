@@ -10,6 +10,8 @@ export interface User {
   email: string;
   passwordHash: string | null;
   role: UserRole;
+  /** Null until the address is confirmed via `POST /auth/verify-email`. */
+  emailVerifiedAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -40,6 +42,20 @@ export class UsersRepository {
     const [row] = await this.db.insert(schema.users).values(input).returning();
     if (!row) {
       throw new Error('Failed to create user');
+    }
+    return row;
+  }
+
+  /** Records the address as confirmed. Idempotent: re-verifying is a no-op. */
+  async markEmailVerified(id: string): Promise<User> {
+    const now = new Date();
+    const [row] = await this.db
+      .update(schema.users)
+      .set({ emailVerifiedAt: now, updatedAt: now })
+      .where(eq(schema.users.id, id))
+      .returning();
+    if (!row) {
+      throw new Error(`Failed to mark user ${id} as email-verified`);
     }
     return row;
   }

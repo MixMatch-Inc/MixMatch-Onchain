@@ -31,6 +31,13 @@ export default function LoginPage() {
     setIsSubmitting(true);
     try {
       const auth = mode === 'login' ? await loginUser(result.data) : await registerUser(result.data);
+      if (auth.accessToken === null) {
+        // The API requires a confirmed email address, so no session is
+        // issued yet — the user has to follow the link they were sent.
+        setError('Check your email to confirm your address, then log in.');
+        setMode('login');
+        return;
+      }
       setAuth(auth);
       router.push('/anchor');
     } catch (err) {

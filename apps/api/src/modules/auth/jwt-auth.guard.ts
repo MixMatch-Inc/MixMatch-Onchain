@@ -7,10 +7,17 @@ import {
 import { JwtService } from '@nestjs/jwt';
 import type { UserRole } from '@mixmatch/shared';
 import type { Request } from 'express';
+import { SSE_TOKEN_TYPE, SseTokenService } from './sse-token.service';
 
 export interface JwtPayload {
   sub: string;
   role?: UserRole;
+  /** `'sse'` on a single-use stream token; absent on a standard access token. */
+  typ?: string;
+  /** Unique token id, present on SSE tokens so single use can be enforced. */
+  jti?: string;
+  /** Expiry, as an epoch-seconds timestamp, set by `jsonwebtoken`. */
+  exp?: number;
 }
 
 export interface AuthenticatedRequest extends Request {
@@ -21,7 +28,10 @@ export interface AuthenticatedRequest extends Request {
 
 @Injectable()
 export class JwtAuthGuard implements CanActivate {
-  constructor(private readonly jwtService: JwtService) {}
+  constructor(
+    private readonly jwtService: JwtService,
+    private readonly sseTokenService: SseTokenService,
+  ) {}
 
   canActivate(context: ExecutionContext): boolean {
     const request = context.switchToHttp().getRequest<AuthenticatedRequest>();
@@ -33,9 +43,11 @@ export class JwtAuthGuard implements CanActivate {
     // normal request with a bad/missing header still 401s as before.
     const queryToken =
       typeof request.query.token === 'string' ? request.query.token : undefined;
-    const token = header?.startsWith('Bearer ')
+    const headerToken = header?.startsWith('Bearer ')
       ? header.slice('Bearer '.length)
-      : queryToken;
+      : undefined;
+    const token = headerToken ?? queryToken;
+    const viaQueryParam = headerToken === undefined && queryToken !== undefined;
 
     if (!token) {
       throw new UnauthorizedException(
@@ -43,16 +55,45 @@ export class JwtAuthGuard implements CanActivate {
       );
     }
 
+    let payload: JwtPayload;
     try {
-      const payload = this.jwtService.verify<JwtPayload>(token);
-      if (!payload.sub) {
-        throw new UnauthorizedException('Token is missing a subject claim');
-      }
-      request.userId = payload.sub;
-      request.userRole = payload.role;
-      return true;
+      payload = this.jwtService.verify<JwtPayload>(token);
     } catch {
       throw new UnauthorizedException('Invalid or expired token');
+    }
+
+    if (!payload.sub) {
+      throw new UnauthorizedException('Token is missing a subject claim');
+    }
+
+    // A token in a URL leaks into proxy logs and browser history, so the
+    // query-param path accepts only the short-lived single-use tokens from
+    // `POST /auth/sse-token` — never the standard access token.
+    if (viaQueryParam) {
+      this.authorizeSseToken(payload);
+    } else if (payload.typ === SSE_TOKEN_TYPE) {
+      // Conversely, a stream token is not a general-purpose credential.
+      throw new UnauthorizedException(
+        'Stream tokens are only valid on the SSE stream endpoint',
+      );
+    }
+
+    request.userId = payload.sub;
+    request.userRole = payload.role;
+    return true;
+  }
+
+  private authorizeSseToken(payload: JwtPayload): void {
+    if (payload.typ !== SSE_TOKEN_TYPE || !payload.jti) {
+      throw new UnauthorizedException(
+        'A single-use stream token is required to authenticate via ?token= ' +
+          '(obtain one from POST /auth/sse-token)',
+      );
+    }
+    if (!this.sseTokenService.consume(payload.jti, payload.exp)) {
+      throw new UnauthorizedException(
+        'This stream token has already been used',
+      );
     }
   }
 }

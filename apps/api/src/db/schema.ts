@@ -65,9 +65,35 @@ export const users = pgTable('users', {
   email: text('email').unique().notNull(),
   passwordHash: text('password_hash'),
   role: userRoleEnum('role').default('USER').notNull(),
+  // When the address was confirmed via POST /auth/verify-email. Null means
+  // unconfirmed, which only blocks sign-in where
+  // EMAIL_VERIFICATION_REQUIRED is set (see config/env.validation.ts) —
+  // every account predating that flag is null and unaffected.
+  emailVerifiedAt: timestamp('email_verified_at'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });
+
+// Single-use email confirmation tokens. Only the SHA-256 hash of the token
+// is stored: the plaintext is sent to the address being confirmed and is
+// unrecoverable from the database, so a dump of this table can't be used to
+// verify anyone's address.
+export const emailVerificationTokens = pgTable(
+  'email_verification_tokens',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    userId: uuid('user_id')
+      .references(() => users.id, { onDelete: 'cascade' })
+      .notNull(),
+    tokenHash: text('token_hash').unique().notNull(),
+    expiresAt: timestamp('expires_at').notNull(),
+    // Set the moment the token is redeemed, so a replayed link is rejected
+    // rather than silently re-verifying.
+    consumedAt: timestamp('consumed_at'),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+  },
+  (table) => [index('email_verification_tokens_user_id_idx').on(table.userId)],
+);
 
 export const streamingConnections = pgTable('streaming_connections', {
   id: uuid('id').defaultRandom().primaryKey(),
@@ -235,3 +261,54 @@ export const escrows = pgTable('escrows', {
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });
+
+// Immutable record of every privileged admin decision, so a high-value
+// payment's approval or rejection can always be traced back to the
+// individual who made it. Append-only by convention: nothing in the
+// application updates or deletes these rows.
+//
+// `actorUserId` deliberately does NOT cascade on delete — an audit trail
+// that disappears when the acting admin's account is removed is not an
+// audit trail. Deleting a user whose decisions are on file is blocked at
+// the database level, which is the intended behaviour for a compliance
+// record.
+export const adminAuditActionEnum = pgEnum('admin_audit_action', [
+  'transaction.approve',
+  'transaction.reject',
+]);
+
+export const adminAuditOutcomeEnum = pgEnum('admin_audit_outcome', [
+  // The decision was recorded and carried out.
+  'SUCCESS',
+  // The admin's decision was accepted but carrying it out failed (e.g.
+  // Horizon rejected the co-signed envelope). Recorded so a failed
+  // approval attempt is just as traceable as a successful one.
+  'FAILURE',
+]);
+
+export const adminAuditLogs = pgTable(
+  'admin_audit_logs',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    actorUserId: uuid('actor_user_id')
+      .references(() => users.id, { onDelete: 'restrict' })
+      .notNull(),
+    action: adminAuditActionEnum('action').notNull(),
+    // Kept generic ('transaction' today) so future admin surfaces can share
+    // this table rather than growing a parallel one per resource.
+    targetType: text('target_type').notNull(),
+    targetId: uuid('target_id').notNull(),
+    outcome: adminAuditOutcomeEnum('outcome').notNull(),
+    // Free-form decision context: the rejection reason, the resulting
+    // Stellar transaction hash, the failure code. Never credentials.
+    metadata: jsonb('metadata').$type<Record<string, unknown>>(),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+  },
+  (table) => [
+    index('admin_audit_logs_target_idx').on(table.targetType, table.targetId),
+    index('admin_audit_logs_actor_created_at_idx').on(
+      table.actorUserId,
+      table.createdAt,
+    ),
+  ],
+);

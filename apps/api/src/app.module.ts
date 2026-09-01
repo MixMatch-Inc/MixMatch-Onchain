@@ -8,6 +8,7 @@ import { AuthModule } from './modules/auth/auth.module';
 import { PaymentsModule } from './modules/payments/payments.module';
 import { TasteModule } from './modules/taste/taste.module';
 import { CorrelationIdMiddleware } from './common/correlation-id.middleware';
+import { HealthController } from './health/health.controller';
 
 @Module({
   imports: [

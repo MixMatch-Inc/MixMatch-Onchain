@@ -43,6 +43,19 @@ import {
   type TransactionRecord,
 } from './transaction.repository';
 import { WalletResolver } from './wallet-resolver';
+import {
+  AdminAuditRepository,
+  type AdminAuditAction,
+  type AdminAuditOutcome,
+} from './admin-audit.repository';
+
+/**
+ * A Horizon operation record, as consumed by the reconciliation matcher.
+ * Horizon's own union of operation types doesn't carry an index signature,
+ * and the matcher probes fields (`to`, `amount`, `asset_type`) that only
+ * exist on some members, so it works structurally over this shape instead.
+ */
+type HorizonOperationRecord = Record<string, unknown>;
 
 function normalizeAmount(amount: string): string {
   return Number(amount).toFixed(7);
@@ -66,6 +79,7 @@ export class PaymentsService {
     private readonly paymentEngine: StellarPaymentEngine,
     private readonly configService: ConfigService,
     private readonly walletResolver: WalletResolver,
+    private readonly adminAuditRepository: AdminAuditRepository,
   ) {}
 
   /** Returns the caller's Stellar account, provisioning (and, on testnet, funding) one on first use. */
@@ -292,9 +306,15 @@ export class PaymentsService {
    * Approves a `PENDING_SIGNATURE` transaction: co-signs its stored
    * envelope with the admin key and submits it. Admin-only — see
    * `modules/payments/admin.controller.ts`.
+   *
+   * `adminUserId` is the admin accountable for the decision; it is written
+   * to the audit log whether or not submission succeeds, so a failed
+   * approval attempt on a high-value payment is just as traceable as a
+   * successful one.
    */
   async approvePendingSignature(
     transactionId: string,
+    adminUserId: string,
   ): Promise<TransactionRecord> {
     const transaction =
       await this.getPendingSignatureTransaction(transactionId);
@@ -305,11 +325,22 @@ export class PaymentsService {
         envelopeXdr: transaction.pendingEnvelopeXdr as string,
         adminWallet: await this.walletResolver.adminWallet(),
       });
-      return await this.transactionRepository.updateStatus(transaction.id, {
-        status: 'SUCCESS',
-        stellarTxHash: result.hash,
-        clearPendingEnvelope: true,
+      const updated = await this.transactionRepository.updateStatus(
+        transaction.id,
+        {
+          status: 'SUCCESS',
+          stellarTxHash: result.hash,
+          clearPendingEnvelope: true,
+        },
+      );
+      await this.recordAdminDecision({
+        adminUserId,
+        action: 'transaction.approve',
+        transaction,
+        outcome: 'SUCCESS',
+        metadata: { stellarTxHash: result.hash },
       });
+      return updated;
     } catch (error) {
       const classified =
         error instanceof StellarPaymentError
@@ -320,6 +351,16 @@ export class PaymentsService {
         failureCode: classified.kind,
         failureReason: classified.message,
         clearPendingEnvelope: true,
+      });
+      await this.recordAdminDecision({
+        adminUserId,
+        action: 'transaction.approve',
+        transaction,
+        outcome: 'FAILURE',
+        metadata: {
+          failureCode: classified.kind,
+          failureReason: classified.message,
+        },
       });
       throw new PaymentFailedError(classified.kind, classified.message);
     }
@@ -332,15 +373,67 @@ export class PaymentsService {
    */
   async rejectPendingSignature(
     transactionId: string,
+    adminUserId: string,
+    reason?: string,
   ): Promise<TransactionRecord> {
     const transaction =
       await this.getPendingSignatureTransaction(transactionId);
-    return this.transactionRepository.updateStatus(transaction.id, {
-      status: 'FAILED',
-      failureCode: 'admin_rejected',
-      failureReason: 'An administrator declined to co-sign this payment',
-      clearPendingEnvelope: true,
+    const updated = await this.transactionRepository.updateStatus(
+      transaction.id,
+      {
+        status: 'FAILED',
+        failureCode: 'admin_rejected',
+        failureReason:
+          reason?.trim() || 'An administrator declined to co-sign this payment',
+        clearPendingEnvelope: true,
+      },
+    );
+    await this.recordAdminDecision({
+      adminUserId,
+      action: 'transaction.reject',
+      transaction,
+      outcome: 'SUCCESS',
+      metadata: reason?.trim() ? { reason: reason.trim() } : undefined,
     });
+    return updated;
+  }
+
+  /**
+   * Writes one admin decision to the audit log.
+   *
+   * A failure to write is logged but never propagated: the payment has
+   * already been co-signed and submitted (or rejected) by this point, and
+   * throwing here would report a completed financial action as failed. The
+   * gap is loud in the logs so it can be reconciled.
+   */
+  private async recordAdminDecision(input: {
+    adminUserId: string;
+    action: AdminAuditAction;
+    transaction: TransactionRecord;
+    outcome: AdminAuditOutcome;
+    metadata?: Record<string, unknown>;
+  }): Promise<void> {
+    try {
+      await this.adminAuditRepository.record({
+        actorUserId: input.adminUserId,
+        action: input.action,
+        targetType: 'transaction',
+        targetId: input.transaction.id,
+        outcome: input.outcome,
+        metadata: {
+          amount: input.transaction.amount,
+          destinationPublicKey: input.transaction.destinationPublicKey,
+          assetCode: input.transaction.assetCode,
+          ...input.metadata,
+        },
+      });
+    } catch (error) {
+      this.logger.error(
+        `Failed to write admin audit log for ${input.action} on transaction ` +
+          `${input.transaction.id} by admin ${input.adminUserId}`,
+        error instanceof Error ? error.stack : String(error),
+      );
+    }
   }
 
   /** Admin-facing: every transaction currently awaiting a co-signature, across all users. */
@@ -547,7 +640,10 @@ export class PaymentsService {
     const stale = await this.transactionRepository.findStalePending(
       new Date(Date.now() - this.reconciliationStaleMs()),
     );
-    const recentPaymentsCache = new Map<string, Promise<unknown[]>>();
+    const recentPaymentsCache = new Map<
+      string,
+      Promise<HorizonOperationRecord[]>
+    >();
     return Promise.all(
       stale.map(async (transaction) => {
         const account = await this.stellarAccountRepository.findById(
@@ -627,16 +723,13 @@ export class PaymentsService {
       });
     }
 
-    return this.reconcileTransactionWithAccount(
-      transaction,
-      account.publicKey,
-    );
+    return this.reconcileTransactionWithAccount(transaction, account.publicKey);
   }
 
   private async reconcileTransactionWithAccount(
     transaction: TransactionRecord,
     sourcePublicKey: string,
-    recentPayments?: unknown[],
+    recentPayments?: HorizonOperationRecord[],
   ): Promise<TransactionRecord> {
     if (transaction.status !== 'PENDING') {
       return transaction;
@@ -674,19 +767,19 @@ export class PaymentsService {
   private async findMatchingPayment(
     sourcePublicKey: string,
     transaction: TransactionRecord,
-    recentPayments?: Array<Record<string, unknown>>,
+    recentPayments?: HorizonOperationRecord[],
   ): Promise<string | null> {
     try {
-      const records: Array<Record<string, unknown>> =
+      const records: HorizonOperationRecord[] =
         recentPayments ??
-        (
+        ((
           await this.stellarClient.horizon
             .payments()
             .forAccount(sourcePublicKey)
             .order('desc')
             .limit(50)
             .call()
-        ).records as Array<Record<string, unknown>>;
+        ).records as unknown as HorizonOperationRecord[]);
 
       const expectedAmount = normalizeAmount(
         transaction.destAmount ?? transaction.amount,
@@ -702,7 +795,7 @@ export class PaymentsService {
           'amount' in operation &&
           operation.amount === expectedAmount
         ) {
-          return operation.transaction_hash;
+          return String(operation.transaction_hash);
         }
       }
     } catch (error) {
@@ -719,8 +812,8 @@ export class PaymentsService {
 
   private async recentPaymentsForAccount(
     sourcePublicKey: string,
-    cache: Map<string, Promise<Array<Record<string, unknown>>>>,
-  ): Promise<Array<Record<string, unknown>>> {
+    cache: Map<string, Promise<HorizonOperationRecord[]>>,
+  ): Promise<HorizonOperationRecord[]> {
     const cached = cache.get(sourcePublicKey);
     if (cached) {
       return cached;
@@ -732,7 +825,7 @@ export class PaymentsService {
       .order('desc')
       .limit(50)
       .call()
-      .then((page) => page.records as Array<Record<string, unknown>>);
+      .then((page) => page.records as unknown as HorizonOperationRecord[]);
     cache.set(sourcePublicKey, fetchPromise);
     return fetchPromise;
   }

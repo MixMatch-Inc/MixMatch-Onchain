@@ -7,8 +7,6 @@ export interface EnvConfig {
   jwtSecret: string;
   /** Access token lifetime, in seconds. */
   jwtExpiresInSeconds: number;
-  /** Bcrypt salt rounds used for password hashing. */
-  bcryptSaltRounds: number;
   walletEncryptionKey: string;
   stellarNetwork: 'testnet' | 'public';
   stellarHorizonUrl?: string;
@@ -60,9 +58,7 @@ export interface EnvConfig {
 const DEFAULT_PORT = 3000;
 const DEFAULT_ANCHOR_HOME_DOMAIN = 'testanchor.stellar.org';
 const DEFAULT_BCRYPT_SALT_ROUNDS = 10;
-const MIN_BCRYPT_SALT_ROUNDS = 10;
 const DEFAULT_HIGH_VALUE_THRESHOLD_AMOUNT = '1000';
-const DEFAULT_BCRYPT_SALT_ROUNDS = 10;
 const DEFAULT_JWT_EXPIRES_IN_SECONDS = 60 * 60; // 1 hour
 const MIN_JWT_SECRET_LENGTH = 32;
 const DEFAULT_RECONCILIATION_INTERVAL_MS = 2 * 60 * 1000; // 2 minutes
@@ -84,9 +80,9 @@ export function validateEnv(env: NodeJS.ProcessEnv = process.env): EnvConfig {
   const nodeEnv = env.NODE_ENV?.trim() || 'development';
   const jwtSecret = required(env, 'JWT_SECRET');
 
-  if (nodeEnv === 'production' && jwtSecret.length < MIN_JWT_SECRET_LENGTH) {
+  if (jwtSecret.length < MIN_JWT_SECRET_LENGTH) {
     throw new Error(
-      `JWT_SECRET must be at least ${MIN_JWT_SECRET_LENGTH} characters in production`,
+      `JWT_SECRET must be at least ${MIN_JWT_SECRET_LENGTH} characters`,
     );
   }
 
@@ -116,7 +112,6 @@ export function validateEnv(env: NodeJS.ProcessEnv = process.env): EnvConfig {
     throw new Error('VAULT_TOKEN is required when VAULT_ADDR is set');
   }
 
-  const anchorHomeDomain = env.ANCHOR_HOME_DOMAIN?.trim();
   if (nodeEnv === 'production' && !anchorHomeDomain) {
     throw new Error('ANCHOR_HOME_DOMAIN is required in production');
   }
@@ -124,7 +119,6 @@ export function validateEnv(env: NodeJS.ProcessEnv = process.env): EnvConfig {
   return {
     nodeEnv,
     port: Number(env.PORT) || DEFAULT_PORT,
-    bcryptSaltRounds,
     databaseUrl: required(env, 'DATABASE_URL'),
     jwtSecret,
     jwtExpiresInSeconds:

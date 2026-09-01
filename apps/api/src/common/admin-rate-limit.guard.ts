@@ -53,8 +53,6 @@ export class AdminRateLimitGuard implements CanActivate {
 
     entry.count += 1;
     if (entry.count > AdminRateLimitGuard.ADMIN_MAX_REQUESTS) {
-      // @nestjs/common has no built-in TooManyRequestsException; throw a
-      // plain HttpException with the 429 status instead.
       throw new HttpException(
         'Too many admin requests — please wait before retrying',
         HttpStatus.TOO_MANY_REQUESTS,

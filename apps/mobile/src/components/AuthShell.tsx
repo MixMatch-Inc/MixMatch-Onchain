@@ -32,6 +32,13 @@ export default function AuthShell({ children }: Props) {
     setSubmitting(true);
     try {
       const response = isRegistering ? await registerUser({ email, password }) : await loginUser({ email, password });
+      if (response.accessToken === null) {
+        // The API requires a confirmed email address, so no session is
+        // issued yet — the user has to follow the link they were sent.
+        setError('Check your email to confirm your address, then sign in.');
+        setIsRegistering(false);
+        return;
+      }
       setAuth(response);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Something went wrong');

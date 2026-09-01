@@ -3,8 +3,8 @@ import {
   Controller,
   Get,
   MessageEvent,
-  NotFoundException,
   Param,
+  ParseUUIDPipe,
   Post,
   Query,
   Sse,
@@ -73,11 +73,17 @@ export class PaymentsController {
   /**
    * Server-Sent Events stream of the caller's transaction status changes,
    * pushed the moment Horizon's payment stream reports them — an
-   * alternative to polling `GET /:id/status`. Authenticates via
-   * `?token=` since `EventSource` can't set an Authorization header (see
-   * `JwtAuthGuard`). Clients should keep polling as a fallback if the
-   * stream connection can't be established at all; once connected, the
-   * underlying Horizon stream reconnects on its own after a drop.
+   * alternative to polling `GET /:id/status`.
+   *
+   * Authenticates via `?token=` since `EventSource` can't set an
+   * Authorization header. That token must be a short-lived single-use one
+   * from `POST /auth/sse-token`, not the standard access token — a URL is
+   * routinely logged by proxies and browser history, so nothing long-lived
+   * belongs in one (see `JwtAuthGuard`). Mint a fresh token per connection.
+   *
+   * Clients should keep polling as a fallback if the stream connection
+   * can't be established at all; once connected, the underlying Horizon
+   * stream reconnects on its own after a drop.
    */
   @Sse('stream')
   stream(@CurrentUserId() userId: string): Observable<MessageEvent> {
@@ -98,10 +104,10 @@ export class PaymentsController {
   }
 
   @Get(':id/status')
-  async status(@CurrentUserId() userId: string, @Param('id') id: string) {
-    if (!id) {
-      throw new NotFoundException('Missing transaction id');
-    }
+  async status(
+    @CurrentUserId() userId: string,
+    @Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
+  ) {
     const transaction = await this.paymentsService.getTransactionStatus(
       userId,
       id,
@@ -111,8 +117,10 @@ export class PaymentsController {
 
   // #889: each call triggers a live Horizon query — throttle repeats per transaction.
   @Post(':id/reconcile')
-  @UseGuards(ReconcileThrottleGuard)
-  async reconcile(@CurrentUserId() userId: string, @Param('id') id: string) {
+  async reconcile(
+    @CurrentUserId() userId: string,
+    @Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
+  ) {
     const transaction = await this.paymentsService.reconcileTransactionById(
       userId,
       id,

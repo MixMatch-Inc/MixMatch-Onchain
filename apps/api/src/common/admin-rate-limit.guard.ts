@@ -1,8 +1,9 @@
 import {
   CanActivate,
   ExecutionContext,
+  HttpException,
+  HttpStatus,
   Injectable,
-  TooManyRequestsException,
 } from '@nestjs/common';
 import type { Request } from 'express';
 
@@ -25,27 +26,36 @@ export class AdminRateLimitGuard implements CanActivate {
   private static readonly ADMIN_WINDOW_MS = 60_000; // 1 minute
 
   /** ip → { count, windowStart } */
-  private readonly hits = new Map<string, { count: number; windowStart: number }>();
+  private readonly hits = new Map<
+    string,
+    { count: number; windowStart: number }
+  >();
 
   canActivate(context: ExecutionContext): boolean {
     const request = context.switchToHttp().getRequest<Request>();
     const ip =
-      (request.headers['x-forwarded-for'] as string | undefined)?.split(',')[0]?.trim() ??
+      (request.headers['x-forwarded-for'] as string | undefined)
+        ?.split(',')[0]
+        ?.trim() ??
       request.socket.remoteAddress ??
       'unknown';
 
     const now = Date.now();
     const entry = this.hits.get(ip);
 
-    if (!entry || now - entry.windowStart > AdminRateLimitGuard.ADMIN_WINDOW_MS) {
+    if (
+      !entry ||
+      now - entry.windowStart > AdminRateLimitGuard.ADMIN_WINDOW_MS
+    ) {
       this.hits.set(ip, { count: 1, windowStart: now });
       return true;
     }
 
     entry.count += 1;
     if (entry.count > AdminRateLimitGuard.ADMIN_MAX_REQUESTS) {
-      throw new TooManyRequestsException(
+      throw new HttpException(
         'Too many admin requests — please wait before retrying',
+        HttpStatus.TOO_MANY_REQUESTS,
       );
     }
     return true;

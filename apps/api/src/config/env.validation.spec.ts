@@ -37,4 +37,28 @@ describe('validateEnv', () => {
       validateEnv(buildEnv({ NODE_ENV: 'production' })),
     ).toThrow('ANCHOR_HOME_DOMAIN is required in production');
   });
+
+  it('enforces the JWT_SECRET minimum length regardless of NODE_ENV', () => {
+    expect(() =>
+      validateEnv(buildEnv({ JWT_SECRET: 'short' })),
+    ).toThrow('JWT_SECRET must be at least 32 characters');
+    expect(() =>
+      validateEnv(
+        buildEnv({ NODE_ENV: 'test', JWT_SECRET: 'short' }),
+      ),
+    ).toThrow('JWT_SECRET must be at least 32 characters');
+    expect(() =>
+      validateEnv(
+        buildEnv({ NODE_ENV: 'development', JWT_SECRET: 'short' }),
+      ),
+    ).toThrow('JWT_SECRET must be at least 32 characters');
+  });
+
+  it('accepts a JWT_SECRET at or above the minimum length in any environment', () => {
+    expect(
+      validateEnv(
+        buildEnv({ NODE_ENV: 'test', JWT_SECRET: 'a'.repeat(32) }),
+      ).jwtSecret,
+    ).toBe('a'.repeat(32));
+  });
 });

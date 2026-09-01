@@ -9,6 +9,7 @@ import {
   Post,
   UseGuards,
 } from '@nestjs/common';
+import { CurrentUserId } from '../auth/current-user.decorator';
 import { Roles } from '../auth/roles.decorator';
 import { RolesGuard } from '../auth/roles.guard';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
@@ -37,13 +38,21 @@ export class AdminController {
     return { transactions };
   }
 
+  /**
+   * The acting admin's id is captured and persisted to the audit log by
+   * `PaymentsService.approvePendingSignature` — a high-value payment must
+   * never be co-signed without a record of who authorised it.
+   */
   @Post(':id/approve')
   async approve(
     @Param('id', ParseUUIDPipe) id: string,
     @Headers('idempotency-key') idempotencyKey?: string,
   ) {
     this.checkIdempotencyKey(idempotencyKey, id, 'approve');
-    const transaction = await this.paymentsService.approvePendingSignature(id);
+    const transaction = await this.paymentsService.approvePendingSignature(
+      id,
+      adminUserId,
+    );
     return { transaction };
   }
 
@@ -56,6 +65,7 @@ export class AdminController {
     this.checkIdempotencyKey(idempotencyKey, id, 'reject');
     const transaction = await this.paymentsService.rejectPendingSignature(
       id,
+      adminUserId,
       body?.reason,
     );
     return { transaction };

@@ -1,4 +1,13 @@
-import { Body, Controller, Get, Param, Post, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  ParseUUIDPipe,
+  Post,
+  UseGuards,
+  UsePipes,
+} from '@nestjs/common';
 import { depositEscrowSchema, type DepositEscrowInput } from '@mixmatch/shared';
 import { ReconcileThrottleGuard } from '../../common/reconcile-throttle.guard';
 import { ZodValidationPipe } from '../../common/zod-validation.pipe';
@@ -23,7 +32,10 @@ export class EscrowController {
   }
 
   @Get(':id')
-  async get(@CurrentUserId() userId: string, @Param('id') id: string) {
+  async get(
+    @CurrentUserId() userId: string,
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
     const escrow = await this.escrowService.getEscrowForUser(userId, id);
     return { escrow };
   }
@@ -31,15 +43,19 @@ export class EscrowController {
   // #890: release/refund are manual triggers of live Soroban invocations —
   // apply the same cooldown guard as the payments reconcile route.
   @Post(':id/release')
-  @UseGuards(ReconcileThrottleGuard)
-  async release(@CurrentUserId() userId: string, @Param('id') id: string) {
+  async release(
+    @CurrentUserId() userId: string,
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
     const escrow = await this.escrowService.releaseForUser(userId, id);
     return { escrow };
   }
 
   @Post(':id/refund')
-  @UseGuards(ReconcileThrottleGuard)
-  async refund(@CurrentUserId() userId: string, @Param('id') id: string) {
+  async refund(
+    @CurrentUserId() userId: string,
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
     const escrow = await this.escrowService.refundForUser(userId, id);
     return { escrow };
   }

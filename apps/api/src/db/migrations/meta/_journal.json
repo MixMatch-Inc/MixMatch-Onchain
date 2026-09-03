@@ -57,6 +57,13 @@
       "when": 1787691685177,
       "tag": "0007_wonderful_nocturne",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1787700000000,
+      "tag": "0008_auth_hardening_admin_audit",
+      "breakpoints": true
     }
   ]
 }

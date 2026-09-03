@@ -55,8 +55,11 @@ export interface EnvConfig {
 
 const DEFAULT_PORT = 3000;
 const DEFAULT_ANCHOR_HOME_DOMAIN = 'testanchor.stellar.org';
+const DEFAULT_BCRYPT_SALT_ROUNDS = 10;
 const DEFAULT_HIGH_VALUE_THRESHOLD_AMOUNT = '1000';
 const DEFAULT_JWT_EXPIRES_IN_SECONDS = 60 * 60; // 1 hour
+const DEFAULT_SSE_TOKEN_EXPIRES_IN_SECONDS = 60;
+const DEFAULT_EMAIL_VERIFICATION_TOKEN_TTL_SECONDS = 24 * 60 * 60; // 24 hours
 const MIN_JWT_SECRET_LENGTH = 32;
 const DEFAULT_RECONCILIATION_INTERVAL_MS = 2 * 60 * 1000; // 2 minutes
 const DEFAULT_RECONCILIATION_STALE_MS = 2 * 60 * 1000; // 2 minutes
@@ -77,9 +80,9 @@ export function validateEnv(env: NodeJS.ProcessEnv = process.env): EnvConfig {
   const nodeEnv = env.NODE_ENV?.trim() || 'development';
   const jwtSecret = required(env, 'JWT_SECRET');
 
-  if (nodeEnv === 'production' && jwtSecret.length < MIN_JWT_SECRET_LENGTH) {
+  if (jwtSecret.length < MIN_JWT_SECRET_LENGTH) {
     throw new Error(
-      `JWT_SECRET must be at least ${MIN_JWT_SECRET_LENGTH} characters in production`,
+      `JWT_SECRET must be at least ${MIN_JWT_SECRET_LENGTH} characters`,
     );
   }
 
@@ -93,10 +96,37 @@ export function validateEnv(env: NodeJS.ProcessEnv = process.env): EnvConfig {
   const stellarNetwork =
     env.STELLAR_NETWORK?.trim() === 'public' ? 'public' : 'testnet';
 
+  // #906: ANCHOR_HOME_DOMAIN must be explicitly set in production to prevent
+  // silent fallback to the testnet anchor in live deployments.
+  const anchorHomeDomain = env.ANCHOR_HOME_DOMAIN?.trim();
+  if (stellarNetwork === 'public' && !anchorHomeDomain) {
+    throw new Error(
+      'ANCHOR_HOME_DOMAIN is required when STELLAR_NETWORK=public. ' +
+        'Setting it to the testnet anchor in production would route real user funds to a testnet anchor.',
+    );
+  }
+  if (nodeEnv === 'production' && !anchorHomeDomain) {
+    throw new Error('ANCHOR_HOME_DOMAIN is required in production');
+  }
+
+  // Enforced here rather than at the point of use so a misconfigured
+  // deployment fails at startup instead of on the first registration.
+  const bcryptSaltRounds =
+    Number(env.BCRYPT_SALT_ROUNDS) || DEFAULT_BCRYPT_SALT_ROUNDS;
+  if (bcryptSaltRounds < MIN_BCRYPT_SALT_ROUNDS) {
+    throw new Error(
+      `BCRYPT_SALT_ROUNDS must be at least ${MIN_BCRYPT_SALT_ROUNDS}`,
+    );
+  }
+
   const vaultAddr = env.VAULT_ADDR?.trim() || undefined;
   const vaultToken = env.VAULT_TOKEN?.trim() || undefined;
   if (vaultAddr && !vaultToken) {
     throw new Error('VAULT_TOKEN is required when VAULT_ADDR is set');
+  }
+
+  if (nodeEnv === 'production' && !anchorHomeDomain) {
+    throw new Error('ANCHOR_HOME_DOMAIN is required in production');
   }
 
   return {
@@ -106,6 +136,15 @@ export function validateEnv(env: NodeJS.ProcessEnv = process.env): EnvConfig {
     jwtSecret,
     jwtExpiresInSeconds:
       Number(env.JWT_EXPIRES_IN_SECONDS) || DEFAULT_JWT_EXPIRES_IN_SECONDS,
+    sseTokenExpiresInSeconds:
+      Number(env.SSE_TOKEN_EXPIRES_IN_SECONDS) ||
+      DEFAULT_SSE_TOKEN_EXPIRES_IN_SECONDS,
+    spotifyOauthEnabled: env.SPOTIFY_OAUTH_ENABLED?.trim() === 'true',
+    emailVerificationRequired:
+      env.EMAIL_VERIFICATION_REQUIRED?.trim() === 'true',
+    emailVerificationTokenTtlSeconds:
+      Number(env.EMAIL_VERIFICATION_TOKEN_TTL_SECONDS) ||
+      DEFAULT_EMAIL_VERIFICATION_TOKEN_TTL_SECONDS,
     walletEncryptionKey,
     stellarNetwork,
     stellarHorizonUrl: env.STELLAR_HORIZON_URL?.trim(),
@@ -119,8 +158,7 @@ export function validateEnv(env: NodeJS.ProcessEnv = process.env): EnvConfig {
     reconciliationEscalationMs:
       Number(env.RECONCILIATION_ESCALATION_MS) ||
       DEFAULT_RECONCILIATION_ESCALATION_MS,
-    anchorHomeDomain:
-      env.ANCHOR_HOME_DOMAIN?.trim() || DEFAULT_ANCHOR_HOME_DOMAIN,
+    anchorHomeDomain: anchorHomeDomain || DEFAULT_ANCHOR_HOME_DOMAIN,
     adminSigningSecret: env.ADMIN_SIGNING_SECRET?.trim() || undefined,
     highValueThresholdAmount:
       env.HIGH_VALUE_THRESHOLD_AMOUNT?.trim() ||

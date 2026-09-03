@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { AuthModule } from '../auth/auth.module';
 import { StellarModule } from '../stellar/stellar.module';
 import { AdminController } from './admin.controller';
+import { AdminAuditRepository } from './admin-audit.repository';
 import { AnchorController } from './anchor.controller';
 import { AnchorService } from './anchor.service';
 import { AnchorTransactionRepository } from './anchor-transaction.repository';
@@ -25,6 +26,7 @@ import { WalletResolver } from './wallet-resolver';
   ],
   providers: [
     PaymentsService,
+    AdminAuditRepository,
     StellarAccountRepository,
     TransactionRepository,
     ReconciliationJob,

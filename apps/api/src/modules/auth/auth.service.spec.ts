@@ -1,10 +1,12 @@
 import { ConflictException, UnauthorizedException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { Test } from '@nestjs/testing';
 import * as bcrypt from 'bcryptjs';
 import type { User } from '../users/users.repository';
 import { UsersRepository } from '../users/users.repository';
 import { AuthService } from './auth.service';
+import { EmailVerificationRepository } from './email-verification.repository';
 
 function buildUser(overrides: Partial<User> = {}): User {
   return {
@@ -12,6 +14,7 @@ function buildUser(overrides: Partial<User> = {}): User {
     email: 'user@example.com',
     passwordHash: null,
     role: 'USER',
+    emailVerifiedAt: null,
     createdAt: new Date('2025-01-01T00:00:00.000Z'),
     updatedAt: new Date('2025-01-01T00:00:00.000Z'),
     ...overrides,
@@ -24,9 +27,23 @@ describe('AuthService', () => {
     findByEmail: jest.Mock;
     findById: jest.Mock;
     create: jest.Mock<Promise<User>, [{ email: string; passwordHash: string }]>;
+    markEmailVerified: jest.Mock;
+  };
+  let emailVerificationRepository: {
+    create: jest.Mock;
+    findByTokenHash: jest.Mock;
+    consume: jest.Mock;
+    deleteOutstandingForUser: jest.Mock;
   };
 
   beforeEach(async () => {
+    emailVerificationRepository = {
+      create: jest.fn(),
+      findByTokenHash: jest.fn(),
+      consume: jest.fn(),
+      deleteOutstandingForUser: jest.fn(),
+    };
+
     usersRepository = {
       findByEmail: jest.fn(),
       findById: jest.fn(),
@@ -34,6 +51,7 @@ describe('AuthService', () => {
         Promise<User>,
         [{ email: string; passwordHash: string }]
       >(),
+      markEmailVerified: jest.fn(),
     };
 
     const moduleRef = await Test.createTestingModule({
@@ -41,8 +59,35 @@ describe('AuthService', () => {
         AuthService,
         { provide: UsersRepository, useValue: usersRepository },
         {
+          provide: EmailVerificationRepository,
+          useValue: emailVerificationRepository,
+        },
+        {
           provide: JwtService,
           useValue: { sign: jest.fn().mockReturnValue('signed-token') },
+        },
+        {
+          provide: ConfigService,
+          useValue: {
+            get: jest.fn((key: string) => {
+              if (key === 'emailVerificationRequired') {
+                return false;
+              }
+              if (key === 'nodeEnv') {
+                return 'test';
+              }
+              return undefined;
+            }),
+            getOrThrow: jest.fn((key: string) => {
+              if (key === 'bcryptSaltRounds') {
+                return 10;
+              }
+              if (key === 'emailVerificationTokenTtlSeconds') {
+                return 86_400;
+              }
+              throw new Error(`Unexpected config lookup: ${key}`);
+            }),
+          },
         },
       ],
     }).compile();

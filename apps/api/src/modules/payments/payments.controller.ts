@@ -3,13 +3,12 @@ import {
   Controller,
   Get,
   MessageEvent,
-  NotFoundException,
   Param,
+  ParseUUIDPipe,
   Post,
   Query,
   Sse,
   UseGuards,
-  UsePipes,
 } from '@nestjs/common';
 import {
   establishTrustlineSchema,
@@ -23,6 +22,7 @@ import {
   type StellarAccountResponse,
 } from '@mixmatch/shared';
 import { map, type Observable } from 'rxjs';
+import { ReconcileThrottleGuard } from '../../common/reconcile-throttle.guard';
 import { ZodValidationPipe } from '../../common/zod-validation.pipe';
 import { CurrentUserId } from '../auth/current-user.decorator';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
@@ -34,24 +34,29 @@ import { parseHistoryQuery } from './payments.validators';
 export class PaymentsController {
   constructor(private readonly paymentsService: PaymentsService) {}
 
+  // The Zod pipe is bound to the body param (not the method) so it doesn't
+  // also validate the `@CurrentUserId()` string against the schema.
   @Post('send')
-  @UsePipes(new ZodValidationPipe(sendPaymentSchema))
-  async send(@CurrentUserId() userId: string, @Body() body: SendPaymentInput) {
+  async send(
+    @CurrentUserId() userId: string,
+    @Body(new ZodValidationPipe(sendPaymentSchema)) body: SendPaymentInput,
+  ) {
     const transaction = await this.paymentsService.sendPayment(userId, body);
     return { transaction };
   }
 
   @Post('quote')
-  @UsePipes(new ZodValidationPipe(pathQuoteSchema))
-  async quote(@Body() body: PathQuoteInput): Promise<PathQuoteResponse> {
+  async quote(
+    @Body(new ZodValidationPipe(pathQuoteSchema)) body: PathQuoteInput,
+  ): Promise<PathQuoteResponse> {
     return this.paymentsService.previewPath(body);
   }
 
   @Post('trustlines')
-  @UsePipes(new ZodValidationPipe(establishTrustlineSchema))
   async establishTrustline(
     @CurrentUserId() userId: string,
-    @Body() body: EstablishTrustlineInput,
+    @Body(new ZodValidationPipe(establishTrustlineSchema))
+    body: EstablishTrustlineInput,
   ): Promise<EstablishTrustlineResponse> {
     return this.paymentsService.establishTrustlineForUser(userId, body);
   }
@@ -68,11 +73,17 @@ export class PaymentsController {
   /**
    * Server-Sent Events stream of the caller's transaction status changes,
    * pushed the moment Horizon's payment stream reports them — an
-   * alternative to polling `GET /:id/status`. Authenticates via
-   * `?token=` since `EventSource` can't set an Authorization header (see
-   * `JwtAuthGuard`). Clients should keep polling as a fallback if the
-   * stream connection can't be established at all; once connected, the
-   * underlying Horizon stream reconnects on its own after a drop.
+   * alternative to polling `GET /:id/status`.
+   *
+   * Authenticates via `?token=` since `EventSource` can't set an
+   * Authorization header. That token must be a short-lived single-use one
+   * from `POST /auth/sse-token`, not the standard access token — a URL is
+   * routinely logged by proxies and browser history, so nothing long-lived
+   * belongs in one (see `JwtAuthGuard`). Mint a fresh token per connection.
+   *
+   * Clients should keep polling as a fallback if the stream connection
+   * can't be established at all; once connected, the underlying Horizon
+   * stream reconnects on its own after a drop.
    */
   @Sse('stream')
   stream(@CurrentUserId() userId: string): Observable<MessageEvent> {
@@ -93,10 +104,10 @@ export class PaymentsController {
   }
 
   @Get(':id/status')
-  async status(@CurrentUserId() userId: string, @Param('id') id: string) {
-    if (!id) {
-      throw new NotFoundException('Missing transaction id');
-    }
+  async status(
+    @CurrentUserId() userId: string,
+    @Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
+  ) {
     const transaction = await this.paymentsService.getTransactionStatus(
       userId,
       id,
@@ -104,8 +115,12 @@ export class PaymentsController {
     return { transaction };
   }
 
+  // #889: each call triggers a live Horizon query — throttle repeats per transaction.
   @Post(':id/reconcile')
-  async reconcile(@CurrentUserId() userId: string, @Param('id') id: string) {
+  async reconcile(
+    @CurrentUserId() userId: string,
+    @Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
+  ) {
     const transaction = await this.paymentsService.reconcileTransactionById(
       userId,
       id,

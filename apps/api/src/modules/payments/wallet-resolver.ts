@@ -1,5 +1,9 @@
 import { randomUUID } from 'node:crypto';
-import { Injectable } from '@nestjs/common';
+import {
+  Injectable,
+  InternalServerErrorException,
+  Logger,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { VaultTransitClient } from '@mixmatch/kms';
 import {
@@ -29,6 +33,7 @@ import type { StellarAccountRecord } from './stellar-account.repository';
  */
 @Injectable()
 export class WalletResolver {
+  private readonly logger = new Logger(WalletResolver.name);
   private vaultClient: VaultTransitClient | undefined;
 
   constructor(private readonly configService: ConfigService) {}
@@ -62,10 +67,29 @@ export class WalletResolver {
         `Stellar account ${account.id} has neither signingKeyId nor encryptedSecretKey`,
       );
     }
-    return KeypairWallet.fromSecret(
-      account.network,
-      decryptSecretKey(account.encryptedSecretKey, this.walletEncryptionKey()),
-    );
+
+    // #891: a corrupted/tampered DB value (or a rotated WALLET_ENCRYPTION_KEY)
+    // makes `decryptSecretKey` throw a generic `Error` that would otherwise
+    // bubble up as an unhandled 500 with a stack trace. Catch it here and
+    // convert it to a controlled InternalServerErrorException with a clear
+    // log entry pointing at the offending account row.
+    try {
+      return KeypairWallet.fromSecret(
+        account.network,
+        decryptSecretKey(
+          account.encryptedSecretKey,
+          this.walletEncryptionKey(),
+        ),
+      );
+    } catch (error) {
+      this.logger.error(
+        `Failed to decrypt the stored secret key for Stellar account ${account.id} — the encrypted value may be corrupted or WALLET_ENCRYPTION_KEY may have changed`,
+        error instanceof Error ? error.stack : String(error),
+      );
+      throw new InternalServerErrorException(
+        'Stored signing key could not be decrypted',
+      );
+    }
   }
 
   /**

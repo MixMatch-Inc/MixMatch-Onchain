@@ -132,6 +132,7 @@ jest.mock('@mixmatch/stellar', () => {
 import { encryptSecretKey } from './wallet-encryption';
 import { PaymentFailedError } from './payment-errors';
 import { PaymentsService } from './payments.service';
+import { AdminAuditRepository } from './admin-audit.repository';
 import {
   DuplicateIdempotencyKeyError,
   TransactionRepository,
@@ -200,11 +201,15 @@ function buildTransaction(
   };
 }
 
+/** The admin whose id is recorded against each approve/reject decision. */
+const ADMIN_USER_ID = 'admin-user-1';
+
 describe('PaymentsService', () => {
   let service: PaymentsService;
   let stellarAccountRepository: Record<string, jest.Mock>;
   let transactionRepository: Record<string, jest.Mock>;
   let paymentEngine: { submitPayment: jest.Mock };
+  let adminAuditRepository: { record: jest.Mock };
   let stellarClient: {
     getNetwork: jest.Mock;
     horizon: Record<string, jest.Mock>;
@@ -235,6 +240,7 @@ describe('PaymentsService', () => {
       findPendingByStellarAccountId: jest.fn().mockResolvedValue([]),
     };
     paymentEngine = { submitPayment: jest.fn() };
+    adminAuditRepository = { record: jest.fn().mockResolvedValue({}) };
     stellarClient = {
       getNetwork: jest.fn().mockReturnValue('testnet'),
       horizon: { friendbot: jest.fn() },
@@ -252,6 +258,7 @@ describe('PaymentsService', () => {
       paymentEngine as unknown as StellarPaymentEngine,
       configService,
       new WalletResolver(configService),
+      adminAuditRepository as unknown as AdminAuditRepository,
     );
   });
 
@@ -675,7 +682,10 @@ describe('PaymentsService', () => {
         buildTransaction({ status: 'SUCCESS', stellarTxHash: 'final-hash' }),
       );
 
-      const result = await service.approvePendingSignature('tx-1');
+      const result = await service.approvePendingSignature(
+        'tx-1',
+        ADMIN_USER_ID,
+      );
 
       expect(result.status).toBe('SUCCESS');
       expect(coSignAndSubmitEnvelopeMock).toHaveBeenCalledWith(
@@ -707,7 +717,7 @@ describe('PaymentsService', () => {
       );
 
       await expect(
-        service.approvePendingSignature('tx-1'),
+        service.approvePendingSignature('tx-1', ADMIN_USER_ID),
       ).rejects.toBeInstanceOf(PaymentFailedError);
       expect(transactionRepository.updateStatus).toHaveBeenCalledWith(
         'tx-1',
@@ -725,7 +735,7 @@ describe('PaymentsService', () => {
       );
 
       await expect(
-        service.approvePendingSignature('tx-1'),
+        service.approvePendingSignature('tx-1', ADMIN_USER_ID),
       ).rejects.toBeInstanceOf(PaymentFailedError);
       expect(coSignAndSubmitEnvelopeMock).not.toHaveBeenCalled();
     });
@@ -734,7 +744,7 @@ describe('PaymentsService', () => {
       transactionRepository.findById.mockResolvedValue(null);
 
       await expect(
-        service.approvePendingSignature('missing'),
+        service.approvePendingSignature('missing', ADMIN_USER_ID),
       ).rejects.toBeInstanceOf(NotFoundException);
     });
   });
@@ -750,7 +760,10 @@ describe('PaymentsService', () => {
         buildTransaction({ status: 'FAILED', failureCode: 'admin_rejected' }),
       );
 
-      const result = await service.rejectPendingSignature('tx-1');
+      const result = await service.rejectPendingSignature(
+        'tx-1',
+        ADMIN_USER_ID,
+      );
 
       expect(result.status).toBe('FAILED');
       expect(coSignAndSubmitEnvelopeMock).not.toHaveBeenCalled();
@@ -841,6 +854,9 @@ describe('PaymentsService', () => {
       expect(streamAccountPaymentsMock).toHaveBeenCalledWith(
         expect.objectContaining({ accountPublicKey: 'GABCDEF' }),
       );
+      expect(
+        transactionRepository.findPendingByStellarAccountId,
+      ).toHaveBeenCalledTimes(1);
       expect(transactionRepository.updateStatus).toHaveBeenCalledWith(
         'tx-1',
         expect.objectContaining({
@@ -888,6 +904,9 @@ describe('PaymentsService', () => {
       await flushMicrotasks();
 
       expect(transactionRepository.updateStatus).not.toHaveBeenCalled();
+      expect(
+        transactionRepository.findPendingByStellarAccountId,
+      ).toHaveBeenCalledTimes(1);
       expect(events).toEqual([]);
       subscription.unsubscribe();
     });

@@ -9,6 +9,7 @@ import {
   vector,
   integer,
   boolean,
+  index,
 } from 'drizzle-orm/pg-core';
 
 // Enums
@@ -64,9 +65,35 @@ export const users = pgTable('users', {
   email: text('email').unique().notNull(),
   passwordHash: text('password_hash'),
   role: userRoleEnum('role').default('USER').notNull(),
+  // When the address was confirmed via POST /auth/verify-email. Null means
+  // unconfirmed, which only blocks sign-in where
+  // EMAIL_VERIFICATION_REQUIRED is set (see config/env.validation.ts) —
+  // every account predating that flag is null and unaffected.
+  emailVerifiedAt: timestamp('email_verified_at'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });
+
+// Single-use email confirmation tokens. Only the SHA-256 hash of the token
+// is stored: the plaintext is sent to the address being confirmed and is
+// unrecoverable from the database, so a dump of this table can't be used to
+// verify anyone's address.
+export const emailVerificationTokens = pgTable(
+  'email_verification_tokens',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    userId: uuid('user_id')
+      .references(() => users.id, { onDelete: 'cascade' })
+      .notNull(),
+    tokenHash: text('token_hash').unique().notNull(),
+    expiresAt: timestamp('expires_at').notNull(),
+    // Set the moment the token is redeemed, so a replayed link is rejected
+    // rather than silently re-verifying.
+    consumedAt: timestamp('consumed_at'),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+  },
+  (table) => [index('email_verification_tokens_user_id_idx').on(table.userId)],
+);
 
 export const streamingConnections = pgTable('streaming_connections', {
   id: uuid('id').defaultRandom().primaryKey(),
@@ -129,44 +156,53 @@ export const stellarAccounts = pgTable('stellar_accounts', {
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });
 
-export const transactions = pgTable('transactions', {
-  id: uuid('id').defaultRandom().primaryKey(),
-  // Client-supplied (or server-generated, if omitted) key used to dedupe
-  // repeated payment requests at the database layer.
-  idempotencyKey: text('idempotency_key').unique().notNull(),
-  stellarAccountId: uuid('stellar_account_id')
-    .references(() => stellarAccounts.id, { onDelete: 'cascade' })
-    .notNull(),
-  destinationPublicKey: text('destination_public_key').notNull(),
-  amount: text('amount').notNull(),
-  memo: text('memo'),
-  // Null means native XLM. When set, assetIssuer is always set too (and
-  // vice versa) — enforced at the application layer, see
-  // @mixmatch/shared's sendPaymentSchema.
-  assetCode: text('asset_code'),
-  assetIssuer: text('asset_issuer'),
-  // Set only for path payments, where the recipient receives a different
-  // asset than assetCode/assetIssuer. Null means "same asset as sent"
-  // (a plain payment). destAmount is the exact amount the recipient
-  // receives — known up front for strictReceive, resolved from the quote
-  // at submission time for strictSend — used to match reconciliation
-  // against the recipient-side Horizon record, which reports the
-  // *destination* asset/amount for path payment operations.
-  receiveAssetCode: text('receive_asset_code'),
-  receiveAssetIssuer: text('receive_asset_issuer'),
-  destAmount: text('dest_amount'),
-  // Set only while status is PENDING_SIGNATURE: the payment transaction,
-  // signed by the account's own key, awaiting an admin co-signature
-  // before it can be submitted. Cleared once resolved (approved or
-  // rejected) either way — never kept around once acted on.
-  pendingEnvelopeXdr: text('pending_envelope_xdr'),
-  status: transactionStatusEnum('status').default('PENDING').notNull(),
-  stellarTxHash: text('stellar_tx_hash'),
-  failureCode: text('failure_code'),
-  failureReason: text('failure_reason'),
-  createdAt: timestamp('created_at').defaultNow().notNull(),
-  updatedAt: timestamp('updated_at').defaultNow().notNull(),
-});
+export const transactions = pgTable(
+  'transactions',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    // Client-supplied (or server-generated, if omitted) key used to dedupe
+    // repeated payment requests at the database layer.
+    idempotencyKey: text('idempotency_key').unique().notNull(),
+    stellarAccountId: uuid('stellar_account_id')
+      .references(() => stellarAccounts.id, { onDelete: 'cascade' })
+      .notNull(),
+    destinationPublicKey: text('destination_public_key').notNull(),
+    amount: text('amount').notNull(),
+    memo: text('memo'),
+    // Null means native XLM. When set, assetIssuer is always set too (and
+    // vice versa) — enforced at the application layer, see
+    // @mixmatch/shared's sendPaymentSchema.
+    assetCode: text('asset_code'),
+    assetIssuer: text('asset_issuer'),
+    // Set only for path payments, where the recipient receives a different
+    // asset than assetCode/assetIssuer. Null means "same asset as sent"
+    // (a plain payment). destAmount is the exact amount the recipient
+    // receives — known up front for strictReceive, resolved from the quote
+    // at submission time for strictSend — used to match reconciliation
+    // against the recipient-side Horizon record, which reports the
+    // *destination* asset/amount for path payment operations.
+    receiveAssetCode: text('receive_asset_code'),
+    receiveAssetIssuer: text('receive_asset_issuer'),
+    destAmount: text('dest_amount'),
+    // Set only while status is PENDING_SIGNATURE: the payment transaction,
+    // signed by the account's own key, awaiting an admin co-signature
+    // before it can be submitted. Cleared once resolved (approved or
+    // rejected) either way — never kept around once acted on.
+    pendingEnvelopeXdr: text('pending_envelope_xdr'),
+    status: transactionStatusEnum('status').default('PENDING').notNull(),
+    stellarTxHash: text('stellar_tx_hash'),
+    failureCode: text('failure_code'),
+    failureReason: text('failure_reason'),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+  },
+  (table) => [
+    index('transactions_stellar_account_created_at_idx').on(
+      table.stellarAccountId,
+      table.createdAt,
+    ),
+  ],
+);
 
 // SEP-24 anchor deposit/withdraw: a separate table rather than reusing
 // `transactions` — a SEP-24 transfer isn't a Stellar payment we build and
@@ -225,3 +261,54 @@ export const escrows = pgTable('escrows', {
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });
+
+// Immutable record of every privileged admin decision, so a high-value
+// payment's approval or rejection can always be traced back to the
+// individual who made it. Append-only by convention: nothing in the
+// application updates or deletes these rows.
+//
+// `actorUserId` deliberately does NOT cascade on delete — an audit trail
+// that disappears when the acting admin's account is removed is not an
+// audit trail. Deleting a user whose decisions are on file is blocked at
+// the database level, which is the intended behaviour for a compliance
+// record.
+export const adminAuditActionEnum = pgEnum('admin_audit_action', [
+  'transaction.approve',
+  'transaction.reject',
+]);
+
+export const adminAuditOutcomeEnum = pgEnum('admin_audit_outcome', [
+  // The decision was recorded and carried out.
+  'SUCCESS',
+  // The admin's decision was accepted but carrying it out failed (e.g.
+  // Horizon rejected the co-signed envelope). Recorded so a failed
+  // approval attempt is just as traceable as a successful one.
+  'FAILURE',
+]);
+
+export const adminAuditLogs = pgTable(
+  'admin_audit_logs',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    actorUserId: uuid('actor_user_id')
+      .references(() => users.id, { onDelete: 'restrict' })
+      .notNull(),
+    action: adminAuditActionEnum('action').notNull(),
+    // Kept generic ('transaction' today) so future admin surfaces can share
+    // this table rather than growing a parallel one per resource.
+    targetType: text('target_type').notNull(),
+    targetId: uuid('target_id').notNull(),
+    outcome: adminAuditOutcomeEnum('outcome').notNull(),
+    // Free-form decision context: the rejection reason, the resulting
+    // Stellar transaction hash, the failure code. Never credentials.
+    metadata: jsonb('metadata').$type<Record<string, unknown>>(),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+  },
+  (table) => [
+    index('admin_audit_logs_target_idx').on(table.targetType, table.targetId),
+    index('admin_audit_logs_actor_created_at_idx').on(
+      table.actorUserId,
+      table.createdAt,
+    ),
+  ],
+);

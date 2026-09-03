@@ -3,10 +3,10 @@ import {
   Controller,
   Get,
   Param,
+  ParseUUIDPipe,
   Post,
   Query,
   UseGuards,
-  UsePipes,
 } from '@nestjs/common';
 import {
   depositAnchorSchema,
@@ -25,26 +25,30 @@ import { parseHistoryQuery } from './payments.validators';
 export class AnchorController {
   constructor(private readonly anchorService: AnchorService) {}
 
+  // #893: the Zod pipe is bound to the body param (not the method) so it
+  // doesn't also validate the `@CurrentUserId()` string against the schema.
   @Post('deposit')
-  @UsePipes(new ZodValidationPipe(depositAnchorSchema))
   async deposit(
     @CurrentUserId() userId: string,
-    @Body() body: DepositAnchorInput,
+    @Body(new ZodValidationPipe(depositAnchorSchema)) body: DepositAnchorInput,
   ) {
     return this.anchorService.depositForUser(userId, body);
   }
 
   @Post('withdraw')
-  @UsePipes(new ZodValidationPipe(withdrawAnchorSchema))
   async withdraw(
     @CurrentUserId() userId: string,
-    @Body() body: WithdrawAnchorInput,
+    @Body(new ZodValidationPipe(withdrawAnchorSchema))
+    body: WithdrawAnchorInput,
   ) {
     return this.anchorService.withdrawForUser(userId, body);
   }
 
   @Get(':id/status')
-  async status(@CurrentUserId() userId: string, @Param('id') id: string) {
+  async status(
+    @CurrentUserId() userId: string,
+    @Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
+  ) {
     const transaction = await this.anchorService.getStatusForUser(userId, id);
     return { transaction };
   }

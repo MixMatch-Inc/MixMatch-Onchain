@@ -1,8 +1,18 @@
 import type { TransactionRecord } from '@mixmatch/shared';
-import { FlatList, StyleSheet, Text, View } from 'react-native';
+import {
+  ActivityIndicator,
+  FlatList,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 
 export interface TransactionHistoryListProps {
   transactions: TransactionRecord[];
+  hasMore?: boolean;
+  isLoadingMore?: boolean;
+  onLoadMore?: () => void;
 }
 
 const STATUS_COLOR: Record<TransactionRecord['status'], string> = {
@@ -15,10 +25,19 @@ const STATUS_COLOR: Record<TransactionRecord['status'], string> = {
 
 function TransactionRow({ transaction }: { transaction: TransactionRecord }) {
   return (
-    <View style={styles.row} testID={`transaction-${transaction.id}`}>
+    <View
+      style={styles.row}
+      testID={`transaction-${transaction.id}`}
+      accessibilityRole="summary"
+      accessibilityLabel={`${transaction.status} payment of ${transaction.amount} XLM to ${transaction.destinationPublicKey}`}
+    >
       <View style={styles.rowHeader}>
         <Text style={styles.amount}>{transaction.amount} XLM</Text>
-        <Text style={[styles.status, { color: STATUS_COLOR[transaction.status] }]}>{transaction.status}</Text>
+        <Text
+          style={[styles.status, { color: STATUS_COLOR[transaction.status] }]}
+        >
+          {transaction.status}
+        </Text>
       </View>
       <Text style={styles.destination} numberOfLines={1}>
         To {transaction.destinationPublicKey}
@@ -28,7 +47,12 @@ function TransactionRow({ transaction }: { transaction: TransactionRecord }) {
   );
 }
 
-export default function TransactionHistoryList({ transactions }: TransactionHistoryListProps) {
+export default function TransactionHistoryList({
+  transactions,
+  hasMore = false,
+  isLoadingMore = false,
+  onLoadMore,
+}: TransactionHistoryListProps) {
   if (transactions.length === 0) {
     return (
       <View style={styles.empty}>
@@ -39,9 +63,34 @@ export default function TransactionHistoryList({ transactions }: TransactionHist
 
   return (
     <FlatList
+      contentContainerStyle={styles.listContent}
       data={transactions}
+      initialNumToRender={8}
+      maxToRenderPerBatch={8}
+      windowSize={5}
+      updateCellsBatchingPeriod={50}
+      removeClippedSubviews
       keyExtractor={(item) => item.id}
+      onEndReached={hasMore ? onLoadMore : undefined}
+      onEndReachedThreshold={0.4}
       renderItem={({ item }) => <TransactionRow transaction={item} />}
+      ListFooterComponent={
+        hasMore ? (
+          <View style={styles.footer}>
+            {isLoadingMore ? (
+              <ActivityIndicator />
+            ) : onLoadMore ? (
+              <TouchableOpacity
+                accessibilityRole="button"
+                onPress={onLoadMore}
+                testID="load-more-transactions"
+              >
+                <Text style={styles.footerText}>Load older transactions</Text>
+              </TouchableOpacity>
+            ) : null}
+          </View>
+        ) : null
+      }
       testID="transaction-history-list"
     />
   );
@@ -61,4 +110,7 @@ const styles = StyleSheet.create({
   memo: { fontSize: 13, color: '#999', marginTop: 2 },
   empty: { padding: 24, alignItems: 'center' },
   emptyText: { color: '#999' },
+  listContent: { paddingBottom: 24 },
+  footer: { paddingVertical: 16, alignItems: 'center' },
+  footerText: { color: '#007AFF', fontSize: 14, fontWeight: '600' },
 });

@@ -1,28 +1,29 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 
+/**
+ * #903: `TasteService.ingestTasteProfiles` is currently a non-functional stub.
+ * Running it on a nightly cron in production would silently process mock data
+ * and log success, giving the appearance of real work. The method now throws
+ * explicitly so the cron failure is visible in logs, and the service is
+ * clearly marked as not-yet-implemented.
+ */
 @Injectable()
 export class TasteService {
   private readonly logger = new Logger(TasteService.name);
 
-  ingestTasteProfiles() {
-    this.logger.log('Starting Taste Profile Ingestion...');
-
-    // 1. Fetch all users with active Spotify streaming_connections
-    // 2. Iterate and fetch top 50 artists and genres for each user
-    // 3. Compute the embeddings (mocked for now)
+  ingestTasteProfiles(): void {
+    this.logger.warn(
+      'TasteService.ingestTasteProfiles is not yet implemented — ' +
+        'skipping nightly ingestion. Implement Spotify API integration before enabling this cron in production.',
+    );
+    // TODO: Implement real taste profile ingestion:
+    // 1. Fetch all users with active streaming_connections (provider = 'spotify' | 'apple_music')
+    // 2. For each user, call the provider API to fetch top 50 artists & genres
+    // 3. Compute embeddings
     // 4. Upsert into taste_profiles table
-
-    this.logger.log('Fetching active streaming connections...');
-    // Mock processing
-    const usersToProcess = [{ id: 'mock-uuid-1', provider: 'spotify' }];
-
-    for (const user of usersToProcess) {
-      this.logger.log(`Processing user ${user.id}...`);
-
-      this.logger.log(`Generated taste embedding for user ${user.id}`);
-      // db.insert(tasteProfiles).values({ ... })
-    }
-
-    this.logger.log('Taste Profile Ingestion complete.');
+    throw new Error(
+      'TasteService.ingestTasteProfiles is not yet implemented',
+    );
   }
 }

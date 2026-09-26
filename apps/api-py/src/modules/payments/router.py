@@ -74,17 +74,21 @@ async def get_transaction_status(
         raise HTTPException(status_code=404, detail="Transaction not found")
     return tx
 
+# Cooldown cache for reconciliation: transaction_id -> last_reconciled_datetime
+RECONCILIATION_COOLDOWN_SECONDS = 15
+
 @router.post(
     "/{id}/reconcile",
     response_model=TransactionResponse,
-    summary="Reconcile transaction with UUID validation",
+    summary="Reconcile transaction with UUID validation & idempotency cooldown",
 )
 async def reconcile_transaction_endpoint(
     id: Annotated[uuid.UUID, Path(description="Transaction UUID (enforced by Pydantic)")],
     db: AsyncSession = Depends(get_db),
     user_id: str = Depends(get_current_user_id),
 ):
-    """Port #1109: Parameter validation via UUID type annotation. Returns 422 for malformed IDs."""
+    """Port #1109 & #1110: UUID path validation and per-transaction cooldown to protect against hammering."""
+    from datetime import datetime, timezone, timedelta
     service = PaymentsService(db=db)
     from sqlalchemy import select
     from src.db.models import Transaction
@@ -93,6 +97,13 @@ async def reconcile_transaction_endpoint(
     tx = (await db.execute(stmt)).scalar_one_or_none()
     if not tx:
         raise HTTPException(status_code=404, detail="Transaction not found")
+
+    # Port #1110: Idempotency cooldown check
+    now = datetime.now(timezone.utc)
+    if tx.last_reconciled_at and (now - tx.last_reconciled_at.replace(tzinfo=timezone.utc if tx.last_reconciled_at.tzinfo is None else tx.last_reconciled_at.tzinfo)) < timedelta(seconds=RECONCILIATION_COOLDOWN_SECONDS):
+        # Transaction was reconciled very recently; return cached state without triggering Horizon query
+        return tx
+
     return await service.reconcile_transaction(tx)
 
 @router.get("/stream")

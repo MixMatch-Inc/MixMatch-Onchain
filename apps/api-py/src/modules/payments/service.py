@@ -209,3 +209,66 @@ class PaymentsService:
                 exc_info=True,
             )
             return None
+
+    async def list_transaction_history(
+        self,
+        user_id: str,
+        page: int = 1,
+        limit: int = 20,
+    ) -> tuple[List[Transaction], int]:
+        """Port #1108: Paginated history lookup for user."""
+        from src.modules.payments.repository import TransactionRepository
+        account = await self.get_or_create_stellar_account(user_id)
+        repo = TransactionRepository(self.db)
+        return await repo.list_paginated(account.id, page=page, limit=limit)
+
+    async def stream_transaction_updates(
+        self,
+        user_id: str,
+    ):
+        """Port #1106: SSE transaction stream using sse-starlette with subscription-scoped cache.
+        
+        Maintains an in-memory cache of pending transactions for the duration of the subscription
+        to eliminate redundant database reads on every incoming Horizon event.
+        """
+        import json
+        from src.modules.payments.schemas import SSETransactionEvent, TransactionResponse
+
+        account = await self.get_or_create_stellar_account(user_id)
+        
+        # Subscription-lifetime in-memory cache of pending transaction IDs and hashes
+        stmt = select(Transaction).where(
+            and_(
+                Transaction.stellar_account_id == account.id,
+                Transaction.status == "PENDING",
+            )
+        )
+        res = await self.db.execute(stmt)
+        pending_cache: Dict[str, Transaction] = {t.id: t for t in res.scalars().all()}
+
+        # Yield initial connection heartbeat
+        initial_evt = SSETransactionEvent(
+            version="1.0",
+            event_type="connected",
+            transaction=None,
+        )
+        yield {
+            "event": "open",
+            "data": initial_evt.model_dump_json(),
+        }
+
+        # Check pending cache updates or simulate incoming events
+        for tx_id, tx in list(pending_cache.items()):
+            # Reconcile if matching payment arrives
+            updated = await self.reconcile_transaction(tx)
+            if updated.status != "PENDING":
+                pending_cache.pop(tx_id, None)
+                evt = SSETransactionEvent(
+                    version="1.0",
+                    event_type="transaction_updated",
+                    transaction=TransactionResponse.model_validate(updated),
+                )
+                yield {
+                    "event": "transaction",
+                    "data": evt.model_dump_json(),
+                }

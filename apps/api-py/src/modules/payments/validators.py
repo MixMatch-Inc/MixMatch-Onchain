@@ -28,6 +28,11 @@ def parse_history_query(query: Dict[str, Any]) -> tuple[int, int]:
     return page, min(limit, MAX_HISTORY_LIMIT)
 
 
+class HistoryQueryValidator(BaseModel):
+    page: int = Field(default=1, ge=1)
+    limit: int = Field(default=DEFAULT_HISTORY_LIMIT, ge=1, le=MAX_HISTORY_LIMIT)
+
+
 class SendPaymentValidator(BaseModel):
     destination_public_key: str = Field(...)
     amount: str = Field(...)

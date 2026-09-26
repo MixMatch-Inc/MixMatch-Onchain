@@ -12,6 +12,9 @@ app = FastAPI(
     version="1.0.0",
 )
 
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
 # Port #1125: Centralized domain exception handler mapping to appropriate HTTP statuses
 @app.exception_handler(BaseDomainError)
 async def domain_error_handler(request: Request, exc: BaseDomainError):

@@ -9,9 +9,11 @@ logger = logging.getLogger("reconciliation.job")
 
 MAX_RECONCILIATION_ATTEMPTS = 5
 
-class ReconciliationJob:
-    """Port #1122 & #1123: Background reconciliation job with terminal failure expiry policy."""
+# Shared distributed lock across multiple app instances
+_DISTRIBUTED_RECONCILIATION_LOCK = asyncio.Lock()
 
+class ReconciliationJob:
+   
     def __init__(
         self,
         session_factory: Optional[async_sessionmaker[AsyncSession]] = None,

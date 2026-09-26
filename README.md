@@ -23,14 +23,17 @@ Modern social matching apps rely entirely on visual first impressions. MixMatch 
 This project is structured as a modern monorepo powered by **Turborepo**. We chose our stack to maximize type safety, modularity, and contributor velocity.
 
 ### The Monorepo
-* **`apps/api` (Backend):** A strict, modular monolith built with **NestJS**. This ensures strong domain boundaries so contributors can work without stepping on each other's toes.
+* **`apps/api-py` (Backend):** High-performance asynchronous REST and Server-Sent Events (SSE) backend built with **FastAPI** and **Python 3.11+**, structured as a domain-driven modular monolith.
 * **`apps/web` (Internal/Creator Dashboards):** Built with **Next.js** (App Router) for SEO, performance, and robust routing.
 * **`apps/mobile` (Consumer App):** Built with **React Native via Expo** for rapid cross-platform (iOS/Android) deployment.
 * **`packages/*` (Shared Libraries):** Extracted UI components, ESLint rules, and TypeScript configs to keep the apps DRY.
 
 ### Infrastructure & Data
-* **Database:** PostgreSQL (utilizing `pgvector` for AI similarity matching).
-* **ORM:** Drizzle ORM for extreme type-safety between the database and our TypeScript APIs.
+* **Database:** PostgreSQL 16 (with `pgvector` for vector similarity matching and aiosqlite for hermetic testing).
+* **ORM:** **SQLAlchemy 2.0 (Async)** with strict Pydantic v2 validation schemas.
+* **KMS & Secrets:** HashiCorp Vault Transit engine with AES-256-GCM fallback encryption.
+* **Blockchain:** Official Stellar Python SDK with Horizon SSE streaming and SEP-10 web authentication.
+* **Cache/Realtime:** SlowAPI rate limiting, SSE streaming with client subscription caching.
 * **Cache/Realtime:** Redis for session storage and pub/sub.
 * **Analytics:** ClickHouse for fast, high-volume event logging.
 

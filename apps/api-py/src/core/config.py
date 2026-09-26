@@ -31,6 +31,12 @@ class Settings(BaseSettings):
     RECONCILIATION_STALE_MS: int = 300_000  # 5 minutes
     RECONCILIATION_CONCURRENCY_LIMIT: int = 10
 
+    ENABLE_TASTE_CRON: bool = False
+
+    @property
+    def enable_taste_cron(self) -> bool:
+        return self.ENABLE_TASTE_CRON
+
     @model_validator(mode="after")
     def validate_anchor_home_domain(self) -> "Settings":
         if self.STELLAR_NETWORK == "public" and not self.ANCHOR_HOME_DOMAIN:
@@ -38,3 +44,6 @@ class Settings(BaseSettings):
         return self
 
 settings = Settings()
+
+def get_settings() -> Settings:
+    return settings

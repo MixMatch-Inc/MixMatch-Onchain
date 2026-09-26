@@ -5,7 +5,6 @@ from src.modules.payments.router import router as payments_router
 from src.modules.payments.admin_router import router as admin_router
 from src.modules.payments.anchor_router import router as anchor_router
 from src.modules.payments.escrow_router import router as escrow_router
-from src.modules.payments.errors import BaseDomainError
 
 app = FastAPI(
     title="MixMatch API",

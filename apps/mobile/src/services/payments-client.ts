@@ -130,10 +130,25 @@ export function subscribeToTransactionStream(
           buffer = buffer.slice(boundary + 2);
           const dataLine = rawEvent.split('\n').find((line) => line.startsWith('data:'));
           if (dataLine) {
-            const payload = JSON.parse(dataLine.slice('data:'.length).trim()) as {
-              transaction: TransactionRecord;
-            };
-            onTransaction(payload.transaction);
+            try {
+              const payload = JSON.parse(dataLine.slice('data:'.length).trim()) as {
+                version?: string;
+                event_type?: string;
+                transaction?: TransactionRecord;
+                data?: TransactionRecord;
+              };
+              // Port #1170: Handle keepalive heartbeat events and versioned data envelope
+              if (payload.event_type === 'heartbeat' || payload.event_type === 'ping') {
+                boundary = buffer.indexOf('\n\n');
+                continue;
+              }
+              const tx = payload.transaction ?? payload.data;
+              if (tx) {
+                onTransaction(tx);
+              }
+            } catch (parseErr) {
+              // Ignore malformed chunk
+            }
           }
           boundary = buffer.indexOf('\n\n');
         }

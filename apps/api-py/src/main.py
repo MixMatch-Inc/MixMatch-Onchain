@@ -1,6 +1,9 @@
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
+from slowapi.errors import RateLimitExceeded
+from slowapi import _rate_limit_exceeded_handler
 
+from src.core.limiter import limiter
 from src.modules.payments.router import router as payments_router
 from src.modules.payments.admin_router import router as admin_router
 from src.modules.payments.anchor_router import router as anchor_router
@@ -13,7 +16,9 @@ app = FastAPI(
     version="1.0.0",
 )
 
-# Port #1125: Centralized domain exception handler mapping to appropriate HTTP statuses
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
 @app.exception_handler(BaseDomainError)
 async def domain_error_handler(request: Request, exc: BaseDomainError):
     return JSONResponse(

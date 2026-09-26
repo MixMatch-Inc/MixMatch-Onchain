@@ -1,3 +1,4 @@
+from src.kms.client import VaultKmsClient, KmsUnavailableError
 import base64
 import os
 from typing import Optional
@@ -55,6 +56,18 @@ class WalletResolver:
 
     async def resolve_wallet(self, account: StellarAccount) -> ResolvedWallet:
         if account.signing_key_id:
+            # Port #1160: Verify Vault availability for Vault-managed key
+            try:
+                kms_client = VaultKmsClient()
+                if not kms_client.mock_mode:
+                    # Probe client readiness
+                    _ = kms_client._get_client()
+            except KmsUnavailableError as e:
+                raise WalletResolutionError(
+                    message=f"Vault KMS signing service unreachable for account {account.id}: {str(e)}",
+                    code="VAULT_KMS_SIGNING_UNAVAILABLE",
+                    status_code=503,
+                )
             return ResolvedWallet(
                 public_key=account.public_key,
                 signing_key_id=account.signing_key_id,

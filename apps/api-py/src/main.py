@@ -10,6 +10,7 @@ from src.modules.payments.anchor_router import router as anchor_router
 from src.modules.payments.escrow_router import router as escrow_router
 from src.modules.streaming.router import router as streaming_router
 from src.modules.taste.router import router as taste_router
+from src.modules.users.router import router as users_router
 from src.modules.payments.errors import BaseDomainError
 
 app = FastAPI(
@@ -38,6 +39,7 @@ app.include_router(anchor_router, prefix="/api")
 app.include_router(escrow_router, prefix="/api")
 app.include_router(streaming_router, prefix="/api")
 app.include_router(taste_router, prefix="/api")
+app.include_router(users_router, prefix="/api")
 
 @app.get("/health")
 async def health():

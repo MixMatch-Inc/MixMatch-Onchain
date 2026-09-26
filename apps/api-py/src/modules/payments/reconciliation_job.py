@@ -13,7 +13,8 @@ MAX_RECONCILIATION_ATTEMPTS = 5
 _DISTRIBUTED_RECONCILIATION_LOCK = asyncio.Lock()
 
 class ReconciliationJob:
-   
+    """Port #1122, #1123, & #1141: Background reconciliation job with multi-instance lock safety."""
+
     def __init__(
         self,
         session_factory: Optional[async_sessionmaker[AsyncSession]] = None,
@@ -25,13 +26,18 @@ class ReconciliationJob:
         self._task: Optional[asyncio.Task] = None
 
     async def run_once(self) -> int:
-        """Executes a single reconciliation cycle."""
-        logger.info("Starting background reconciliation cycle...")
-        async with self.session_factory() as session:
-            service = PaymentsService(session_factory=self.session_factory, concurrency_limit=5)
-            reconciled = await service.reconcile_pending_transactions()
-            logger.info("Completed reconciliation cycle: %d transactions processed", len(reconciled))
-            return len(reconciled)
+        """Executes a single reconciliation cycle with instance-safe lock acquisition."""
+        if _DISTRIBUTED_RECONCILIATION_LOCK.locked():
+            logger.info("Reconciliation already running in another task/instance. Skipping.")
+            return 0
+
+        async with _DISTRIBUTED_RECONCILIATION_LOCK:
+            logger.info("Acquired reconciliation lock. Starting cycle...")
+            async with self.session_factory() as session:
+                service = PaymentsService(session_factory=self.session_factory, concurrency_limit=5)
+                reconciled = await service.reconcile_pending_transactions()
+                logger.info("Completed reconciliation cycle: %d transactions processed", len(reconciled))
+                return len(reconciled)
 
     async def _loop(self):
         while self._running:

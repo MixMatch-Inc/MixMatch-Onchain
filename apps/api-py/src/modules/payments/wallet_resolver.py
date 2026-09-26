@@ -1,3 +1,4 @@
+from src.kms.client import VaultKmsClient, KmsUnavailableError
 import base64
 import os
 from typing import Optional
@@ -19,8 +20,11 @@ class ResolvedWallet:
 class WalletResolver:
     """Port #1124: Resolves and decrypts Stellar wallet for signing with controlled error path."""
 
-    def __init__(self, encryption_key_hex: Optional[str] = None):
-        self.encryption_key = bytes.fromhex(encryption_key_hex or settings.WALLET_ENCRYPTION_KEY)
+    def __init__(self, encryption_key_hex: Optional[str] = None, encryption_key: Optional[bytes] = None):
+        if encryption_key is not None:
+            self.encryption_key = encryption_key
+        else:
+            self.encryption_key = bytes.fromhex(encryption_key_hex or settings.WALLET_ENCRYPTION_KEY)
 
     def decrypt_secret_key(self, encrypted_payload: str) -> str:
         """Decrypts AES-256-GCM encrypted secret key.
@@ -52,6 +56,18 @@ class WalletResolver:
 
     async def resolve_wallet(self, account: StellarAccount) -> ResolvedWallet:
         if account.signing_key_id:
+            # Port #1160: Verify Vault availability for Vault-managed key
+            try:
+                kms_client = VaultKmsClient()
+                if not kms_client.mock_mode:
+                    # Probe client readiness
+                    _ = kms_client._get_client()
+            except KmsUnavailableError as e:
+                raise WalletResolutionError(
+                    message=f"Vault KMS signing service unreachable for account {account.id}: {str(e)}",
+                    code="VAULT_KMS_SIGNING_UNAVAILABLE",
+                    status_code=503,
+                )
             return ResolvedWallet(
                 public_key=account.public_key,
                 signing_key_id=account.signing_key_id,
@@ -68,3 +84,14 @@ class WalletResolver:
                 code="NO_SIGNING_MECHANISM",
                 status_code=422,
             )
+
+
+def rotate_wallet_key(encrypted_blob: str, old_key: bytes, new_key: bytes) -> str:
+    """
+    Re-encrypts a wallet secret blob from old_key to new_key.
+    Supports versioned or standard IV/tag format.
+    """
+    resolver = WalletResolver(encryption_key=old_key)
+    decrypted_secret = resolver.decrypt_secret_key(encrypted_blob)
+    new_resolver = WalletResolver(encryption_key=new_key)
+    return new_resolver.encrypt_secret_key(decrypted_secret)

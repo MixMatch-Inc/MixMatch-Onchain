@@ -1,4 +1,5 @@
 import os
+import re
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from pydantic import Field, model_validator
 from typing import Optional
@@ -41,6 +42,17 @@ class Settings(BaseSettings):
     def validate_anchor_home_domain(self) -> "Settings":
         if self.STELLAR_NETWORK == "public" and not self.ANCHOR_HOME_DOMAIN:
             raise ValueError("ANCHOR_HOME_DOMAIN is strictly required when STELLAR_NETWORK is 'public'")
+        return self
+
+    @model_validator(mode="after")
+    def validate_production_secrets(self) -> "Settings":
+        if self.ENVIRONMENT == "production":
+            if not self.JWT_SECRET or len(self.JWT_SECRET) < 32:
+                raise ValueError("JWT_SECRET must be at least 32 characters long in production")
+            if not re.fullmatch(r"[0-9a-f]{64}", self.WALLET_ENCRYPTION_KEY or ""):
+                raise ValueError("WALLET_ENCRYPTION_KEY must be a 64-character hex string (32 bytes for AES-256)")
+        if self.VAULT_ADDR and not self.VAULT_TOKEN:
+            raise ValueError("VAULT_TOKEN is required when VAULT_ADDR is set")
         return self
 
 settings = Settings()

@@ -41,3 +41,5 @@ yarn-error.log*
 target/
 contracts/**/test_snapshots/
 *.wasm
+
+apps/api-python/.venv/

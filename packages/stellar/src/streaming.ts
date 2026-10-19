@@ -1,4 +1,4 @@
-import type { DefaultStellarClient } from './client.js';
+import type { StellarClient } from './interfaces/index.js';
 
 export interface PaymentStreamEvent {
   id: string;
@@ -46,7 +46,7 @@ function toPaymentStreamEvent(raw: RawPaymentRecord): PaymentStreamEvent {
 }
 
 export interface StreamAccountPaymentsParams {
-  client: DefaultStellarClient;
+  client: StellarClient;
   accountPublicKey: string;
   /**
    * Resume from just after this paging token instead of starting live —

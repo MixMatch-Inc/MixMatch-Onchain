@@ -1,10 +1,10 @@
-import { Asset, BASE_FEE, Memo, Operation, TransactionBuilder } from '@stellar/stellar-sdk';
-import type { DefaultStellarClient } from './client.js';
+import { Asset, Memo, Operation, TransactionBuilder } from '@stellar/stellar-sdk';
+import type { StellarClient } from './interfaces/index.js';
 import { classifyStellarPaymentError } from './payment-errors.js';
+import { DEFAULT_TRANSACTION_TIMEOUT_SECONDS, resolveFee } from './fees.js';
 import type { StellarAssetRef } from './types/index.js';
 import type { Wallet } from './wallet.js';
 
-const TRANSACTION_TIMEOUT_SECONDS = 30;
 
 export interface SubmitPaymentParams {
   sourceWallet: Wallet;
@@ -13,6 +13,8 @@ export interface SubmitPaymentParams {
   memo?: string;
   /** Omit for native XLM; pass a code+issuer to send a custom asset. */
   asset?: StellarAssetRef;
+  /** Transaction validity window in seconds. Defaults to `DEFAULT_TRANSACTION_TIMEOUT_SECONDS`. */
+  timeoutSeconds?: number;
 }
 
 /** @deprecated Use `SubmitPaymentParams` (with `asset` omitted for native XLM). Kept as an alias for existing callers. */
@@ -28,15 +30,16 @@ function toStellarAsset(asset?: StellarAssetRef): Asset {
 }
 
 export class StellarPaymentService {
-  constructor(private readonly client: DefaultStellarClient) {}
+  constructor(private readonly client: StellarClient) {}
 
   /** Builds, signs, and submits a payment — native XLM if `params.asset` is omitted, otherwise the given asset. */
   async submitPayment(params: SubmitPaymentParams): Promise<StellarPaymentResult> {
     try {
       const sourceAccount = await this.client.horizon.loadAccount(params.sourceWallet.publicKey);
 
+      const timeoutSeconds = params.timeoutSeconds ?? DEFAULT_TRANSACTION_TIMEOUT_SECONDS;
       const builder = new TransactionBuilder(sourceAccount, {
-        fee: BASE_FEE,
+        fee: await resolveFee(this.client),
         networkPassphrase: this.client.networkPassphrase,
       }).addOperation(
         Operation.payment({
@@ -50,7 +53,7 @@ export class StellarPaymentService {
         builder.addMemo(Memo.text(params.memo));
       }
 
-      const transaction = builder.setTimeout(TRANSACTION_TIMEOUT_SECONDS).build();
+      const transaction = builder.setTimeout(timeoutSeconds).build();
 
       await params.sourceWallet.sign(transaction);
 

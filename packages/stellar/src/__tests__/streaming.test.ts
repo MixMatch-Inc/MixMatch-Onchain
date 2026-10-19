@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { streamAccountPayments } from '../streaming.js';
-import type { DefaultStellarClient } from '../client.js';
+import { stubClient } from './test-helpers.js';
 
 interface FakeStreamOptions {
   onmessage: (raw: unknown) => void;
@@ -13,11 +13,11 @@ function fakeStreamingClient() {
   const cursorCalls: string[] = [];
   const forAccountMock = vi.fn();
 
-  const client = {
+  const client = stubClient({
     horizon: {
       payments: vi.fn().mockReturnValue({ forAccount: forAccountMock }),
     },
-  } as unknown as DefaultStellarClient;
+  });
 
   forAccountMock.mockImplementation(() => {
     const builder = {

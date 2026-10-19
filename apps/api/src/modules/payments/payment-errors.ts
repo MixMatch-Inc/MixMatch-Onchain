@@ -16,6 +16,7 @@ const KIND_HTTP_STATUS: Record<StellarPaymentErrorKind, HttpStatus> = {
   no_payment_path: HttpStatus.UNPROCESSABLE_ENTITY,
   slippage_exceeded: HttpStatus.CONFLICT,
   malformed_transaction: HttpStatus.BAD_REQUEST,
+  validation: HttpStatus.BAD_REQUEST,
   timing: HttpStatus.CONFLICT,
   network_error: HttpStatus.BAD_GATEWAY,
   unknown: HttpStatus.INTERNAL_SERVER_ERROR,

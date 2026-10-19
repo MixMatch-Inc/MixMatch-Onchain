@@ -1,5 +1,6 @@
-import { Asset, BASE_FEE, Operation, TransactionBuilder } from '@stellar/stellar-sdk';
+import { BASE_FEE, Operation, TransactionBuilder } from '@stellar/stellar-sdk';
 import type { DefaultStellarClient } from './client.js';
+import { toStellarAsset } from './assets.js';
 import { classifyStellarPaymentError } from './payment-errors.js';
 import type { StellarAssetRef } from './types/index.js';
 import type { StellarPaymentResult } from './payment.js';
@@ -32,7 +33,7 @@ export async function establishTrustline(params: EstablishTrustlineParams): Prom
     })
       .addOperation(
         Operation.changeTrust({
-          asset: new Asset(params.asset.code, params.asset.issuer),
+          asset: toStellarAsset(params.asset),
           limit: params.limit,
         }),
       )

@@ -1,5 +1,6 @@
-import { Asset, BASE_FEE, Memo, Operation, TransactionBuilder } from '@stellar/stellar-sdk';
+import { BASE_FEE, Memo, Operation, TransactionBuilder } from '@stellar/stellar-sdk';
 import type { DefaultStellarClient } from './client.js';
+import { toStellarAsset } from './assets.js';
 import { classifyStellarPaymentError } from './payment-errors.js';
 import type { StellarPaymentResult } from './payment.js';
 import type { StellarAssetRef } from './types/index.js';
@@ -13,10 +14,6 @@ const BPS_DENOMINATOR = 10_000;
 const AMOUNT_DECIMALS = 7;
 
 export type PathPaymentMode = 'strictSend' | 'strictReceive';
-
-function toStellarAsset(asset?: StellarAssetRef): Asset {
-  return asset ? new Asset(asset.code, asset.issuer) : Asset.native();
-}
 
 function pathHopToAssetRef(hop: { asset_type: string; asset_code: string; asset_issuer: string }): StellarAssetRef | undefined {
   return hop.asset_type === 'native' ? undefined : { code: hop.asset_code, issuer: hop.asset_issuer };

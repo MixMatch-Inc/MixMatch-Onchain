@@ -1,5 +1,6 @@
-import { Asset, BASE_FEE, Memo, Operation, Transaction, TransactionBuilder } from '@stellar/stellar-sdk';
+import { BASE_FEE, Memo, Operation, Transaction, TransactionBuilder } from '@stellar/stellar-sdk';
 import type { DefaultStellarClient } from './client.js';
+import { toStellarAsset } from './assets.js';
 import { classifyStellarPaymentError } from './payment-errors.js';
 import type { StellarPaymentResult } from './payment.js';
 import type { StellarAssetRef } from './types/index.js';
@@ -101,7 +102,7 @@ export async function buildHighValuePaymentEnvelope(
       .addOperation(
         Operation.payment({
           destination: params.destinationPublicKey,
-          asset: params.asset ? new Asset(params.asset.code, params.asset.issuer) : Asset.native(),
+          asset: toStellarAsset(params.asset),
           amount: params.amount,
         }),
       )

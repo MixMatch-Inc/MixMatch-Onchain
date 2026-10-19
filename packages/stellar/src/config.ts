@@ -19,9 +19,14 @@ const NETWORK_DEFAULTS: Record<StellarNetwork, { horizonUrl: string; rpcUrl: str
   },
 };
 
-function parseNetwork(raw: string | undefined): StellarNetwork {
-  if (raw === 'public') return 'public';
-  return 'testnet';
+const VALID_NETWORKS: readonly StellarNetwork[] = ['testnet', 'public'];
+
+/** Unset defaults to testnet; any other value must be a known network, so a typo can never silently select the wrong one. */
+export function parseNetwork(raw: string | undefined): StellarNetwork {
+  const value = raw?.trim();
+  if (!value) return 'testnet';
+  if ((VALID_NETWORKS as readonly string[]).includes(value)) return value as StellarNetwork;
+  throw new Error(`Unknown STELLAR_NETWORK "${value}". Valid values: ${VALID_NETWORKS.join(', ')}.`);
 }
 
 /** Builds a `StellarConfig` from environment variables, falling back to sensible network defaults. */

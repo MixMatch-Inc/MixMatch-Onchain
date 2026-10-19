@@ -90,8 +90,13 @@ export function validateEnv(env: NodeJS.ProcessEnv = process.env): EnvConfig {
     );
   }
 
-  const stellarNetwork =
-    env.STELLAR_NETWORK?.trim() === 'public' ? 'public' : 'testnet';
+  const stellarNetworkRaw = env.STELLAR_NETWORK?.trim();
+  if (stellarNetworkRaw && stellarNetworkRaw !== 'testnet' && stellarNetworkRaw !== 'public') {
+    throw new Error(
+      `Unknown STELLAR_NETWORK "${stellarNetworkRaw}". Valid values: testnet, public.`,
+    );
+  }
+  const stellarNetwork = stellarNetworkRaw === 'public' ? 'public' : 'testnet';
 
   const vaultAddr = env.VAULT_ADDR?.trim() || undefined;
   const vaultToken = env.VAULT_TOKEN?.trim() || undefined;

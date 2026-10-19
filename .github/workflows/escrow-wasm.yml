@@ -1,0 +1,75 @@
+name: Escrow WASM
+
+on:
+  push:
+    branches: ["dev", "develop", "main"]
+    tags: ["escrow-v*"]
+    paths:
+      - "contracts/**"
+      - "Cargo.toml"
+      - "Cargo.lock"
+      - ".github/workflows/escrow-wasm.yml"
+  pull_request:
+    paths:
+      - "contracts/**"
+      - "Cargo.toml"
+      - "Cargo.lock"
+      - ".github/workflows/escrow-wasm.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Rust target
+        run: rustup target add wasm32v1-none
+
+      - name: Build wasm
+        env:
+          # Strip build-machine paths so the same source gives the same bytes anywhere.
+          RUSTFLAGS: --remap-path-prefix=${{ github.workspace }}=/src --remap-path-prefix=/home/runner/.cargo=/cargo
+        run: cargo build --locked --release --target wasm32v1-none -p mixmatch-escrow
+
+      - name: Compute SHA-256
+        run: |
+          mkdir -p dist
+          cp target/wasm32v1-none/release/mixmatch_escrow.wasm dist/
+          (cd dist && sha256sum mixmatch_escrow.wasm | tee mixmatch_escrow.wasm.sha256)
+          echo "### mixmatch_escrow.wasm" >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          cat dist/mixmatch_escrow.wasm.sha256 >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload artefact
+        uses: actions/upload-artifact@v4
+        with:
+          name: escrow-wasm
+          path: dist/
+          if-no-files-found: error
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/escrow-v')
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download artefact
+        uses: actions/download-artifact@v4
+        with:
+          name: escrow-wasm
+          path: dist
+
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" dist/mixmatch_escrow.wasm dist/mixmatch_escrow.wasm.sha256 \
+            --repo "$GITHUB_REPOSITORY" --title "Escrow $GITHUB_REF_NAME" \
+            --notes "Wasm built in CI. Verify a deployment with: sha256sum deployed.wasm"

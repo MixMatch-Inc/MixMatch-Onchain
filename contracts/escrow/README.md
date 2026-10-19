@@ -38,8 +38,7 @@ allocates a fresh id rather than reusing one.
 
 Requires the `stellar` CLI (`cargo install --locked stellar-cli`) and the
 `wasm32v1-none` Rust target (`rustup target add wasm32v1-none` — **not**
-`wasm32-unknown-unknown`, which Soroban's SDK explicitly rejects on
-Rust 1.82+; see `build.rs`'s panic message if you hit this).
+`wasm32-unknown-unknown`, which Soroban's SDK rejects on Rust 1.82+).
 
 ```bash
 stellar contract build --package mixmatch-escrow
@@ -54,6 +53,8 @@ simulated ledger — `soroban_sdk::testutils`) live in `src/test.rs`:
 ```bash
 cargo test -p mixmatch-escrow
 ```
+
+Each run also writes JSON ledger snapshots to `contracts/escrow/test_snapshots/`.
 
 These cover: locking funds on deposit, releasing to the payee, refunding
 to the payer (both the explicit pre-timeout and unauthenticated
@@ -96,10 +97,93 @@ stellar contract invoke --id "$CONTRACT" --source escrow-deployer --network test
   release --escrow_id 0      # emits a `transfer` event to $PAYEE
 ```
 
-This was run against the current deployment (contract id
-`CDH4VEBIXFRJ7C7WQYCMLRPDPDBD5KINZUXKRQVOHIR6OO5RGF7U4JS4` on testnet) for
-both the release and refund paths, confirming real balance changes via
-Horizon — not just successful API responses.
+Run it against your own deployment to confirm both the release and refund
+paths and read the balance changes back from Horizon.
+
+## Deployments
+
+Record every deployment here. The hash is the SHA-256 of the deployed wasm
+(`sha256sum` of the built wasm; see "Verifying a deployment").
+
+| Network | Contract id | Date | Wasm SHA-256 |
+| --- | --- | --- | --- |
+| testnet | `CDH4VEBIXFRJ7C7WQYCMLRPDPDBD5KINZUXKRQVOHIR6OO5RGF7U4JS4` | not recorded | not recorded (deployed before CI-built artefacts) |
+
+## Verifying a deployment
+
+Every push that touches the contract builds the wasm in CI (workflow
+`escrow-wasm.yml`) and uploads `mixmatch_escrow.wasm` with its
+`mixmatch_escrow.wasm.sha256`; tagged releases (`escrow-v*`) attach both to
+the GitHub release. To check a deployed contract:
+
+```bash
+stellar contract fetch --id "$CONTRACT" --network testnet --out-file deployed.wasm
+sha256sum deployed.wasm        # must equal the CI artefact's .sha256
+```
+
+## Errors
+
+Contract errors surface as `Error(Contract, #N)`.
+
+| Code | Name | Raised when |
+| --- | --- | --- |
+| 1 | `NotFound` | `release`, `refund` or `get_escrow` is given an id that was never created |
+| 2 | `AlreadyFinalized` | `release` or `refund` is called on an escrow that is already `Released` or `Refunded` |
+| 3 | `InvalidAmount` | `deposit` is called with `amount <= 0` |
+
+## Events
+
+The contract publishes no events of its own. Observe an escrow through the
+token contract: `deposit` emits a `transfer` event from the payer to the
+contract, `release` a `transfer` to the payee, and `refund` a `transfer`
+back to the payer. Use `get_escrow` for the current status.
+
+## Ledger timing
+
+`timeout_ledgers` counts ledgers, not seconds. Stellar closes a ledger about
+every 5 seconds, so:
+
+| Timeout | Approx. `timeout_ledgers` |
+| --- | --- |
+| 1 minute | 12 |
+| 1 hour | 720 |
+| 1 day | 17,280 |
+| 7 days | 120,960 |
+
+The deadline is `ledger sequence at deposit + timeout_ledgers`, stored as
+`timeout_ledger`. Close times vary, so treat these as estimates.
+
+## Storage and TTL
+
+Escrows live in persistent storage and the id counter in instance storage.
+The contract does not extend either entry's TTL, so an entry that is not
+touched or bumped before its TTL runs out is archived and must be restored
+before use. Operators should extend long-lived escrows with
+`stellar contract extend`; any invocation that writes an escrow also refreshes it.
+
+## `get_escrow` return shape
+
+```text
+Escrow {
+  payer: Address,
+  payee: Address,
+  token: Address,
+  amount: i128,          // in the token's smallest unit (stroops for XLM)
+  status: Locked | Released | Refunded,
+  timeout_ledger: u32,   // ledger sequence from which refund needs no auth
+}
+```
+
+## Security and trust model
+
+- Only the payer can `release`. The payee has no say, and no guarantee that
+  the payer will ever release; after the timeout anyone can refund the payer.
+- `token` is any contract address the payer supplies. A token with unusual
+  behavior (fees on transfer, pausing, clawback) is trusted to behave like
+  SEP-41; the contract records `amount` as requested.
+- `deposit` computes `ledger sequence + timeout_ledgers` with overflow checks
+  enabled, so a very large `timeout_ledgers` panics instead of wrapping.
+- The contract has no admin, pause or upgrade entry point.
 
 ## Persistence model (apps/api)
 

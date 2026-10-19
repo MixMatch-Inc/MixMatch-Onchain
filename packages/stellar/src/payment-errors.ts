@@ -29,6 +29,8 @@ export type StellarPaymentErrorKind =
    */
   | 'slippage_exceeded'
   | 'malformed_transaction'
+  /** The request was rejected locally, before anything was sent to the network (bad memo, destination, amount or asset). */
+  | 'validation'
   | 'timing'
   | 'network_error'
   | 'unknown';
@@ -81,20 +83,48 @@ export class StellarPaymentError extends Error {
   readonly kind: StellarPaymentErrorKind;
   readonly transactionCode?: string;
   readonly operationCodes?: string[];
+  /** Hash of the submitted transaction, when it was built before the failure. Look it up to learn the real outcome. */
+  readonly txHash?: string;
+  /** Signed envelope (base64 XDR) of the failed submission; resubmitting it is idempotent. */
+  readonly envelopeXdr?: string;
   override readonly cause?: unknown;
 
   constructor(
     kind: StellarPaymentErrorKind,
     message: string,
-    options?: { transactionCode?: string; operationCodes?: string[]; cause?: unknown },
+    options?: {
+      transactionCode?: string;
+      operationCodes?: string[];
+      txHash?: string;
+      envelopeXdr?: string;
+      cause?: unknown;
+    },
   ) {
     super(message);
     this.name = 'StellarPaymentError';
     this.kind = kind;
     this.transactionCode = options?.transactionCode;
     this.operationCodes = options?.operationCodes;
+    this.txHash = options?.txHash;
+    this.envelopeXdr = options?.envelopeXdr;
     this.cause = options?.cause;
   }
+}
+
+/** Returns `error` with the failed transaction's hash and signed envelope attached. */
+export function withTransactionContext(
+  error: StellarPaymentError,
+  txHash: string | undefined,
+  envelopeXdr: string | undefined,
+): StellarPaymentError {
+  if (!txHash) return error;
+  return new StellarPaymentError(error.kind, error.message, {
+    transactionCode: error.transactionCode,
+    operationCodes: error.operationCodes,
+    txHash,
+    envelopeXdr,
+    cause: error.cause,
+  });
 }
 
 /** Converts any error thrown while loading an account or submitting a transaction into a `StellarPaymentError`. */

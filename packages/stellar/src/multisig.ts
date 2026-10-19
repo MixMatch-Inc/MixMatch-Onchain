@@ -107,7 +107,7 @@ export async function buildHighValuePaymentEnvelope(
       .addOperation(
         Operation.payment({
           destination: params.destinationPublicKey,
-          asset: params.asset ? new Asset(params.asset.code, params.asset.issuer) : Asset.native(),
+          asset: toStellarAsset(params.asset),
           amount: params.amount,
         }),
       )

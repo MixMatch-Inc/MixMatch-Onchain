@@ -35,7 +35,7 @@ export async function establishTrustline(params: EstablishTrustlineParams): Prom
     })
       .addOperation(
         Operation.changeTrust({
-          asset: new Asset(params.asset.code, params.asset.issuer),
+          asset: toStellarAsset(params.asset),
           limit: params.limit,
         }),
       )

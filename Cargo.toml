@@ -2,6 +2,11 @@
 resolver = "2"
 members = ["contracts/escrow"]
 
+# Single declaration site for shared dependency versions. Exact-pinned (`=`) so
+# a `cargo update` can never move the contract SDK without an explicit edit here.
+[workspace.dependencies]
+soroban-sdk = "=27.0.6"
+
 [profile.release]
 opt-level = "z"
 overflow-checks = true

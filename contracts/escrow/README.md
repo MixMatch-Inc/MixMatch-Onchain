@@ -60,15 +60,22 @@ to the payer (both the explicit pre-timeout and unauthenticated
 post-timeout paths), rejecting a non-positive deposit amount, and
 rejecting a second `release`/`refund` on an already-finalized escrow.
 
-## Deploying to testnet
+## Deploying
 
 ```bash
 # One-time: create and fund a deployer identity.
 stellar keys generate escrow-deployer --network testnet --fund
 
-# Build + deploy; prints the deployed contract id.
-./deploy.sh escrow-deployer
+# Build, optimize, deploy and smoke-test; prints the deployed contract id.
+./deploy.sh -s escrow-deployer              # testnet (default)
+./deploy.sh -n futurenet -s escrow-deployer
+./deploy.sh -n mainnet -s escrow-deployer   # asks you to type "mainnet" (or pass -y)
 ```
+
+The script checks the `stellar` CLI, the identity and the `wasm32v1-none`
+target first, reports the optimized wasm's size and SHA-256, and writes
+`contracts/escrow/deployments/<network>.json` with the contract id and hash.
+Constructor arguments, if the contract ever takes any, go after `--`.
 
 Set the printed contract id as `STELLAR_ESCROW_CONTRACT_ID` in `apps/api`'s
 environment (see `.env.example`) — that's what `packages/stellar`'s

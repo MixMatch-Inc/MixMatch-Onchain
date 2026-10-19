@@ -1,11 +1,11 @@
-import { Asset, BASE_FEE, Memo, Operation, Transaction, TransactionBuilder } from '@stellar/stellar-sdk';
-import type { DefaultStellarClient } from './client.js';
+import { Asset, Memo, Operation, Transaction, TransactionBuilder } from '@stellar/stellar-sdk';
+import type { StellarClient } from './interfaces/index.js';
 import { classifyStellarPaymentError } from './payment-errors.js';
 import type { StellarPaymentResult } from './payment.js';
+import { DEFAULT_TRANSACTION_TIMEOUT_SECONDS, resolveFee } from './fees.js';
 import type { StellarAssetRef } from './types/index.js';
 import type { Wallet } from './wallet.js';
 
-const TRANSACTION_TIMEOUT_SECONDS = 30;
 
 /**
  * Weight assigned to both the account's own key and the admin co-signer.
@@ -19,11 +19,13 @@ const MED_THRESHOLD = 1;
 const HIGH_THRESHOLD = 2;
 
 export interface ConfigureMultisigParams {
-  client: DefaultStellarClient;
+  client: StellarClient;
   /** The account being upgraded to require a co-signature for high-value payments. */
   wallet: Wallet;
   /** The platform's admin co-signing key's public key. */
   adminPublicKey: string;
+  /** Transaction validity window in seconds. Defaults to `DEFAULT_TRANSACTION_TIMEOUT_SECONDS`. */
+  timeoutSeconds?: number;
 }
 
 /**
@@ -38,8 +40,9 @@ export async function configureMultisig(params: ConfigureMultisigParams): Promis
   try {
     const sourceAccount = await params.client.horizon.loadAccount(params.wallet.publicKey);
 
+    const timeoutSeconds = params.timeoutSeconds ?? DEFAULT_TRANSACTION_TIMEOUT_SECONDS;
     const transaction = new TransactionBuilder(sourceAccount, {
-      fee: BASE_FEE,
+      fee: await resolveFee(params.client),
       networkPassphrase: params.client.networkPassphrase,
     })
       .addOperation(
@@ -51,7 +54,7 @@ export async function configureMultisig(params: ConfigureMultisigParams): Promis
           highThreshold: HIGH_THRESHOLD,
         }),
       )
-      .setTimeout(TRANSACTION_TIMEOUT_SECONDS)
+      .setTimeout(timeoutSeconds)
       .build();
 
     await params.wallet.sign(transaction);
@@ -64,12 +67,14 @@ export async function configureMultisig(params: ConfigureMultisigParams): Promis
 }
 
 export interface BuildHighValuePaymentEnvelopeParams {
-  client: DefaultStellarClient;
+  client: StellarClient;
   sourceWallet: Wallet;
   destinationPublicKey: string;
   amount: string;
   asset?: StellarAssetRef;
   memo?: string;
+  /** Transaction validity window in seconds. Defaults to `DEFAULT_TRANSACTION_TIMEOUT_SECONDS`. */
+  timeoutSeconds?: number;
 }
 
 /**
@@ -94,14 +99,15 @@ export async function buildHighValuePaymentEnvelope(
   try {
     const sourceAccount = await params.client.horizon.loadAccount(params.sourceWallet.publicKey);
 
+    const timeoutSeconds = params.timeoutSeconds ?? DEFAULT_TRANSACTION_TIMEOUT_SECONDS;
     const builder = new TransactionBuilder(sourceAccount, {
-      fee: BASE_FEE,
+      fee: await resolveFee(params.client),
       networkPassphrase: params.client.networkPassphrase,
     })
       .addOperation(
         Operation.payment({
           destination: params.destinationPublicKey,
-          asset: params.asset ? new Asset(params.asset.code, params.asset.issuer) : Asset.native(),
+          asset: toStellarAsset(params.asset),
           amount: params.amount,
         }),
       )
@@ -115,7 +121,7 @@ export async function buildHighValuePaymentEnvelope(
       builder.addMemo(Memo.text(params.memo));
     }
 
-    const transaction = builder.setTimeout(TRANSACTION_TIMEOUT_SECONDS).build();
+    const transaction = builder.setTimeout(timeoutSeconds).build();
     await params.sourceWallet.sign(transaction);
 
     return { envelopeXdr: transaction.toXDR() };
@@ -125,7 +131,7 @@ export async function buildHighValuePaymentEnvelope(
 }
 
 export interface CoSignAndSubmitEnvelopeParams {
-  client: DefaultStellarClient;
+  client: StellarClient;
   envelopeXdr: string;
   /** The platform's admin co-signing wallet. */
   adminWallet: Wallet;

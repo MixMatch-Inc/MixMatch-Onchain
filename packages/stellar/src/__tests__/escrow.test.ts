@@ -1,7 +1,8 @@
-import { Keypair, Networks, rpc, StrKey } from '@stellar/stellar-sdk';
+import { Keypair, rpc, StrKey } from '@stellar/stellar-sdk';
 import { describe, expect, it, vi, type Mock } from 'vitest';
 import * as StellarSdk from '@stellar/stellar-sdk';
-import type { DefaultStellarClient } from '../client.js';
+import type { StellarClient } from '../interfaces/index.js';
+import { stubClient } from './test-helpers.js';
 import {
   depositToEscrow,
   getEscrow,
@@ -35,10 +36,9 @@ function fakeSorobanClient(overrides: {
   sendTransaction?: Mock;
   getTransaction?: Mock;
   simulateTransaction?: Mock;
-}): DefaultStellarClient {
+}): StellarClient {
   const sourceKeypair = Keypair.random();
-  return {
-    networkPassphrase: Networks.TESTNET,
+  return stubClient({
     horizon: {
       loadAccount: () =>
         Promise.resolve({
@@ -54,7 +54,7 @@ function fakeSorobanClient(overrides: {
       getTransaction: overrides.getTransaction ?? vi.fn(),
       simulateTransaction: overrides.simulateTransaction ?? vi.fn(),
     },
-  } as unknown as DefaultStellarClient;
+  });
 }
 
 describe('depositToEscrow', () => {

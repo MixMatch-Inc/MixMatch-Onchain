@@ -46,6 +46,8 @@ pub enum EscrowError {
     NotFound = 1,
     AlreadyFinalized = 2,
     InvalidAmount = 3,
+    /// `timeout_ledgers` would push the deadline past the largest ledger sequence (`u32::MAX`).
+    InvalidTimeout = 4,
 }
 
 #[contract]
@@ -74,6 +76,12 @@ impl EscrowContract {
         }
         payer.require_auth();
 
+        let timeout_ledger = env
+            .ledger()
+            .sequence()
+            .checked_add(timeout_ledgers)
+            .ok_or(EscrowError::InvalidTimeout)?;
+
         let token_client = token::Client::new(&env, &token);
         token_client.transfer(&payer, &env.current_contract_address(), &amount);
 
@@ -84,7 +92,7 @@ impl EscrowContract {
             token,
             amount,
             status: EscrowStatus::Locked,
-            timeout_ledger: env.ledger().sequence() + timeout_ledgers,
+            timeout_ledger,
         };
         env.storage()
             .persistent()
@@ -172,3 +180,5 @@ impl EscrowContract {
 
 #[cfg(test)]
 mod test;
+#[cfg(test)]
+mod test_edge;

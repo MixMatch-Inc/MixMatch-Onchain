@@ -1,12 +1,11 @@
-import { BASE_FEE, Memo, Operation, TransactionBuilder } from '@stellar/stellar-sdk';
-import type { DefaultStellarClient } from './client.js';
-import { toStellarAsset } from './assets.js';
+import { Asset, Memo, Operation, TransactionBuilder } from '@stellar/stellar-sdk';
+import type { StellarClient } from './interfaces/index.js';
 import { classifyStellarPaymentError } from './payment-errors.js';
 import type { StellarPaymentResult } from './payment.js';
+import { DEFAULT_TRANSACTION_TIMEOUT_SECONDS, resolveFee } from './fees.js';
 import type { StellarAssetRef } from './types/index.js';
 import type { Wallet } from './wallet.js';
 
-const TRANSACTION_TIMEOUT_SECONDS = 30;
 /** Default slippage tolerance applied when a caller doesn't specify one: 0.5%. */
 const DEFAULT_SLIPPAGE_BPS = 50;
 const BPS_DENOMINATOR = 10_000;
@@ -46,7 +45,7 @@ export interface PathQuote {
 }
 
 export interface FindPathParams {
-  client: DefaultStellarClient;
+  client: StellarClient;
   /** Omit for native XLM. */
   sourceAsset?: StellarAssetRef;
   /** Omit for native XLM. */
@@ -126,7 +125,7 @@ export async function findStrictReceivePath(params: FindPathParams): Promise<Pat
 }
 
 export interface SubmitPathPaymentParams {
-  client: DefaultStellarClient;
+  client: StellarClient;
   sourceWallet: Wallet;
   destinationPublicKey: string;
   memo?: string;
@@ -138,6 +137,8 @@ export interface SubmitPathPaymentParams {
    * the market moving between quoting and submission. Defaults to 50 (0.5%).
    */
   slippageBps?: number;
+  /** Transaction validity window in seconds. Defaults to `DEFAULT_TRANSACTION_TIMEOUT_SECONDS`. */
+  timeoutSeconds?: number;
 }
 
 /** Builds, signs, and submits the path-payment operation for a previously-fetched quote. */
@@ -169,8 +170,9 @@ export async function submitPathPayment(params: SubmitPathPaymentParams): Promis
             path,
           });
 
+    const timeoutSeconds = params.timeoutSeconds ?? DEFAULT_TRANSACTION_TIMEOUT_SECONDS;
     const builder = new TransactionBuilder(sourceAccount, {
-      fee: BASE_FEE,
+      fee: await resolveFee(params.client),
       networkPassphrase: params.client.networkPassphrase,
     }).addOperation(operation);
 
@@ -178,7 +180,7 @@ export async function submitPathPayment(params: SubmitPathPaymentParams): Promis
       builder.addMemo(Memo.text(params.memo));
     }
 
-    const transaction = builder.setTimeout(TRANSACTION_TIMEOUT_SECONDS).build();
+    const transaction = builder.setTimeout(timeoutSeconds).build();
     await params.sourceWallet.sign(transaction);
 
     const result = await params.client.horizon.submitTransaction(transaction);

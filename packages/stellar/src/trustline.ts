@@ -1,19 +1,20 @@
-import { BASE_FEE, Operation, TransactionBuilder } from '@stellar/stellar-sdk';
-import type { DefaultStellarClient } from './client.js';
-import { toStellarAsset } from './assets.js';
+import { Asset, Operation, TransactionBuilder } from '@stellar/stellar-sdk';
+import type { StellarClient } from './interfaces/index.js';
 import { classifyStellarPaymentError } from './payment-errors.js';
+import { DEFAULT_TRANSACTION_TIMEOUT_SECONDS, resolveFee } from './fees.js';
 import type { StellarAssetRef } from './types/index.js';
 import type { StellarPaymentResult } from './payment.js';
 import type { Wallet } from './wallet.js';
 
-const TRANSACTION_TIMEOUT_SECONDS = 30;
 
 export interface EstablishTrustlineParams {
-  client: DefaultStellarClient;
+  client: StellarClient;
   wallet: Wallet;
   asset: StellarAssetRef;
   /** Max amount of the asset this account will hold. Omit for the protocol maximum. */
   limit?: string;
+  /** Transaction validity window in seconds. Defaults to `DEFAULT_TRANSACTION_TIMEOUT_SECONDS`. */
+  timeoutSeconds?: number;
 }
 
 /**
@@ -27,8 +28,9 @@ export async function establishTrustline(params: EstablishTrustlineParams): Prom
   try {
     const sourceAccount = await params.client.horizon.loadAccount(params.wallet.publicKey);
 
+    const timeoutSeconds = params.timeoutSeconds ?? DEFAULT_TRANSACTION_TIMEOUT_SECONDS;
     const transaction = new TransactionBuilder(sourceAccount, {
-      fee: BASE_FEE,
+      fee: await resolveFee(params.client),
       networkPassphrase: params.client.networkPassphrase,
     })
       .addOperation(
@@ -37,7 +39,7 @@ export async function establishTrustline(params: EstablishTrustlineParams): Prom
           limit: params.limit,
         }),
       )
-      .setTimeout(TRANSACTION_TIMEOUT_SECONDS)
+      .setTimeout(timeoutSeconds)
       .build();
 
     await params.wallet.sign(transaction);

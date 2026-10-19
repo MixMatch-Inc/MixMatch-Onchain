@@ -1,7 +1,6 @@
 import {
   Account,
   Address,
-  BASE_FEE,
   Contract,
   Keypair,
   nativeToScVal,
@@ -10,10 +9,10 @@ import {
   TransactionBuilder,
   xdr,
 } from '@stellar/stellar-sdk';
-import type { DefaultStellarClient } from './client.js';
+import type { StellarClient } from './interfaces/index.js';
+import { DEFAULT_TRANSACTION_TIMEOUT_SECONDS, resolveFee } from './fees.js';
 import type { Wallet } from './wallet.js';
 
-const TRANSACTION_TIMEOUT_SECONDS = 30;
 const POLL_INTERVAL_MS = 1000;
 const POLL_TIMEOUT_MS = 30_000;
 
@@ -40,7 +39,7 @@ export class SorobanInvocationError extends Error {
 }
 
 export interface DepositEscrowParams {
-  client: DefaultStellarClient;
+  client: StellarClient;
   contractId: string;
   /** Signs and pays the deposit; becomes the escrow's `payer`. */
   payerWallet: Wallet;
@@ -54,7 +53,7 @@ export interface DepositEscrowParams {
 }
 
 export interface EscrowActionParams {
-  client: DefaultStellarClient;
+  client: StellarClient;
   contractId: string;
   escrowId: bigint | number;
 }
@@ -89,21 +88,22 @@ interface InvocationResult {
 }
 
 async function submitInvocation(
-  client: DefaultStellarClient,
+  client: StellarClient,
   contractId: string,
   method: string,
   args: xdr.ScVal[],
   signerWallet: Wallet,
+  timeoutSeconds = DEFAULT_TRANSACTION_TIMEOUT_SECONDS,
 ): Promise<InvocationResult> {
   const contract = new Contract(contractId);
   const sourceAccount = await client.horizon.loadAccount(signerWallet.publicKey);
 
   const transaction = new TransactionBuilder(sourceAccount, {
-    fee: BASE_FEE,
+    fee: await resolveFee(client),
     networkPassphrase: client.networkPassphrase,
   })
     .addOperation(contract.call(method, ...args))
-    .setTimeout(TRANSACTION_TIMEOUT_SECONDS)
+    .setTimeout(timeoutSeconds)
     .build();
 
   const prepared = await client.soroban.prepareTransaction(transaction);
@@ -141,10 +141,11 @@ async function submitInvocation(
 }
 
 async function simulateReadOnly(
-  client: DefaultStellarClient,
+  client: StellarClient,
   contractId: string,
   method: string,
   args: xdr.ScVal[],
+  timeoutSeconds = DEFAULT_TRANSACTION_TIMEOUT_SECONDS,
 ): Promise<unknown> {
   const contract = new Contract(contractId);
   // A throwaway account with sequence "0" is enough to simulate a read-only
@@ -152,11 +153,11 @@ async function simulateReadOnly(
   const account = new Account(Keypair.random().publicKey(), '0');
 
   const transaction = new TransactionBuilder(account, {
-    fee: BASE_FEE,
+    fee: await resolveFee(client),
     networkPassphrase: client.networkPassphrase,
   })
     .addOperation(contract.call(method, ...args))
-    .setTimeout(TRANSACTION_TIMEOUT_SECONDS)
+    .setTimeout(timeoutSeconds)
     .build();
 
   const simulation = await client.soroban.simulateTransaction(transaction);

@@ -1,5 +1,5 @@
 /** Stellar network the platform can connect to. */
-export type StellarNetwork = 'testnet' | 'public';
+export type StellarNetwork = 'testnet' | 'public' | 'futurenet' | 'standalone';
 
 /** Reference to a Stellar account: which network it lives on, and its public key. */
 export interface StellarAccountRef {

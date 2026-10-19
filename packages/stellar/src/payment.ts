@@ -1,16 +1,10 @@
-import { BASE_FEE, Memo, NotFoundError, Operation, StrKey, TransactionBuilder } from '@stellar/stellar-sdk';
-import { toStellarAsset } from './assets.js';
-import type { DefaultStellarClient } from './client.js';
-import { classifyStellarPaymentError, StellarPaymentError, withTransactionContext } from './payment-errors.js';
+import { Asset, Memo, Operation, TransactionBuilder } from '@stellar/stellar-sdk';
+import type { StellarClient } from './interfaces/index.js';
+import { classifyStellarPaymentError } from './payment-errors.js';
+import { DEFAULT_TRANSACTION_TIMEOUT_SECONDS, resolveFee } from './fees.js';
 import type { StellarAssetRef } from './types/index.js';
 import type { Wallet } from './wallet.js';
 
-const TRANSACTION_TIMEOUT_SECONDS = 30;
-/** Attempts made when the source account's sequence number is stale (`tx_bad_seq`), reloading it each time. */
-const MAX_SEQUENCE_ATTEMPTS = 3;
-const MAX_MEMO_BYTES = 28;
-const AMOUNT_PATTERN = /^\d+(\.\d{1,7})?$/;
-const ASSET_CODE_PATTERN = /^[a-zA-Z0-9]{1,12}$/;
 
 export interface SubmitPaymentParams {
   sourceWallet: Wallet;
@@ -19,6 +13,8 @@ export interface SubmitPaymentParams {
   memo?: string;
   /** Omit for native XLM; pass a code+issuer to send a custom asset. */
   asset?: StellarAssetRef;
+  /** Transaction validity window in seconds. Defaults to `DEFAULT_TRANSACTION_TIMEOUT_SECONDS`. */
+  timeoutSeconds?: number;
 }
 
 /** @deprecated Use `SubmitPaymentParams` (with `asset` omitted for native XLM). Kept as an alias for existing callers. */
@@ -33,23 +29,8 @@ function invalid(message: string): never {
   throw new StellarPaymentError('validation', message);
 }
 
-/** Rejects bad input before anything is built or sent, so it is never reported as a network failure. */
-export function validatePaymentParams(params: SubmitPaymentParams): void {
-  const { destinationPublicKey, amount, memo, asset } = params;
-  if (!StrKey.isValidEd25519PublicKey(destinationPublicKey) && !StrKey.isValidMed25519PublicKey(destinationPublicKey)) {
-    invalid('Destination is not a valid Stellar account address.');
-  }
-  if (!AMOUNT_PATTERN.test(amount) || Number(amount) <= 0) {
-    invalid('Amount must be a positive number with at most 7 decimal places.');
-  }
-  if (memo !== undefined && Buffer.byteLength(memo, 'utf8') > MAX_MEMO_BYTES) {
-    invalid(`Memo must be at most ${MAX_MEMO_BYTES} bytes.`);
-  }
-  if (asset) {
-    if (!ASSET_CODE_PATTERN.test(asset.code)) invalid('Asset code must be 1-12 alphanumeric characters.');
-    if (!StrKey.isValidEd25519PublicKey(asset.issuer)) invalid('Asset issuer is not a valid Stellar account address.');
-  }
-}
+export class StellarPaymentService {
+  constructor(private readonly client: StellarClient) {}
 
 /**
  * Builds, signs, and submits a payment — native XLM if `params.asset` is
@@ -70,9 +51,10 @@ export async function submitPayment(
     try {
       const sourceAccount = await client.horizon.loadAccount(params.sourceWallet.publicKey);
 
+      const timeoutSeconds = params.timeoutSeconds ?? DEFAULT_TRANSACTION_TIMEOUT_SECONDS;
       const builder = new TransactionBuilder(sourceAccount, {
-        fee: BASE_FEE,
-        networkPassphrase: client.networkPassphrase,
+        fee: await resolveFee(this.client),
+        networkPassphrase: this.client.networkPassphrase,
       }).addOperation(
         Operation.payment({
           destination: params.destinationPublicKey,
@@ -85,8 +67,7 @@ export async function submitPayment(
         builder.addMemo(Memo.text(params.memo));
       }
 
-      const transaction = builder.setTimeout(TRANSACTION_TIMEOUT_SECONDS).build();
-      txHash = transaction.hash().toString('hex');
+      const transaction = builder.setTimeout(timeoutSeconds).build();
 
       await params.sourceWallet.sign(transaction);
       envelopeXdr = transaction.toXDR();

@@ -1,13 +1,25 @@
-import { Keypair, Networks } from '@stellar/stellar-sdk';
-import type { DefaultStellarClient } from '../client.js';
+import { Keypair, Networks, type Horizon, type rpc } from '@stellar/stellar-sdk';
+import type { StellarClient } from '../interfaces/index.js';
+
+/**
+ * Builds a `StellarClient` for tests from partial fakes. Only the methods a
+ * test exercises need to exist on `horizon` / `soroban`.
+ */
+export function stubClient(parts: { horizon?: object; soroban?: object; networkPassphrase?: string }): StellarClient {
+  return {
+    networkPassphrase: parts.networkPassphrase ?? Networks.TESTNET,
+    horizon: (parts.horizon ?? {}) as Horizon.Server,
+    soroban: (parts.soroban ?? {}) as rpc.Server,
+    getNetwork: () => 'testnet',
+  };
+}
 
 export function fakeClient(overrides: {
   loadAccount?: () => unknown;
   submitTransaction?: () => unknown;
-}): DefaultStellarClient {
+}): StellarClient {
   const sourceKeypair = Keypair.random();
-  return {
-    networkPassphrase: Networks.TESTNET,
+  return stubClient({
     horizon: {
       loadAccount:
         overrides.loadAccount ??
@@ -18,7 +30,7 @@ export function fakeClient(overrides: {
         })),
       submitTransaction: overrides.submitTransaction ?? (() => Promise.resolve({ hash: 'fake-hash', ledger: 42 })),
     },
-  } as unknown as DefaultStellarClient;
+  });
 }
 
 export function fakeAccount(keypair: Keypair) {

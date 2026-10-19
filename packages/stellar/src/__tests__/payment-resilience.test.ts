@@ -122,11 +122,9 @@ describe('transaction hash on failure', () => {
 
 describe('lookupPayment', () => {
   function clientWithLookup(call: () => Promise<unknown>) {
-    return fakeClient({}).horizon === undefined
-      ? fakeClient({})
-      : Object.assign(fakeClient({}), {
-          horizon: { transactions: () => ({ transaction: () => ({ call }) }) },
-        });
+    return Object.assign(fakeClient({}), {
+      horizon: { transactions: () => ({ transaction: () => ({ call }) }) },
+    });
   }
 
   it('returns the recorded result', async () => {

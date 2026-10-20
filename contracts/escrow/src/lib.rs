@@ -181,6 +181,13 @@ impl EscrowContract {
             .get(&DataKey::NextId)
             .unwrap_or(0);
         env.storage().instance().set(&DataKey::NextId, &(id + 1));
+        // Rewriting the counter is this contract's only touch of instance
+        // storage, so it is the natural place to keep the instance (and the
+        // contract code) alive: extend the TTL whenever it has fallen below
+        // half of the host maximum. Without this an idle contract can be
+        // archived while escrows it created are still within their timeout.
+        let max_ttl = env.storage().max_ttl();
+        env.storage().instance().extend_ttl(max_ttl / 2, max_ttl);
         id
     }
 }

@@ -2,8 +2,8 @@
 
 use super::{EscrowContract, EscrowContractClient, EscrowError, EscrowStatus};
 use soroban_sdk::{
-    testutils::{Address as _, Ledger},
-    token, Address, Env,
+    testutils::{Address as _, AuthorizedFunction, Ledger},
+    symbol_short, token, Address, Env,
 };
 
 struct TestSetup<'a> {
@@ -168,4 +168,147 @@ fn get_escrow_fails_for_an_unknown_id() {
 
     let result = setup.client.try_get_escrow(&999);
     assert_eq!(result, Err(Ok(EscrowError::NotFound)));
+}
+
+#[test]
+fn deposit_records_the_payers_authorization() {
+    let setup = setup();
+
+    setup
+        .client
+        .deposit(&setup.payer, &setup.payee, &setup.token_id, &500, &100);
+
+    let auths = setup.env.auths();
+    assert!(
+        auths.iter().any(|(address, invocation)| {
+            address == &setup.payer
+                && matches!(
+                    &invocation.function,
+                    AuthorizedFunction::Contract((contract, name, _))
+                        if contract == &setup.client.address
+                            && name == &symbol_short!("deposit")
+                )
+        }),
+        "deposit must record the payer's authorization"
+    );
+}
+
+#[test]
+fn release_records_the_payers_authorization() {
+    let setup = setup();
+    let escrow_id = setup
+        .client
+        .deposit(&setup.payer, &setup.payee, &setup.token_id, &500, &100);
+
+    setup.client.release(&escrow_id);
+
+    let auths = setup.env.auths();
+    assert!(
+        auths.iter().any(|(address, invocation)| {
+            address == &setup.payer
+                && matches!(
+                    &invocation.function,
+                    AuthorizedFunction::Contract((contract, name, _))
+                        if contract == &setup.client.address
+                            && name == &symbol_short!("release")
+                )
+        }),
+        "release must record the payer's authorization"
+    );
+}
+
+#[test]
+fn refund_before_timeout_records_the_payers_authorization() {
+    let setup = setup();
+    let escrow_id = setup
+        .client
+        .deposit(&setup.payer, &setup.payee, &setup.token_id, &500, &100);
+
+    setup.client.refund(&escrow_id);
+
+    let auths = setup.env.auths();
+    assert!(
+        auths.iter().any(|(address, invocation)| {
+            address == &setup.payer
+                && matches!(
+                    &invocation.function,
+                    AuthorizedFunction::Contract((contract, name, _))
+                        if contract == &setup.client.address
+                            && name == &symbol_short!("refund")
+                )
+        }),
+        "refund before the timeout must record the payer's authorization"
+    );
+}
+
+#[test]
+fn release_without_the_payers_authorization_fails() {
+    let setup = setup();
+    let escrow_id = setup
+        .client
+        .deposit(&setup.payer, &setup.payee, &setup.token_id, &500, &100);
+
+    // Clear the mocked-auths allowlist: `release` must fail without the
+    // payer's authorization, leaving the escrow and its funds untouched.
+    setup.env.set_auths(&[]);
+    let result = setup.client.try_release(&escrow_id);
+    assert!(
+        result.is_err(),
+        "release succeeded without the payer's authorization"
+    );
+
+    let token_client = token::Client::new(&setup.env, &setup.token_id);
+    assert_eq!(token_client.balance(&setup.client.address), 500);
+    assert_eq!(
+        setup.client.get_escrow(&escrow_id).status,
+        EscrowStatus::Locked
+    );
+}
+
+#[test]
+fn refund_before_timeout_without_the_payers_authorization_fails() {
+    let setup = setup();
+    let escrow_id = setup
+        .client
+        .deposit(&setup.payer, &setup.payee, &setup.token_id, &500, &100);
+
+    // Clear the mocked-auths allowlist: `refund` before the timeout must fail
+    // without the payer's authorization, leaving the escrow locked.
+    setup.env.set_auths(&[]);
+    let result = setup.client.try_refund(&escrow_id);
+    assert!(
+        result.is_err(),
+        "refund before the timeout succeeded without the payer's authorization"
+    );
+
+    let token_client = token::Client::new(&setup.env, &setup.token_id);
+    assert_eq!(token_client.balance(&setup.client.address), 500);
+    assert_eq!(
+        setup.client.get_escrow(&escrow_id).status,
+        EscrowStatus::Locked
+    );
+}
+
+#[test]
+fn refund_after_timeout_records_no_authorization() {
+    let setup = setup();
+    let escrow_id = setup
+        .client
+        .deposit(&setup.payer, &setup.payee, &setup.token_id, &500, &10);
+
+    setup.env.ledger().with_mut(|li| {
+        li.sequence_number += 11;
+    });
+
+    setup.env.set_auths(&[]);
+    setup.client.refund(&escrow_id);
+
+    assert!(
+        setup.env.auths().is_empty(),
+        "refund after the timeout must not require any authorization"
+    );
+    assert_eq!(
+        setup.client.get_escrow(&escrow_id).status,
+        EscrowStatus::Refunded
+    );
 }

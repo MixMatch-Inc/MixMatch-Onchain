@@ -48,6 +48,8 @@ pub enum EscrowError {
     InvalidAmount = 3,
     /// `timeout_ledgers` would push the deadline past the largest ledger sequence (`u32::MAX`).
     InvalidTimeout = 4,
+    /// The escrow id counter would overflow (`NextId` is already `u64::MAX`).
+    Overflow = 6,
 }
 
 #[contract]
@@ -85,7 +87,7 @@ impl EscrowContract {
         let token_client = token::Client::new(&env, &token);
         token_client.transfer(&payer, &env.current_contract_address(), &amount);
 
-        let escrow_id = Self::next_id(&env);
+        let escrow_id = Self::next_id(&env)?;
         let escrow = Escrow {
             payer,
             payee,
@@ -167,14 +169,17 @@ impl EscrowContract {
             .ok_or(EscrowError::NotFound)
     }
 
-    fn next_id(env: &Env) -> u64 {
+    fn next_id(env: &Env) -> Result<u64, EscrowError> {
         let id: u64 = env
             .storage()
             .instance()
             .get(&DataKey::NextId)
             .unwrap_or(0);
-        env.storage().instance().set(&DataKey::NextId, &(id + 1));
-        id
+        // Never wrap the counter: an overflow would silently hand out id 0
+        // again and collide with an existing escrow.
+        let next = id.checked_add(1).ok_or(EscrowError::Overflow)?;
+        env.storage().instance().set(&DataKey::NextId, &next);
+        Ok(id)
     }
 }
 

@@ -76,6 +76,11 @@ impl EscrowContract {
         if amount <= 0 {
             return Err(EscrowError::InvalidAmount);
         }
+        // A payee equal to the contract would make `release` a self-transfer
+        // that never leaves the contract; payer == payee is a no-op escrow.
+        if payer == payee || payee == env.current_contract_address() {
+            return Err(EscrowError::InvalidParty);
+        }
         payer.require_auth();
 
         let timeout_ledger = env

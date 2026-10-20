@@ -48,6 +48,8 @@ pub enum EscrowError {
     InvalidAmount = 3,
     /// `timeout_ledgers` would push the deadline past the largest ledger sequence (`u32::MAX`).
     InvalidTimeout = 4,
+    /// `payer` and `payee` are the same address, or the `payee` is the escrow contract itself.
+    InvalidParty = 5,
 }
 
 #[contract]
@@ -73,6 +75,11 @@ impl EscrowContract {
     ) -> Result<u64, EscrowError> {
         if amount <= 0 {
             return Err(EscrowError::InvalidAmount);
+        }
+        // A payee equal to the contract would make `release` a self-transfer
+        // that never leaves the contract; payer == payee is a no-op escrow.
+        if payer == payee || payee == env.current_contract_address() {
+            return Err(EscrowError::InvalidParty);
         }
         payer.require_auth();
 

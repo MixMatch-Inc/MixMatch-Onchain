@@ -192,6 +192,30 @@ Escrow {
   enabled, so a very large `timeout_ledgers` panics instead of wrapping.
 - The contract has no admin, pause or upgrade entry point.
 
+## Trust and custody model
+
+While an escrow is `Locked`, the funds sit in the contract itself — neither
+party can take them at will — but practical control follows the payer, not
+the payee.
+
+- **The payer controls the funds until release.** Only the payer can
+  authorize `release`, and the payer may `refund` to themselves at any time
+  before `timeout_ledger`. Until a `release` transaction is observed on
+  chain, the payee has received nothing and has no on-chain way to force
+  payment, dispute an outcome, or prove that release will ever happen.
+- **After the timeout, control passes to everyone.** From `timeout_ledger`
+  onward `refund` requires no authorization, so neither party can hold the
+  other to the escrow forever — but the payee still cannot claim; the funds
+  simply return to the payer.
+- **What the payee can rely on** is limited to the locked amount remaining
+  in the contract while the escrow is `Locked` and the payer being unable
+  to withdraw it before the timeout without publicly cancelling. Anything
+  stronger — delivery confirmation, dispute resolution, forced release —
+  must come from an off-chain agreement between the parties.
+
+A payee needing assurance should treat the escrow as payer-held custody
+until it observes the `release` on chain, and size its exposure accordingly.
+
 ## Persistence model (apps/api)
 
 Unlike `transactions` (where the durable-idempotency row can be created

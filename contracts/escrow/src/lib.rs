@@ -5,7 +5,7 @@
 // client) — verified by hand, not a real redundant borrow.
 #![allow(clippy::needless_borrows_for_generic_args)]
 
-use soroban_sdk::{contract, contracterror, contractimpl, contracttype, token, Address, Env};
+use soroban_sdk::{contract, contracterror, contractimpl, contractmeta, contracttype, token, Address, Env, String};
 
 /// Escrow lifecycle. Terminal states (`Released`, `Refunded`) can never
 /// transition again — `deposit` always creates a fresh id instead of
@@ -51,6 +51,15 @@ pub enum EscrowError {
     /// The escrow id counter would overflow (`NextId` is already `u64::MAX`).
     Overflow = 6,
 }
+
+// Embedded in the wasm's `contractmetav0` custom section, so the deployed
+// code can be identified and matched against this source without executing it.
+contractmeta!(key = "name", val = "mixmatch-escrow");
+contractmeta!(key = "version", val = env!("CARGO_PKG_VERSION"));
+contractmeta!(
+    key = "repository",
+    val = "https://github.com/MixMatch-Inc/MixMatch-Onchain"
+);
 
 #[contract]
 pub struct EscrowContract;
@@ -165,6 +174,12 @@ impl EscrowContract {
     /// Read-only lookup of an escrow's current state.
     pub fn get_escrow(env: Env, escrow_id: u64) -> Result<Escrow, EscrowError> {
         Self::require_escrow(&env, escrow_id)
+    }
+
+    /// Contract version, matching the `version` `contractmeta!` entry and the
+    /// crate version in `Cargo.toml`.
+    pub fn version(env: Env) -> String {
+        String::from_str(&env, env!("CARGO_PKG_VERSION"))
     }
 
     fn require_escrow(env: &Env, escrow_id: u64) -> Result<Escrow, EscrowError> {

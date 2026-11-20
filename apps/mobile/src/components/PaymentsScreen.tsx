@@ -1,3 +1,5 @@
+import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { NavigationContainer } from '@react-navigation/native';
 import type { TransactionRecord } from '@mixmatch/shared';
 import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, SafeAreaView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
@@ -12,20 +14,15 @@ import {
 import MyQrCode from './MyQrCode';
 import QrScanner from './QrScanner';
 import SendPaymentForm from './SendPaymentForm';
+import { ErrorState } from './states';
 import TransactionHistoryList from './TransactionHistoryList';
 
-type Tab = 'send' | 'history' | 'receive' | 'scan';
-
-const TABS: { key: Tab; label: string }[] = [
-  { key: 'send', label: 'Send' },
-  { key: 'history', label: 'History' },
-  { key: 'receive', label: 'Receive' },
-  { key: 'scan', label: 'Scan' },
-];
+const Tab = createBottomTabNavigator();
 
 export default function PaymentsScreen() {
   const { accessToken, logout } = useAuth();
-  const [tab, setTab] = useState<Tab>('send');
+  const [historyFocused, setHistoryFocused] = useState(false);
+  const [historyError, setHistoryError] = useState(false);
   const [publicKey, setPublicKey] = useState<string | null>(null);
   const [scannedDestination, setScannedDestination] = useState<string | undefined>(undefined);
   const [transactions, setTransactions] = useState<TransactionRecord[]>([]);
@@ -41,9 +38,12 @@ export default function PaymentsScreen() {
   const loadHistory = useCallback(async () => {
     if (!accessToken) return;
     setIsLoadingHistory(true);
+    setHistoryError(false);
     try {
       const { transactions: rows } = await getTransactionHistory({}, accessToken);
       setTransactions(rows);
+    } catch {
+      setHistoryError(true);
     } finally {
       setIsLoadingHistory(false);
     }
@@ -54,10 +54,10 @@ export default function PaymentsScreen() {
   }, [loadAccount]);
 
   useEffect(() => {
-    if (tab === 'history') {
+    if (historyFocused) {
       void loadHistory();
     }
-  }, [tab, loadHistory]);
+  }, [historyFocused, loadHistory]);
 
   // Real-time transaction status: subscribe once per session rather than
   // per tab-visit, so an in-flight payment updates even while the user is
@@ -89,15 +89,10 @@ export default function PaymentsScreen() {
   // Fallback only: re-poll periodically while viewing history if the
   // stream connection isn't available, so status updates still arrive.
   useEffect(() => {
-    if (streamAvailable || tab !== 'history') return;
+    if (streamAvailable || !historyFocused) return;
     const interval = setInterval(() => void loadHistory(), 15_000);
     return () => clearInterval(interval);
-  }, [streamAvailable, tab, loadHistory]);
-
-  const handleScanned = (data: string) => {
-    setScannedDestination(data);
-    setTab('send');
-  };
+  }, [streamAvailable, historyFocused, loadHistory]);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -108,50 +103,69 @@ export default function PaymentsScreen() {
         </TouchableOpacity>
       </View>
 
-      <View style={styles.tabs}>
-        {TABS.map(({ key, label }) => (
-          <TouchableOpacity key={key} onPress={() => setTab(key)} style={[styles.tab, tab === key && styles.tabActive]}>
-            <Text style={[styles.tabText, tab === key && styles.tabTextActive]}>{label}</Text>
-          </TouchableOpacity>
-        ))}
-      </View>
-
       <View style={styles.content}>
-        {tab === 'send' && accessToken && (
-          <SendPaymentForm
-            initialDestination={scannedDestination}
-            onSubmit={async (values) => {
-              const { transaction } = await sendPayment(values, accessToken);
-              return transaction;
-            }}
-            onQuote={(params) =>
-              quotePath(
-                {
-                  source: { assetCode: params.sourceAssetCode, assetIssuer: params.sourceAssetIssuer },
-                  dest: { assetCode: params.destAssetCode, assetIssuer: params.destAssetIssuer },
-                  amount: params.amount,
-                  mode: 'strictSend',
-                },
-                accessToken,
-              )
-            }
-            onSuccess={() => {
-              setScannedDestination(undefined);
-              void loadHistory();
-            }}
-          />
-        )}
-
-        {tab === 'history' &&
-          (isLoadingHistory ? (
-            <ActivityIndicator style={styles.loading} />
-          ) : (
-            <TransactionHistoryList transactions={transactions} />
-          ))}
-
-        {tab === 'receive' && (publicKey ? <MyQrCode publicKey={publicKey} /> : <ActivityIndicator style={styles.loading} />)}
-
-        {tab === 'scan' && <QrScanner onScanned={handleScanned} />}
+        <NavigationContainer>
+          <Tab.Navigator screenOptions={{ headerShown: false }}>
+            <Tab.Screen name="Send">
+              {() =>
+                accessToken ? (
+                  <SendPaymentForm
+                    initialDestination={scannedDestination}
+                    onSubmit={async (values) => {
+                      const { transaction } = await sendPayment(values, accessToken);
+                      return transaction;
+                    }}
+                    onQuote={(params) =>
+                      quotePath(
+                        {
+                          source: { assetCode: params.sourceAssetCode, assetIssuer: params.sourceAssetIssuer },
+                          dest: { assetCode: params.destAssetCode, assetIssuer: params.destAssetIssuer },
+                          amount: params.amount,
+                          mode: 'strictSend',
+                        },
+                        accessToken,
+                      )
+                    }
+                    onSuccess={() => {
+                      setScannedDestination(undefined);
+                      void loadHistory();
+                    }}
+                  />
+                ) : null
+              }
+            </Tab.Screen>
+            <Tab.Screen
+              name="History"
+              listeners={{ focus: () => setHistoryFocused(true), blur: () => setHistoryFocused(false) }}
+            >
+              {() =>
+                isLoadingHistory ? (
+                  <ActivityIndicator style={styles.loading} />
+                ) : historyError ? (
+                  <ErrorState
+                    message="Could not load your transactions."
+                    action={{ label: 'Retry', onPress: () => void loadHistory() }}
+                  />
+                ) : (
+                  <TransactionHistoryList transactions={transactions} />
+                )
+              }
+            </Tab.Screen>
+            <Tab.Screen name="Receive">
+              {() => (publicKey ? <MyQrCode publicKey={publicKey} /> : <ActivityIndicator style={styles.loading} />)}
+            </Tab.Screen>
+            <Tab.Screen name="Scan">
+              {({ navigation }) => (
+                <QrScanner
+                  onScanned={(data) => {
+                    setScannedDestination(data);
+                    navigation.navigate('Send');
+                  }}
+                />
+              )}
+            </Tab.Screen>
+          </Tab.Navigator>
+        </NavigationContainer>
       </View>
     </SafeAreaView>
   );
@@ -168,11 +182,6 @@ const styles = StyleSheet.create({
   },
   title: { fontSize: 18, fontWeight: '700' },
   logout: { color: '#007AFF' },
-  tabs: { flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: '#eee' },
-  tab: { flex: 1, paddingVertical: 10, alignItems: 'center' },
-  tabActive: { borderBottomWidth: 2, borderBottomColor: '#000' },
-  tabText: { color: '#999', fontSize: 13 },
-  tabTextActive: { color: '#000', fontWeight: '600' },
   content: { flex: 1 },
   loading: { marginTop: 40 },
 });

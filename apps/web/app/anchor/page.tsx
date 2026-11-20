@@ -1,28 +1,15 @@
 'use client';
 
-import { depositAnchorSchema, withdrawAnchorSchema, type AnchorTransactionRecord } from '@mixmatch/shared';
+import { anchorStatus, depositAnchorSchema, withdrawAnchorSchema, type AnchorTransactionRecord } from '@mixmatch/shared';
+import { Amount } from '@repo/ui/display';
+import { EmptyState } from '@repo/ui/states';
+import { StatusPill } from '@repo/ui/status-pill';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
 import { depositAnchor, getAnchorHistory, getAnchorStatus, withdrawAnchor } from '../../lib/anchor-client';
 import { useAuth } from '../../lib/useAuth';
 
 type Kind = 'deposit' | 'withdraw';
-
-const STATUS_LABEL: Record<AnchorTransactionRecord['status'], string> = {
-  incomplete: 'Waiting on you (open the anchor link)',
-  pending_user_transfer_start: 'Waiting for your transfer to start',
-  pending_user_transfer_complete: 'Waiting for your transfer to complete',
-  pending_external: 'Waiting on an external network',
-  pending_anchor: 'Anchor is processing',
-  pending_stellar: 'Submitted to Stellar',
-  pending_trust: 'Waiting on a trustline',
-  pending_user: 'Waiting on you',
-  on_hold: 'Under review',
-  completed: 'Completed',
-  refunded: 'Refunded',
-  expired: 'Expired',
-  error: 'Failed',
-};
 
 export default function AnchorPage() {
   const router = useRouter();
@@ -148,7 +135,7 @@ export default function AnchorPage() {
 
       <h2 style={{ marginTop: 40 }}>History</h2>
       {isLoadingHistory && <p>Loading…</p>}
-      {!isLoadingHistory && transactions.length === 0 && <p>No anchor transactions yet.</p>}
+      {!isLoadingHistory && transactions.length === 0 && <EmptyState message="No anchor transactions yet." />}
       <ul style={{ listStyle: 'none', padding: 0 }} data-testid="anchor-history">
         {transactions.map((transaction) => (
           <li
@@ -167,11 +154,13 @@ export default function AnchorPage() {
                 {refreshingId === transaction.id ? 'Refreshing…' : 'Refresh status'}
               </button>
             </div>
-            <p style={{ margin: '4px 0' }}>{STATUS_LABEL[transaction.status]}</p>
+            <p style={{ margin: '4px 0' }}>
+              <StatusPill {...anchorStatus(transaction.status)} />
+            </p>
             {transaction.amountIn && (
               <p style={{ margin: '4px 0', color: '#666' }}>
-                In: {transaction.amountIn}
-                {transaction.amountOut ? ` — Out: ${transaction.amountOut}` : ''}
+                In: <Amount value={transaction.amountIn} />
+                {transaction.amountOut ? <> — Out: <Amount value={transaction.amountOut} /></> : null}
               </p>
             )}
             {transaction.interactiveUrl && SEP24_INCOMPLETE_STATUSES.has(transaction.status) && (

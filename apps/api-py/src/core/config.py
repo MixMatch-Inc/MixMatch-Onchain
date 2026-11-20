@@ -34,6 +34,15 @@ class Settings(BaseSettings):
 
     ENABLE_TASTE_CRON: bool = False
 
+    # Run the reconciliation loop inside this process (one instance wins a database lock per cycle).
+    ENABLE_RECONCILIATION_JOB: bool = False
+    RECONCILIATION_POLL_INTERVAL_SECONDS: float = 30.0
+
+    # Error tracking is off unless a DSN is set. SENTRY_RELEASE should be the git SHA of the build.
+    SENTRY_DSN: Optional[str] = None
+    SENTRY_RELEASE: Optional[str] = None
+    SENTRY_TRACES_SAMPLE_RATE: float = 0.0
+
     @property
     def enable_taste_cron(self) -> bool:
         return self.ENABLE_TASTE_CRON

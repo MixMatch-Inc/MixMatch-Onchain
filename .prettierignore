@@ -1,0 +1,21 @@
+# Dependencies and build output
+node_modules
+.pnpm-store
+.next
+.expo
+dist
+build
+coverage
+.turbo
+target
+
+# Generated files
+pnpm-lock.yaml
+Cargo.lock
+apps/api/src/db/migrations
+**/*.tsbuildinfo
+next-env.d.ts
+
+# Python, Rust and vendored assets are not Prettier's job
+apps/api-py
+contracts

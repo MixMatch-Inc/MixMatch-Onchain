@@ -1,0 +1,31 @@
+name: Bug report
+description: Something is broken or behaves differently from the docs
+labels: [bug, needs-triage]
+body:
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options: [api-py, web, mobile, contracts, packages, ci/infra, docs]
+    validations:
+      required: true
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: Include what you expected instead.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to reproduce
+      placeholder: "1. ...\n2. ...\n3. ..."
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs and environment
+      description: Relevant log output, versions, network (testnet/public). Do not paste secrets, keys or envelope XDR.
+      render: text

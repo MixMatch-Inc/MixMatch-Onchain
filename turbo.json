@@ -5,6 +5,7 @@
     "build": {
       "dependsOn": ["^build"],
       "inputs": ["$TURBO_DEFAULT$", ".env*"],
+      "env": ["NEXT_PUBLIC_*", "EXPO_PUBLIC_*"],
       "outputs": [".next/**", "!.next/cache/**", "!.next/dev/**", "dist/**"]
     },
     "lint": {
@@ -14,7 +15,16 @@
       "dependsOn": ["^build", "^check-types"]
     },
     "test": {
-      "dependsOn": ["^build"]
+      "dependsOn": ["^build"],
+      "outputs": ["coverage/**"]
+    },
+    "//#format:check": {
+      "inputs": ["$TURBO_DEFAULT$", "!apps/api-py/**", "!contracts/**"],
+      "outputs": []
+    },
+    "//#test:python": {
+      "inputs": ["apps/api-py/**", "!apps/api-py/**/__pycache__/**", "!apps/api-py/**/.pytest_cache/**"],
+      "outputs": []
     },
     "dev": {
       "cache": false,

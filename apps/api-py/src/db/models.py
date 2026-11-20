@@ -154,3 +154,30 @@ class TasteProfile(Base):
     energy: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
     valence: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
     last_ingested_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, nullable=False)
+
+
+class EscrowDispute(Base):
+    """A dispute over a LOCKED escrow, settled by an arbiter (#1400). Status: OPEN or RESOLVED."""
+    __tablename__ = "escrow_disputes"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    escrow_id: Mapped[str] = mapped_column(String(36), ForeignKey("escrows.id", ondelete="CASCADE"), nullable=False, unique=True)
+    opened_by: Mapped[str] = mapped_column(String(36), nullable=False)
+    reason: Mapped[str] = mapped_column(Text, nullable=False)
+    status: Mapped[str] = mapped_column(String(16), default="OPEN", nullable=False, index=True)
+    resolution: Mapped[Optional[str]] = mapped_column(String(16), nullable=True)
+    resolution_note: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    resolved_by: Mapped[Optional[str]] = mapped_column(String(36), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, nullable=False)
+    resolved_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class EscrowEvidence(Base):
+    """A note one party attached to an open dispute (#1400)."""
+    __tablename__ = "escrow_evidence"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    dispute_id: Mapped[str] = mapped_column(String(36), ForeignKey("escrow_disputes.id", ondelete="CASCADE"), nullable=False, index=True)
+    author_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    note: Mapped[str] = mapped_column(Text, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, nullable=False)

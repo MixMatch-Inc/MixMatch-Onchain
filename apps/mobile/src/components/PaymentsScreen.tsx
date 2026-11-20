@@ -9,18 +9,20 @@ import {
   sendPayment,
   subscribeToTransactionStream,
 } from '../services/payments-client';
+import AnchorScreen from './AnchorScreen';
 import MyQrCode from './MyQrCode';
 import QrScanner from './QrScanner';
 import SendPaymentForm from './SendPaymentForm';
 import TransactionHistoryList from './TransactionHistoryList';
 
-type Tab = 'send' | 'history' | 'receive' | 'scan';
+type Tab = 'send' | 'history' | 'receive' | 'scan' | 'anchor';
 
 const TABS: { key: Tab; label: string }[] = [
   { key: 'send', label: 'Send' },
   { key: 'history', label: 'History' },
   { key: 'receive', label: 'Receive' },
   { key: 'scan', label: 'Scan' },
+  { key: 'anchor', label: 'Anchor' },
 ];
 
 export default function PaymentsScreen() {
@@ -152,6 +154,8 @@ export default function PaymentsScreen() {
         {tab === 'receive' && (publicKey ? <MyQrCode publicKey={publicKey} /> : <ActivityIndicator style={styles.loading} />)}
 
         {tab === 'scan' && <QrScanner onScanned={handleScanned} />}
+
+        {tab === 'anchor' && accessToken && <AnchorScreen accessToken={accessToken} />}
       </View>
     </SafeAreaView>
   );

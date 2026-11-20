@@ -1,27 +1,28 @@
-import { type JSX } from "react";
+import type { HTMLAttributes, ReactNode } from "react";
 
-export function Card({
-  className,
-  title,
-  children,
-  href,
-}: {
-  className?: string;
-  title: string;
-  children: React.ReactNode;
-  href: string;
-}): JSX.Element {
+export interface CardProps extends Omit<HTMLAttributes<HTMLElement>, "title"> {
+  title?: ReactNode;
+  children: ReactNode;
+  /** Optional footer, typically actions. */
+  footer?: ReactNode;
+}
+
+/** Plain surface for grouping content. It does not navigate; put a link or Button inside for that. */
+export function Card({ title, children, footer, style, ...rest }: CardProps) {
   return (
-    <a
-      className={className}
-      href={`${href}?utm_source=create-turbo&utm_medium=basic&utm_campaign=create-turbo"`}
-      rel="noopener noreferrer"
-      target="_blank"
+    <section
+      {...rest}
+      style={{
+        border: "1px solid var(--mm-color-border, #e5e7eb)",
+        borderRadius: 12,
+        padding: 16,
+        background: "var(--mm-color-surface, transparent)",
+        ...style,
+      }}
     >
-      <h2>
-        {title} <span>-&gt;</span>
-      </h2>
-      <p>{children}</p>
-    </a>
+      {title ? <h2 style={{ fontSize: 18, marginBottom: 8 }}>{title}</h2> : null}
+      <div>{children}</div>
+      {footer ? <div style={{ marginTop: 12 }}>{footer}</div> : null}
+    </section>
   );
 }

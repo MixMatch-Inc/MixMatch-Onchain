@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "@mixmatch/shared": "workspace:*",
+    "@mixmatch/tokens": "workspace:*",
     "@react-native-async-storage/async-storage": "2.2.0",
     "expo": "~57.0.9",
     "expo-camera": "~17.0.9",

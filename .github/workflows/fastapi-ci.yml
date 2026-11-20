@@ -25,6 +25,22 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
 
+    # Tier 2 (docs/test-database-strategy.md): a real PostgreSQL for the migration and smoke suite.
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: mixmatch
+          POSTGRES_PASSWORD: mixmatch
+          POSTGRES_DB: mixmatch_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U mixmatch -d mixmatch_test"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+
     steps:
       - name: Checkout Code
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
@@ -41,10 +57,22 @@ jobs:
         working-directory: apps/api-py
         run: |
           python -m pip install --upgrade pip
-          pip install -e .
-          pip install pytest pytest-asyncio httpx
+          if [ -f requirements-dev.lock ]; then
+            pip install --require-hashes -r requirements-dev.lock
+            pip install --no-deps -e .
+          else
+            echo "::warning::requirements-dev.lock is missing; installing unpinned dependencies. Run apps/api-py/scripts/lock.sh and commit the result."
+            pip install -e ".[dev]"
+          fi
 
-      - name: Run Pytest
+      - name: Run Pytest (Tier 1, SQLite)
         working-directory: apps/api-py
         run: |
           PYTHONPATH=. pytest tests -v --durations=10
+
+      - name: Run Pytest (Tier 2, PostgreSQL migrations and smoke)
+        working-directory: apps/api-py
+        env:
+          TEST_DATABASE_URL: postgresql+asyncpg://mixmatch:mixmatch@localhost:5432/mixmatch_test
+        run: |
+          PYTHONPATH=. pytest tests/postgres -m postgres -v

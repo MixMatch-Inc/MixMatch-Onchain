@@ -24,7 +24,7 @@
     "zod": "^3.24.1"
   },
   "devDependencies": {
-    "@babel/core": "^7.25.0",
+    "@babel/core": "^8.1.2",
     "@repo/eslint-config": "workspace:*",
     "@repo/typescript-config": "workspace:*",
     "@testing-library/react-native": "^13.0.1",

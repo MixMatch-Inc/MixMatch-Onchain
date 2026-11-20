@@ -41,4 +41,4 @@ jobs:
 
       - name: Run zizmor
         # Static analysis for workflow security issues (unpinned actions, excessive permissions, injection).
-        run: docker run --rm -v "$PWD:/repo" --workdir /repo ghcr.io/woodruffw/zizmor:1.5.2 .github/workflows
+        run: docker run --rm -v "$PWD:/repo" --workdir /repo ghcr.io/zizmorcore/zizmor:1.5.2 .github/workflows

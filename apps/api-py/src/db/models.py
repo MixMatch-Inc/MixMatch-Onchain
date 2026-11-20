@@ -5,9 +5,14 @@ from typing import Optional, List
 from sqlalchemy import (
     String, Text, Boolean, Integer, Float, DateTime, ForeignKey, Index, Enum as SAEnum
 )
-from sqlalchemy.dialects.sqlite import JSON
+from sqlalchemy import JSON
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from src.core.database import Base
+
+# JSON on SQLite (tests) and JSONB on PostgreSQL, matching the column type the legacy schema used.
+JSONType = JSON().with_variant(JSONB(), "postgresql")
+
 
 def utcnow() -> datetime:
     return datetime.now(timezone.utc)
@@ -142,8 +147,8 @@ class TasteProfile(Base):
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     user_id: Mapped[str] = mapped_column(String(36), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
-    top_artists: Mapped[Optional[List[str]]] = mapped_column(JSON, nullable=True)
-    top_genres: Mapped[Optional[List[str]]] = mapped_column(JSON, nullable=True)
+    top_artists: Mapped[Optional[List[str]]] = mapped_column(JSONType, nullable=True)
+    top_genres: Mapped[Optional[List[str]]] = mapped_column(JSONType, nullable=True)
     acousticness: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
     danceability: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
     energy: Mapped[Optional[float]] = mapped_column(Float, nullable=True)

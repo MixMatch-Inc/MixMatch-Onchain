@@ -6,21 +6,37 @@ on:
   pull_request:
     branches: ["dev", "main"]
 
+# Least privilege by default; jobs that need more declare it themselves.
+permissions:
+  contents: read
+
+# A newer push to the same ref supersedes the in-flight run.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build-and-lint:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      # Turborepo remote cache. Without the secret the build still works, just without the shared cache.
+      TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
+      TURBO_TEAM: ${{ vars.TURBO_TEAM }}
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
-          node-version: 20
+          node-version-file: .nvmrc
 
       - name: Install pnpm
-        uses: pnpm/action-setup@v3
+        uses: pnpm/action-setup@a3252b78c470c02df07e9d59298aecedc3ccdd6d # v3.0.0
         with:
           version: 9
           run_install: false
@@ -32,7 +48,7 @@ jobs:
           echo "STORE_PATH=$(pnpm store path)" >> $GITHUB_OUTPUT
 
       - name: Setup pnpm cache
-        uses: actions/cache@v4
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
         with:
           path: ${{ steps.pnpm-cache.outputs.STORE_PATH }}
           key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
@@ -42,8 +58,23 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Check formatting
+        run: pnpm format:check
+
       - name: Build (Turborepo)
-        run: pnpm build
+        run: pnpm build --summarize
+
+      - name: Turborepo cache summary
+        if: always()
+        run: |
+          {
+            echo "### Turborepo cache"
+            if ls .turbo/runs/*.json >/dev/null 2>&1; then
+              jq -r '[.tasks[] | .cache.status] | group_by(.) | map("- \(.[0]): \(length)") | .[]' .turbo/runs/*.json
+            else
+              echo "No run summary was written."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Lint (Turborepo)
         run: pnpm lint

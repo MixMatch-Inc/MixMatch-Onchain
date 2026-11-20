@@ -3,7 +3,7 @@ name = "mixmatch-api"
 version = "0.1.0"
 description = "FastAPI backend for MixMatch social matching and payments platform"
 readme = "README.md"
-requires-python = ">=3.11"
+requires-python = ">=3.11,<3.12"
 dependencies = [
     "fastapi>=0.115.0",
     "uvicorn>=0.30.0",
@@ -11,6 +11,7 @@ dependencies = [
     "pydantic-settings>=2.4.0",
     "sqlalchemy>=2.0.30",
     "aiosqlite>=0.20.0",
+    "alembic>=1.14.0",
     "sse-starlette>=2.1.0",
     "pyjwt>=2.9.0",
     "bcrypt>=4.2.0",

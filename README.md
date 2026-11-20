@@ -48,6 +48,15 @@ We adhere strictly to a **"Zero to Hello World"** philosophy. You should be able
 2. [pnpm](https://pnpm.io/installation) (v9+)
 3. Docker & Docker Compose
 
+### One command
+
+```bash
+make setup   # env files, dependencies (pnpm + a Python venv), Postgres, database schema
+make dev     # Postgres, the FastAPI backend with reload, and the web/mobile dev servers
+```
+
+The steps below are what `make setup` does, if you prefer to run them yourself.
+
 ### Step-by-Step Setup
 
 1. **Clone the repository:**
@@ -74,8 +83,8 @@ We adhere strictly to a **"Zero to Hello World"** philosophy. You should be able
    ```
 
 You are now running!
-* **API**: `http://localhost:3000`
-* **Web**: `http://localhost:3001`
+* **API**: `http://localhost:8000`
+* **Web**: `http://localhost:3000`
 * **Mobile**: Follow the Expo terminal prompts to open the app on your iOS simulator or Android emulator.
 
 ---

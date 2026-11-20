@@ -24,7 +24,7 @@
   },
   "dependencies": {
     "@stellar/stellar-sdk": "^13.1.0",
-    "toml": "^5.0.0"
+    "toml": "^5.0.1"
   },
   "devDependencies": {
     "@repo/eslint-config": "workspace:*",

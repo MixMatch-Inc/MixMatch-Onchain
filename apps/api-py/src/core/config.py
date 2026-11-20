@@ -48,8 +48,9 @@ class Settings(BaseSettings):
 
     ENABLE_TASTE_CRON: bool = False
 
-    LOG_LEVEL: str = "INFO"
-    LOG_JSON: bool = True
+    # Tracing is off unless an OTLP/HTTP endpoint is configured (for example http://otel-collector:4318).
+    OTEL_EXPORTER_OTLP_ENDPOINT: Optional[str] = None
+    OTEL_SERVICE_NAME: str = "mixmatch-api"
 
     @property
     def enable_taste_cron(self) -> bool:

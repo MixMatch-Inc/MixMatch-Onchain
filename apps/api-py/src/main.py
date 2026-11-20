@@ -6,6 +6,11 @@ from slowapi.errors import RateLimitExceeded
 from slowapi import _rate_limit_exceeded_handler
 
 from src.core.limiter import limiter
+from src.core.metrics_router import router as metrics_router
+from src.core.prometheus import PrometheusMiddleware, cleanup_dead_process_files
+from src.core.tracing import setup_tracing
+from src.core.database import engine
+from src.core.request_id import RequestIdMiddleware, get_request_id, install_log_record_factory
 from src.modules.payments.router import router as payments_router
 from src.modules.payments.admin_router import router as admin_router
 from src.modules.payments.anchor_router import router as anchor_router
@@ -23,6 +28,12 @@ app = FastAPI(
     version="1.0.0",
 )
 
+install_log_record_factory()
+# Outermost, so every response (including rate-limit and error responses) carries the id.
+app.add_middleware(RequestIdMiddleware)
+app.add_middleware(PrometheusMiddleware)
+cleanup_dead_process_files()
+
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
@@ -34,9 +45,19 @@ async def domain_error_handler(request: Request, exc: BaseDomainError):
             "code": exc.code,
             "message": exc.message,
             "details": exc.details,
+            "request_id": get_request_id(),
         },
     )
 
+setup_tracing(
+    app,
+    engine,
+    endpoint=settings.OTEL_EXPORTER_OTLP_ENDPOINT,
+    service_name=settings.OTEL_SERVICE_NAME,
+    environment=settings.ENVIRONMENT,
+)
+
+app.include_router(metrics_router)
 app.include_router(payments_router, prefix="/api")
 app.include_router(admin_router, prefix="/api")
 app.include_router(anchor_router, prefix="/api")

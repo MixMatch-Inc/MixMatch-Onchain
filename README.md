@@ -34,8 +34,6 @@ This project is structured as a modern monorepo powered by **Turborepo**. We cho
 * **KMS & Secrets:** HashiCorp Vault Transit engine with AES-256-GCM fallback encryption.
 * **Blockchain:** Official Stellar Python SDK with Horizon SSE streaming and SEP-10 web authentication.
 * **Cache/Realtime:** SlowAPI rate limiting, SSE streaming with client subscription caching.
-* **Cache/Realtime:** Redis for session storage and pub/sub.
-* **Analytics:** ClickHouse for fast, high-volume event logging.
 
 ---
 
@@ -62,10 +60,11 @@ We adhere strictly to a **"Zero to Hello World"** philosophy. You should be able
    ```
 
 3. **Spin up local infrastructure:**
-   This command starts local instances of Postgres, Redis, and ClickHouse.
+   This starts Postgres, builds and starts the FastAPI backend (API on `http://localhost:8000`) and the web app (`http://localhost:3000`). Add `--profile vault` for a dev-mode Vault.
    ```bash
-   docker compose up -d
+   docker compose up -d --build
    ```
+   To run only the database and use the dev servers below, start just `postgres`: `docker compose up -d postgres`.
 
 4. **Start the development servers:**
    Run the entire stack concurrently. Turborepo handles caching and parallel execution.

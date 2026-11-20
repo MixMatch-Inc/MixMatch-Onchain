@@ -4,12 +4,15 @@ import { loginSchema, registerSchema } from '@mixmatch/shared';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { loginUser, registerUser } from '../../lib/auth-client';
+import { LanguageSwitcher } from '../../components/LanguageSwitcher';
+import { useT } from '../../lib/i18n';
 import { useAuth } from '../../lib/useAuth';
 
 type Mode = 'login' | 'register';
 
 export default function LoginPage() {
   const router = useRouter();
+  const { t } = useT();
   const { setAuth } = useAuth();
   const [mode, setMode] = useState<Mode>('login');
   const [email, setEmail] = useState('');
@@ -34,7 +37,7 @@ export default function LoginPage() {
       setAuth(auth);
       router.push('/anchor');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Something went wrong');
+      setError(err instanceof Error ? err.message : t('common.somethingWrong'));
     } finally {
       setIsSubmitting(false);
     }
@@ -42,18 +45,19 @@ export default function LoginPage() {
 
   return (
     <main style={{ maxWidth: 360, margin: '80px auto', padding: '0 16px', fontFamily: 'sans-serif' }}>
-      <h1>MixMatch Onchain</h1>
+      <LanguageSwitcher />
+      <h1>{t('common.appName')}</h1>
       <div style={{ display: 'flex', gap: 8, marginBottom: 24 }}>
         <button type="button" onClick={() => setMode('login')} disabled={mode === 'login'}>
-          Log in
+          {t('auth.logIn')}
         </button>
         <button type="button" onClick={() => setMode('register')} disabled={mode === 'register'}>
-          Register
+          {t('auth.register')}
         </button>
       </div>
       <form onSubmit={(event) => void handleSubmit(event)}>
         <label style={{ display: 'block', marginBottom: 12 }}>
-          Email
+          {t('auth.email')}
           <input
             type="email"
             value={email}
@@ -63,7 +67,7 @@ export default function LoginPage() {
           />
         </label>
         <label style={{ display: 'block', marginBottom: 12 }}>
-          Password
+          {t('auth.password')}
           <input
             type="password"
             value={password}
@@ -74,7 +78,7 @@ export default function LoginPage() {
         </label>
         {error && <p style={{ color: 'crimson' }}>{error}</p>}
         <button type="submit" disabled={isSubmitting} data-testid="submit-button">
-          {mode === 'login' ? 'Log in' : 'Register'}
+          {mode === 'login' ? t('auth.logIn') : t('auth.register')}
         </button>
       </form>
     </main>

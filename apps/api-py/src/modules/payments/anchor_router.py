@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.core.database import get_db, AsyncSessionLocal
 from src.core.security import CurrentUser, get_current_user
 from src.modules.payments.anchor_service import AnchorService
+from src.modules.payments.anchor_info import AnchorInfoService, AnchorRateError
 from src.db.models import AnchorTransaction
 from sqlalchemy import select
 
@@ -63,6 +64,33 @@ async def _bg_refresh_in_progress(stellar_account_id: str, db: Optional[AsyncSes
     except Exception as e:
         import logging
         logging.getLogger("anchor.service").warning("Background anchor refresh failed: %s", e)
+
+class AnchorRateResponse(BaseModel):
+    asset_code: str
+    operation: str
+    enabled: bool
+    fee_total: Optional[str] = None
+    fee_fixed: Optional[str] = None
+    fee_percent: Optional[str] = None
+    min_amount: Optional[str] = None
+    max_amount: Optional[str] = None
+
+def get_anchor_info_service() -> AnchorInfoService:
+    return AnchorInfoService()
+
+@router.get("/rates", response_model=AnchorRateResponse)
+async def get_rates(
+    asset_code: str = Query(..., max_length=12, pattern="^[A-Za-z0-9]+$"),
+    operation: str = Query(default="deposit", pattern="^(deposit|withdraw)$"),
+    amount: Optional[str] = Query(default=None, max_length=32),
+    info: AnchorInfoService = Depends(get_anchor_info_service),
+    user: CurrentUser = Depends(get_current_user),
+):
+    """#1402: the anchor's SEP-24 fee for an asset, shown before the interactive flow starts."""
+    try:
+        return await info.quote(asset_code, operation, amount)
+    except AnchorRateError as error:
+        raise HTTPException(status_code=error.status_code, detail=error.message)
 
 @router.post("/deposit", response_model=AnchorTransactionResponse)
 async def deposit(

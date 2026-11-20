@@ -1,6 +1,9 @@
 import { sendPaymentSchema, type PathQuoteResponse, type SendPaymentInput, type TransactionRecord } from '@mixmatch/shared';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { useT } from '../i18n-context';
+import type { Palette } from '../palette';
+import { useTheme } from '../theme-context';
 
 type PaymentField =
   | 'destinationPublicKey'
@@ -23,12 +26,25 @@ export interface SendPaymentFormProps {
     amount: string;
   }) => Promise<PathQuoteResponse>;
   initialDestination?: string;
+  /** Prefill from a payment link or QR (#1405). */
+  initialAmount?: string;
+  initialMemo?: string;
 }
 
-export default function SendPaymentForm({ onSubmit, onSuccess, onQuote, initialDestination }: SendPaymentFormProps) {
+export default function SendPaymentForm({
+  onSubmit,
+  onSuccess,
+  onQuote,
+  initialDestination,
+  initialAmount,
+  initialMemo,
+}: SendPaymentFormProps) {
+  const { t } = useT();
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   const [destinationPublicKey, setDestinationPublicKey] = useState(initialDestination ?? '');
-  const [amount, setAmount] = useState('');
-  const [memo, setMemo] = useState('');
+  const [amount, setAmount] = useState(initialAmount ?? '');
+  const [memo, setMemo] = useState(initialMemo ?? '');
   const [showAssetFields, setShowAssetFields] = useState(false);
   const [assetCode, setAssetCode] = useState('');
   const [assetIssuer, setAssetIssuer] = useState('');
@@ -81,7 +97,7 @@ export default function SendPaymentForm({ onSubmit, onSuccess, onQuote, initialD
       setQuote(null);
       onSuccess?.(transaction);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Something went wrong');
+      setError(err instanceof Error ? err.message : t('common.somethingWrong'));
     } finally {
       setIsSubmitting(false);
     }
@@ -112,7 +128,7 @@ export default function SendPaymentForm({ onSubmit, onSuccess, onQuote, initialD
 
   return (
     <View style={styles.container}>
-      <Text style={styles.label}>Recipient address</Text>
+      <Text style={styles.label}>{t('payments.recipient')}</Text>
       <TextInput
         style={styles.input}
         value={destinationPublicKey}
@@ -122,7 +138,7 @@ export default function SendPaymentForm({ onSubmit, onSuccess, onQuote, initialD
       />
       {fieldErrors.destinationPublicKey && <Text style={styles.fieldError}>{fieldErrors.destinationPublicKey}</Text>}
 
-      <Text style={styles.label}>Amount (XLM)</Text>
+      <Text style={styles.label}>{t('payments.amountXlm')}</Text>
       <TextInput
         style={styles.input}
         value={amount}
@@ -132,7 +148,7 @@ export default function SendPaymentForm({ onSubmit, onSuccess, onQuote, initialD
       />
       {fieldErrors.amount && <Text style={styles.fieldError}>{fieldErrors.amount}</Text>}
 
-      <Text style={styles.label}>Memo (optional)</Text>
+      <Text style={styles.label}>{t('payments.memoOptional')}</Text>
       <TextInput style={styles.input} value={memo} onChangeText={setMemo} testID="memo-input" />
       {fieldErrors.memo && <Text style={styles.fieldError}>{fieldErrors.memo}</Text>}
 
@@ -140,12 +156,12 @@ export default function SendPaymentForm({ onSubmit, onSuccess, onQuote, initialD
         onPress={() => setShowAssetFields((prev) => !prev)}
         testID="toggle-asset-fields"
       >
-        <Text style={styles.link}>{showAssetFields ? 'Send XLM instead' : 'Send a different asset'}</Text>
+        <Text style={styles.link}>{showAssetFields ? t('payments.sendXlm') : t('payments.sendDifferentAsset')}</Text>
       </TouchableOpacity>
 
       {showAssetFields && (
         <>
-          <Text style={styles.label}>Asset code</Text>
+          <Text style={styles.label}>{t('payments.assetCode')}</Text>
           <TextInput
             style={styles.input}
             value={assetCode}
@@ -155,7 +171,7 @@ export default function SendPaymentForm({ onSubmit, onSuccess, onQuote, initialD
           />
           {fieldErrors.assetCode && <Text style={styles.fieldError}>{fieldErrors.assetCode}</Text>}
 
-          <Text style={styles.label}>Asset issuer</Text>
+          <Text style={styles.label}>{t('payments.assetIssuer')}</Text>
           <TextInput
             style={styles.input}
             value={assetIssuer}
@@ -173,14 +189,14 @@ export default function SendPaymentForm({ onSubmit, onSuccess, onQuote, initialD
           testID="toggle-receive-asset-fields"
         >
           <Text style={styles.link}>
-            {showReceiveAssetFields ? "Recipient gets the same asset I send" : "Recipient should get a different asset"}
+            {showReceiveAssetFields ? t('payments.recipientSameAsset') : t('payments.recipientDifferentAsset')}
           </Text>
         </TouchableOpacity>
       )}
 
       {showReceiveAssetFields && (
         <>
-          <Text style={styles.label}>Recipient receives (asset code)</Text>
+          <Text style={styles.label}>{t('payments.receiveAssetCode')}</Text>
           <TextInput
             style={styles.input}
             value={receiveAssetCode}
@@ -193,7 +209,7 @@ export default function SendPaymentForm({ onSubmit, onSuccess, onQuote, initialD
           />
           {fieldErrors.receiveAssetCode && <Text style={styles.fieldError}>{fieldErrors.receiveAssetCode}</Text>}
 
-          <Text style={styles.label}>Recipient receives (asset issuer)</Text>
+          <Text style={styles.label}>{t('payments.receiveAssetIssuer')}</Text>
           <TextInput
             style={styles.input}
             value={receiveAssetIssuer}
@@ -212,14 +228,14 @@ export default function SendPaymentForm({ onSubmit, onSuccess, onQuote, initialD
             disabled={isQuoting}
             testID="get-quote-button"
           >
-            {isQuoting ? <ActivityIndicator /> : <Text style={styles.quoteButtonText}>Preview conversion</Text>}
+            {isQuoting ? <ActivityIndicator /> : <Text style={styles.quoteButtonText}>{t('payments.previewConversion')}</Text>}
           </TouchableOpacity>
 
           {quoteError && <Text style={styles.error}>{quoteError}</Text>}
 
           {quote && (
             <Text style={styles.quotePreview} testID="quote-preview">
-              You send {quote.sourceAmount}, recipient gets approximately {quote.destAmount}
+              {t('payments.quotePreview', { source: quote.sourceAmount, dest: quote.destAmount })}
             </Text>
           )}
         </>
@@ -228,41 +244,23 @@ export default function SendPaymentForm({ onSubmit, onSuccess, onQuote, initialD
       {error && <Text style={styles.error}>{error}</Text>}
 
       <TouchableOpacity style={styles.button} onPress={() => void handleSubmit()} disabled={isSubmitting} testID="send-button">
-        {isSubmitting ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Send payment</Text>}
+        {isSubmitting ? <ActivityIndicator color={colors.primaryText} /> : <Text style={styles.buttonText}>{t('payments.sendPayment')}</Text>}
       </TouchableOpacity>
     </View>
   );
 }
 
-const styles = StyleSheet.create({
-  container: { padding: 16 },
-  label: { fontSize: 14, color: '#666', marginTop: 12, marginBottom: 4 },
-  input: {
-    borderWidth: 1,
-    borderColor: '#ccc',
-    borderRadius: 8,
-    padding: 12,
-    fontSize: 16,
-  },
-  fieldError: { color: '#e00', fontSize: 12, marginTop: 4 },
-  link: { color: '#0066cc', fontSize: 14, marginTop: 16 },
-  error: { color: '#e00', textAlign: 'center', marginTop: 12 },
-  quoteButton: {
-    borderWidth: 1,
-    borderColor: '#000',
-    borderRadius: 8,
-    paddingVertical: 10,
-    alignItems: 'center',
-    marginTop: 12,
-  },
-  quoteButtonText: { color: '#000', fontSize: 14, fontWeight: '600' },
-  quotePreview: { fontSize: 14, color: '#333', marginTop: 8, textAlign: 'center' },
-  button: {
-    backgroundColor: '#000',
-    borderRadius: 8,
-    paddingVertical: 14,
-    alignItems: 'center',
-    marginTop: 20,
-  },
-  buttonText: { color: '#fff', fontSize: 16, fontWeight: '600' },
-});
+const makeStyles = (c: Palette) =>
+  StyleSheet.create({
+    container: { padding: 16 },
+    label: { fontSize: 14, color: c.textMuted, marginTop: 12, marginBottom: 4 },
+    input: { borderWidth: 1, borderColor: c.border, borderRadius: 8, padding: 12, fontSize: 16, color: c.text },
+    fieldError: { color: c.error, fontSize: 12, marginTop: 4 },
+    link: { color: c.link, fontSize: 14, marginTop: 16 },
+    error: { color: c.error, textAlign: 'center', marginTop: 12 },
+    quoteButton: { borderWidth: 1, borderColor: c.text, borderRadius: 8, paddingVertical: 10, alignItems: 'center', marginTop: 12 },
+    quoteButtonText: { color: c.text, fontSize: 14, fontWeight: '600' },
+    quotePreview: { fontSize: 14, color: c.text, marginTop: 8, textAlign: 'center' },
+    button: { backgroundColor: c.primary, borderRadius: 8, paddingVertical: 14, alignItems: 'center', marginTop: 20 },
+    buttonText: { color: c.primaryText, fontSize: 16, fontWeight: '600' },
+  });

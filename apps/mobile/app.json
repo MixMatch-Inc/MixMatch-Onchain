@@ -5,7 +5,7 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-    "userInterfaceStyle": "light",
+    "userInterfaceStyle": "automatic",
     "runtimeVersion": {
       "policy": "appVersion"
     },
@@ -22,7 +22,27 @@
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
-      "permissions": ["android.permission.CAMERA"]
+      "permissions": [
+        "android.permission.CAMERA"
+      ],
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ],
+          "data": [
+            {
+              "scheme": "mixmatch",
+              "host": "pay"
+            },
+            {
+              "scheme": "web+stellar"
+            }
+          ]
+        }
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -34,6 +54,7 @@
           "cameraPermission": "MixMatch uses your camera to scan a payment QR code."
         }
       ]
-    ]
+    ],
+    "scheme": "mixmatch"
   }
 }

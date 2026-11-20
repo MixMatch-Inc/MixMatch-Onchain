@@ -1,0 +1,11 @@
+{
+  "$schema": "https://raw.githubusercontent.com/googleapis/release-please/main/schemas/config.json",
+  "packages": {
+    "apps/api-py": {
+      "release-type": "python",
+      "package-name": "mixmatch-api",
+      "component": "api-py",
+      "changelog-path": "CHANGELOG.md"
+    }
+  }
+}

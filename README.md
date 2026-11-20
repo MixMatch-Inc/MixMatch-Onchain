@@ -44,9 +44,10 @@ This project is structured as a modern monorepo powered by **Turborepo**. We cho
 We adhere strictly to a **"Zero to Hello World"** philosophy. You should be able to spin up the entire stack locally in under 5 minutes without needing any cloud API keys.
 
 ### Prerequisites
-1. Node.js (v20+)
-2. [pnpm](https://pnpm.io/installation) (v9+)
-3. Docker & Docker Compose
+1. Node.js 20 (see `.nvmrc`; `nvm use` or `fnm use` picks it up)
+2. [pnpm](https://pnpm.io/installation) 9
+3. Python 3.11 (see `.python-version`) for `apps/api-py`
+4. Docker & Docker Compose
 
 ### Step-by-Step Setup
 

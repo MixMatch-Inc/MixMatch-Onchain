@@ -1,0 +1,13 @@
+# Review ownership by area. The team below is a placeholder: create it (or replace it with real
+# handles) before enabling "Require review from Code Owners". Later entries take precedence.
+*                          @MixMatch-Inc/maintainers
+
+/apps/api-py/              @MixMatch-Inc/maintainers
+/apps/api/                 @MixMatch-Inc/maintainers
+/apps/web/                 @MixMatch-Inc/maintainers
+/apps/mobile/              @MixMatch-Inc/maintainers
+/packages/                 @MixMatch-Inc/maintainers
+/contracts/                @MixMatch-Inc/maintainers
+/infra/                    @MixMatch-Inc/maintainers
+/.github/                  @MixMatch-Inc/maintainers
+/docs/                     @MixMatch-Inc/maintainers

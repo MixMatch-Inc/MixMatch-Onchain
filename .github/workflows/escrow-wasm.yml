@@ -20,12 +20,20 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  # Never cancel a tag build that may be about to publish a release.
+  cancel-in-progress: ${{ !startsWith(github.ref, 'refs/tags/') }}
+
 jobs:
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
 
       - name: Install Rust target
         run: rustup target add wasm32v1-none
@@ -47,7 +55,7 @@ jobs:
           echo '```' >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload artefact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: escrow-wasm
           path: dist/
@@ -57,11 +65,12 @@ jobs:
     if: startsWith(github.ref, 'refs/tags/escrow-v')
     needs: build
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     permissions:
       contents: write
     steps:
       - name: Download artefact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
           name: escrow-wasm
           path: dist

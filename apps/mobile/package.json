@@ -27,7 +27,7 @@
     "@babel/core": "^7.25.0",
     "@repo/eslint-config": "workspace:*",
     "@repo/typescript-config": "workspace:*",
-    "@testing-library/react-native": "^13.0.1",
+    "@testing-library/react-native": "^14.1.0",
     "@types/jest": "^29.5.14",
     "@types/react": "19.2.2",
     "eslint": "^9.39.1",

@@ -1,10 +1,18 @@
-# MixMatch 🎧
+# MixMatch-Onchain
 
-**Connect through taste, not just swiping.** 
+Decentralised social music-matching on Stellar. Users connect Spotify, build a taste profile, and are matched with others who share their sound. Payments and escrow run on Stellar/Soroban.
 
-Welcome to **MixMatch** — a revolutionary social connection platform that matches people based on their true music identity. By analyzing your Spotify (and soon Apple Music) streaming history, we generate a deeply accurate "Taste Profile" powered by AI embeddings. We connect you with others who share your vibe, enabling deeper human connection through the universal language of music.
+## Stack
 
-MixMatch is a community-driven, open-source project. We believe that discovering friends, collaborators, and partners through music is a core social utility, and we're building the best platform in the world to facilitate it.
+| Layer | Technology |
+|---|---|
+| Backend | Python 3.12, FastAPI, SQLAlchemy 2, Pydantic v2 |
+| Web | Next.js 14, TypeScript, Tailwind CSS |
+| Mobile | Expo 51, React Native |
+| On-chain | Stellar SDK, Soroban smart contracts |
+| KMS | HashiCorp Vault (Transit engine) |
+| DB | PostgreSQL (production), SQLite (unit tests) |
+| Monorepo | Turborepo, pnpm workspaces |
 
 ---
 
@@ -42,22 +50,12 @@ This project is structured as a modern monorepo powered by **Turborepo**. We cho
 We adhere strictly to a **"Zero to Hello World"** philosophy. You should be able to spin up the entire stack locally in under 5 minutes without needing any cloud API keys.
 
 ### Prerequisites
-1. Node.js (v20+)
-2. [pnpm](https://pnpm.io/installation) (v9+)
-3. Docker & Docker Compose
 
-### Step-by-Step Setup
+- Node.js 20+, pnpm 9+
+- Python 3.12, [uv](https://github.com/astral-sh/uv) or pip
+- Docker and Docker Compose
 
-1. **Clone the repository:**
-   ```bash
-   git clone https://github.com/MixMatch-Inc/MixMatch-Onchain.git
-   cd MixMatch-Onchain
-   ```
-
-2. **Install all dependencies:**
-   ```bash
-   pnpm install
-   ```
+### Start the full stack
 
 3. **Spin up local infrastructure:**
    This starts Postgres, builds and starts the FastAPI backend (API on `http://localhost:8000`) and the web app (`http://localhost:3000`). Add `--profile vault` for a dev-mode Vault.
@@ -66,49 +64,50 @@ We adhere strictly to a **"Zero to Hello World"** philosophy. You should be able
    ```
    To run only the database and use the dev servers below, start just `postgres`: `docker compose up -d postgres`.
 
-4. **Start the development servers:**
-   Run the entire stack concurrently. Turborepo handles caching and parallel execution.
-   ```bash
-   pnpm dev
-   ```
+# 2. Start backing services (Postgres, Vault)
+docker compose up -d postgres vault
 
-You are now running!
-* **API**: `http://localhost:3000`
-* **Web**: `http://localhost:3001`
-* **Mobile**: Follow the Expo terminal prompts to open the app on your iOS simulator or Android emulator.
+# 3. Start the FastAPI backend (port 8000)
+cd apps/api-py
+uvicorn src.main:app --reload
 
----
+# 4. Start the web frontend (port 3000)
+pnpm --filter web dev
 
-## 🤝 Contributing to MixMatch
+# 5. Start the mobile app
+pnpm --filter mobile start
+```
 
-We are actively looking for open-source contributors of all skill levels! Whether you want to build sleek React Native animations, optimize SQL vector queries, or write documentation, there is a place for you here.
+### Environment variables
 
-### Finding Work
-1. Navigate to the **Issues** tab on GitHub.
-2. Look for issues labeled `good first issue` or `help wanted`.
-3. We tag our issues by domain: `[Backend]`, `[Mobile]`, `[Frontend]`, and `[Design]`. Pick an issue that aligns with your expertise.
+Copy `.env.example` to `.env` and set:
 
-### Contributor Guidelines
-* **Contract-First API Design:** Before building a frontend feature, the backend API schema (using Drizzle/Zod) must be agreed upon. This allows frontend and backend contributors to work in parallel.
-* **Strict Modularity (NestJS):** If you are working in the `Taste Engine` NestJS module, do not directly import logic from the `Messaging` module. Keep domain logic completely isolated to maintain the monolith's integrity.
-* **Testing:** We require basic unit tests for all core algorithmic logic (especially the Match Engine).
-* **Pull Requests:** Ensure your PR is linked to an existing issue. Our GitHub Actions CI pipeline will automatically lint and build your code (`pnpm build`, `pnpm lint`). PRs must pass CI to be merged.
+| Variable | Description |
+|---|---|
+| `DATABASE_URL` | PostgreSQL connection string |
+| `JWT_SECRET` | ≥ 32 character secret |
+| `WALLET_ENCRYPTION_KEY` | 64-char hex AES-256 key |
+| `VAULT_ADDR` | HashiCorp Vault address (optional in dev) |
+| `STELLAR_NETWORK` | `testnet` or `public` |
+| `HORIZON_URL` | Stellar Horizon URL |
 
-### The Roadmap (Current Milestones)
-* **Milestone 1:** The Foundation & Music Identity (Turborepo, NestJS, Postgres, Auth) — *Currently In Progress*
-* **Milestone 2:** The Match Engine (Taste Profile Generation, Compatibility Algorithms, Swipes)
-* **Milestone 3:** Consumer UI (React Native Swipe Cards, Onboarding)
-* **Milestone 4:** Messaging & Realtime (WebSocket Chat)
-* **Milestone 5:** Content & Creators (Audio Uploads, Transcoding)
+## Feature Status
 
----
+| Feature | Status |
+|---|---|
+| Auth (JWT + refresh tokens) | ✅ Live |
+| Payments (Stellar XLM) | ✅ Live |
+| Escrow (Soroban) | ✅ Live |
+| Taste profiles | ⚠️ Preview (mock data, `is_mock: true`) |
+| Matching / deck | 🚧 In progress |
+| Anchor (SEP-24) | ✅ Live |
 
-## 📜 License & Code of Conduct
+> **Taste data is currently mock.** The `is_mock` field in `/api/taste/profile/{user_id}` responses will be `true` until real embedding computation is deployed.
 
-MixMatch is licensed under the [MIT License](./LICENSE).
+## Docs
 
-Please read our [Code of Conduct](./CODE_OF_CONDUCT.md) to keep our community approachable and respectable.
+See [`docs/index.md`](docs/index.md) for the full documentation index.
 
----
+## Contributing
 
-*Built with ❤️ for the music community.*
+See [`CONTRIBUTING.md`](CONTRIBUTING.md). MIT Licence.

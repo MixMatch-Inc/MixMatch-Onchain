@@ -1,0 +1,30 @@
+# Install once with:  pipx install pre-commit && pre-commit install --install-hooks
+# (this also installs the commit-msg hook that enforces Conventional Commits)
+default_install_hook_types: [pre-commit, commit-msg]
+
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: end-of-file-fixer
+      - id: trailing-whitespace
+        args: [--markdown-linebreak-ext=md]
+      - id: check-yaml
+      - id: check-merge-conflict
+      - id: check-added-large-files
+        args: [--maxkb=500]
+
+  # Same Prettier major as the root devDependency, run without needing node_modules.
+  - repo: https://github.com/pre-commit/mirrors-prettier
+    rev: v3.5.3
+    hooks:
+      - id: prettier
+        types_or: [ts, tsx, markdown]
+        exclude: ^(apps/api-py/|contracts/|apps/api/src/db/migrations/)
+
+  - repo: https://github.com/compilerla/conventional-pre-commit
+    rev: v4.0.0
+    hooks:
+      - id: conventional-pre-commit
+        stages: [commit-msg]
+        args: [feat, fix, docs, style, refactor, perf, test, build, ci, chore, revert]

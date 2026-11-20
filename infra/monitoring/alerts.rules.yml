@@ -1,0 +1,141 @@
+# Prometheus alert rules for the MixMatch API.
+# Thresholds come from docs/post-cutover-monitoring-criteria.md (SLOs) and the rollback triggers in the
+# cutover runbook. Metric names are defined in apps/api-py/src/core/prometheus.py; the test
+# apps/api-py/tests/test_monitoring_config.py fails if a rule references a metric that does not exist.
+#
+# Validate:  promtool check rules infra/monitoring/alerts.rules.yml
+groups:
+  - name: mixmatch-availability
+    rules:
+      - alert: MixMatchApiDown
+        expr: up{job="mixmatch-api"} == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "MixMatch API target {{ $labels.instance }} is down"
+          description: "Prometheus has not been able to scrape {{ $labels.instance }} for 2 minutes."
+
+      - alert: MixMatchHigh5xxRate
+        # Rollback trigger: HTTP 5xx above 0.5% over a 15-minute window.
+        expr: |
+          sum(rate(http_requests_total{status=~"5.."}[15m]))
+            / sum(rate(http_requests_total[15m])) > 0.005
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "5xx error rate is {{ $value | humanizePercentage }} (rollback threshold 0.5%)"
+          description: "More than 0.5% of requests failed with a 5xx over the last 15 minutes."
+
+      - alert: MixMatchAvailabilitySloBreach
+        # SLO: 5xx below 0.05% across all routes.
+        expr: |
+          sum(rate(http_requests_total{status=~"5.."}[1h]))
+            / sum(rate(http_requests_total[1h])) > 0.0005
+        for: 30m
+        labels:
+          severity: warning
+        annotations:
+          summary: "5xx rate {{ $value | humanizePercentage }} is above the 0.05% SLO"
+          description: "Availability SLO breached over the last hour."
+
+  - name: mixmatch-latency
+    rules:
+      - alert: MixMatchPaymentLatencyP95High
+        # Rollback trigger: P95 above 500ms on core payment and escrow endpoints.
+        expr: |
+          histogram_quantile(0.95,
+            sum by (le) (rate(http_request_duration_seconds_bucket{route=~"/api/(payments|escrows).*"}[5m]))
+          ) > 0.5
+        for: 10m
+        labels:
+          severity: critical
+        annotations:
+          summary: "P95 latency on payment/escrow routes is {{ $value | humanizeDuration }} (rollback threshold 500ms)"
+
+      - alert: MixMatchLatencyP50SloBreach
+        expr: histogram_quantile(0.50, sum by (le) (rate(http_request_duration_seconds_bucket[15m]))) > 0.045
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: "P50 latency {{ $value | humanizeDuration }} is above the 45ms SLO"
+
+      - alert: MixMatchLatencyP95SloBreach
+        expr: histogram_quantile(0.95, sum by (le) (rate(http_request_duration_seconds_bucket[15m]))) > 0.15
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: "P95 latency {{ $value | humanizeDuration }} is above the 150ms SLO"
+
+      - alert: MixMatchLatencyP99SloBreach
+        expr: histogram_quantile(0.99, sum by (le) (rate(http_request_duration_seconds_bucket[15m]))) > 0.4
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: "P99 latency {{ $value | humanizeDuration }} is above the 400ms SLO"
+
+  - name: mixmatch-streaming-and-database
+    rules:
+      - alert: MixMatchSseSessionsTooShort
+        # SLO: mean SSE session longer than 10 minutes. Only evaluated when sessions are actually ending.
+        expr: |
+          sum(rate(sse_session_duration_seconds_sum[1h])) / sum(rate(sse_session_duration_seconds_count[1h])) < 600
+          and sum(rate(sse_session_duration_seconds_count[1h])) > 0
+        for: 30m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Mean SSE session lasts {{ $value | humanizeDuration }} (SLO: more than 10 minutes)"
+          description: "Check client keepalive heartbeats."
+
+      - alert: MixMatchDbPoolTimeouts
+        # SLO: zero pool timeout exceptions.
+        expr: increase(db_pool_timeouts_total[5m]) > 0
+        labels:
+          severity: warning
+        annotations:
+          summary: "Requests timed out waiting for a database connection"
+          description: "Review pool size and max_overflow."
+
+  - name: mixmatch-reconciliation
+    rules:
+      - alert: MixMatchReconciliationBacklog
+        # SLO: no PENDING transaction older than 10 minutes.
+        expr: reconciliation_oldest_pending_age_seconds > 600
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Oldest pending transaction is {{ $value | humanizeDuration }} old (SLO: 10 minutes)"
+          description: "Investigate the reconciliation background worker."
+
+      - alert: MixMatchReconciliationStalled
+        # The job reports a heartbeat after every cycle; silence means it is not running.
+        expr: time() - reconciliation_last_run_timestamp_seconds > 600
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Reconciliation has not run for {{ $value | humanizeDuration }}"
+
+      - alert: MixMatchReconciliationNeverRan
+        expr: absent(reconciliation_last_run_timestamp_seconds)
+        for: 30m
+        labels:
+          severity: warning
+        annotations:
+          summary: "No reconciliation heartbeat has ever been reported"
+
+      - alert: MixMatchReconciliationFailureRate
+        # Same 20% threshold the in-process collector logs a critical line for.
+        expr: |
+          sum(rate(reconciliation_failures_total[15m])) / sum(rate(reconciliation_processed_total[15m])) > 0.2
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $value | humanizePercentage }} of reconciliation attempts are failing"

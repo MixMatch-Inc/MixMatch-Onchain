@@ -2,6 +2,8 @@ import logging
 from datetime import datetime, timezone
 from typing import Dict, Any, Optional
 
+from src.core.prometheus import observe_reconciliation
+
 logger = logging.getLogger("metrics.reconciliation")
 
 class ReconciliationMetricsCollector:
@@ -20,10 +22,12 @@ class ReconciliationMetricsCollector:
         self.oldest_pending_age_seconds: Optional[float] = None
 
     def record_success(self):
+        observe_reconciliation(success=True)
         self.total_processed += 1
         self._check_alerts()
 
     def record_failure(self, tx_id: str, reason: str):
+        observe_reconciliation(success=False)
         self.total_processed += 1
         self.total_failures += 1
         logger.warning("Reconciliation failure recorded for tx %s: %s", tx_id, reason)

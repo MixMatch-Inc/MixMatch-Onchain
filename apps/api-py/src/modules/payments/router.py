@@ -3,6 +3,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, Query, Path, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sse_starlette.sse import EventSourceResponse
+from src.core.prometheus import track_sse
 
 from src.core.database import get_db
 from src.modules.payments.service import PaymentsService
@@ -113,4 +114,4 @@ async def stream_transaction_updates(
 ):
     """Port #1106 & #1107: Spec-compliant SSE streaming using sse-starlette."""
     service = PaymentsService(db=db)
-    return EventSourceResponse(service.stream_transaction_updates(user_id))
+    return EventSourceResponse(track_sse(service.stream_transaction_updates(user_id)))

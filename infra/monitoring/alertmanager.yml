@@ -1,0 +1,18 @@
+# Example routing: critical alerts page, warnings go to a channel. Replace the webhook URLs.
+route:
+  receiver: team-channel
+  group_by: [alertname]
+  group_wait: 30s
+  group_interval: 5m
+  repeat_interval: 4h
+  routes:
+    - matchers: ['severity="critical"']
+      receiver: on-call
+
+receivers:
+  - name: on-call
+    webhook_configs:
+      - url: https://example.invalid/replace-with-pager-webhook
+  - name: team-channel
+    webhook_configs:
+      - url: https://example.invalid/replace-with-chat-webhook

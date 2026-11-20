@@ -4,6 +4,7 @@ import logging
 from typing import AsyncGenerator, Dict, Any, Optional
 import httpx
 from src.core.config import settings
+from src.core.request_id import outbound_headers
 
 logger = logging.getLogger("stellar.stream")
 
@@ -25,7 +26,7 @@ async def subscribe_payment_stream(
 
     url = f"{(horizon_url or settings.HORIZON_URL).rstrip('/')}/accounts/{account_id}/payments"
     params = {"cursor": cursor or "now"}
-    headers = {"Accept": "text/event-stream"}
+    headers = outbound_headers({"Accept": "text/event-stream"})
 
     async with httpx.AsyncClient(timeout=None) as client:
         try:

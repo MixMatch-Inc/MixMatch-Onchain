@@ -1,0 +1,7 @@
+apiVersion: 1
+providers:
+  - name: mixmatch
+    folder: MixMatch
+    type: file
+    options:
+      path: /var/lib/grafana/dashboards

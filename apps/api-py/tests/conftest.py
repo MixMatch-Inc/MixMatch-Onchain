@@ -1,3 +1,10 @@
+import os
+import tempfile
+
+# prometheus_client picks multiprocess mode from this variable at import time, so it must be set
+# (to a fresh directory) before anything imports src.core.prometheus.
+os.environ.setdefault("PROMETHEUS_MULTIPROC_DIR", tempfile.mkdtemp(prefix="mixmatch-prom-"))
+
 import pytest
 import time
 import jwt

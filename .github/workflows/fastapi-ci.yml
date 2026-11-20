@@ -1,23 +1,12 @@
 name: FastAPI Backend CI
 
 on:
-  push:
-    branches: [develop, main]
-    paths:
-      - 'apps/api-py/**'
-      - '.github/workflows/fastapi-ci.yml'
-  pull_request:
-    branches: [develop, main]
-    paths:
-      - 'apps/api-py/**'
-      - '.github/workflows/fastapi-ci.yml'
+  # Called from ci.yml (the single required check). Also runnable by hand.
+  workflow_call:
+  workflow_dispatch:
 
 permissions:
   contents: read
-
-concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
 
 jobs:
   test:
@@ -41,10 +30,43 @@ jobs:
         working-directory: apps/api-py
         run: |
           python -m pip install --upgrade pip
-          pip install -e .
-          pip install pytest pytest-asyncio httpx
+          pip install -e ".[dev]"
 
-      - name: Run Pytest
+      - name: Ruff (lint)
+        working-directory: apps/api-py
+        run: ruff check .
+
+      - name: Ruff (format check)
+        working-directory: apps/api-py
+        run: ruff format --check .
+
+      - name: Mypy (type check)
+        working-directory: apps/api-py
+        run: mypy src
+
+      - name: Run Pytest with coverage
         working-directory: apps/api-py
         run: |
-          PYTHONPATH=. pytest tests -v --durations=10
+          PYTHONPATH=. pytest tests -v --durations=10 \
+            --cov=src --cov-report=term-missing --cov-report=xml --cov-report=json:coverage.json \
+            --cov-fail-under=60
+
+      - name: Coverage summary
+        if: always()
+        working-directory: apps/api-py
+        run: |
+          if [ -f coverage.json ]; then
+            python - <<'PY' >> "$GITHUB_STEP_SUMMARY"
+          import json
+          t = json.load(open("coverage.json"))["totals"]
+          print("### Python coverage")
+          print(f"- lines: {t['percent_covered']:.1f}% ({t['covered_lines']}/{t['num_statements']})")
+          PY
+          fi
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: always()
+        with:
+          name: python-coverage
+          path: apps/api-py/coverage.xml
+          if-no-files-found: ignore

@@ -34,6 +34,9 @@ class Settings(BaseSettings):
 
     ENABLE_TASTE_CRON: bool = False
 
+    LOG_LEVEL: str = "INFO"
+    LOG_JSON: bool = True
+
     @property
     def enable_taste_cron(self) -> bool:
         return self.ENABLE_TASTE_CRON

@@ -1,4 +1,6 @@
 from fastapi import FastAPI, Request
+from src.core.config import settings
+from src.core.structured_logging import configure_logging
 from fastapi.responses import JSONResponse
 from slowapi.errors import RateLimitExceeded
 from slowapi import _rate_limit_exceeded_handler
@@ -12,6 +14,8 @@ from src.modules.streaming.router import router as streaming_router
 from src.modules.taste.router import router as taste_router
 from src.modules.users.router import router as users_router
 from src.modules.payments.errors import BaseDomainError
+
+configure_logging(settings.LOG_LEVEL, settings.LOG_JSON)
 
 app = FastAPI(
     title="MixMatch API",

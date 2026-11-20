@@ -71,3 +71,6 @@ ENV/
 .pytest_cache/
 .coverage
 htmlcov/
+
+# Local tooling output (issue-posting scripts, logs); keep it out of `git status`
+scratchpad/

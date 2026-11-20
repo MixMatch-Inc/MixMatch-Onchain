@@ -19,4 +19,4 @@ Establishes the quantitative criteria that must be satisfied for **7 consecutive
 | **Database Pool Exhaustion** | 0 pool timeout exceptions | Adjust max_overflow |
 
 ## Decommissioning Sign-Off
-Once all criteria pass continuously for 7 days, Tech Lead and DevOps sign off on executing `scripts/decommission_nestjs.sh`.
+Once all criteria pass continuously for 7 days, Tech Lead and DevOps sign off and work through [`post-cutover-cleanup.md`](post-cutover-cleanup.md).

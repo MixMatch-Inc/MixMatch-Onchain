@@ -31,7 +31,7 @@ async def taste_health():
         "status": "healthy",
         "cron_enabled": settings.ENABLE_TASTE_CRON,
         "service": "taste-profiler",
-        "is_stub": True
+        "is_stub": taste_service.is_stub
     }
 
 

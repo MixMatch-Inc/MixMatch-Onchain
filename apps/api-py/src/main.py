@@ -1,6 +1,10 @@
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI, Request
 from src.core.config import settings
-from src.core.structured_logging import configure_logging
+from src.core.health import router as health_router
+from src.core.sentry import init_sentry
+from src.modules.payments.reconciliation_job import ReconciliationJob
 from fastapi.responses import JSONResponse
 from slowapi.errors import RateLimitExceeded
 from slowapi import _rate_limit_exceeded_handler
@@ -66,6 +70,22 @@ app.include_router(streaming_router, prefix="/api")
 app.include_router(taste_router, prefix="/api")
 app.include_router(users_router, prefix="/api")
 
-@app.get("/health")
-async def health():
-    return {"status": "ok", "service": "mixmatch-api-py"}
+app.include_router(health_router)
+
+
+@asynccontextmanager
+async def lifespan(_app):
+    job = None
+    if settings.ENABLE_RECONCILIATION_JOB:
+        job = ReconciliationJob(poll_interval_seconds=settings.RECONCILIATION_POLL_INTERVAL_SECONDS)
+        job.start()
+    try:
+        yield
+    finally:
+        if job is not None:
+            job.stop()
+
+
+app.router.lifespan_context = lifespan
+
+init_sentry(settings.SENTRY_DSN, settings.ENVIRONMENT, settings.SENTRY_RELEASE, settings.SENTRY_TRACES_SAMPLE_RATE)

@@ -6,6 +6,9 @@ logger = logging.getLogger("taste.service")
 class TasteService:
     """Taste profile service stub ported from taste.service.ts with explicit mock indicators."""
 
+    # The service reports whether it is still a stub, so health endpoints do not hardcode it.
+    is_stub = True
+
     def __init__(self):
         pass
 

@@ -48,9 +48,14 @@ class Settings(BaseSettings):
 
     ENABLE_TASTE_CRON: bool = False
 
-    # Tracing is off unless an OTLP/HTTP endpoint is configured (for example http://otel-collector:4318).
-    OTEL_EXPORTER_OTLP_ENDPOINT: Optional[str] = None
-    OTEL_SERVICE_NAME: str = "mixmatch-api"
+    # Run the reconciliation loop inside this process (one instance wins a database lock per cycle).
+    ENABLE_RECONCILIATION_JOB: bool = False
+    RECONCILIATION_POLL_INTERVAL_SECONDS: float = 30.0
+
+    # Error tracking is off unless a DSN is set. SENTRY_RELEASE should be the git SHA of the build.
+    SENTRY_DSN: Optional[str] = None
+    SENTRY_RELEASE: Optional[str] = None
+    SENTRY_TRACES_SAMPLE_RATE: float = 0.0
 
     @property
     def enable_taste_cron(self) -> bool:

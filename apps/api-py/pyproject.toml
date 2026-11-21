@@ -27,9 +27,7 @@ dependencies = [
 dev = [
     "pytest>=8.0.0",
     "pytest-asyncio>=0.24.0",
-    "pytest-cov>=5.0.0",
-    "ruff>=0.6.0",
-    "mypy>=1.11.0",
+    "asyncpg>=0.29.0",
 ]
 
 [build-system]
@@ -39,6 +37,8 @@ build-backend = "setuptools.build_meta"
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 testpaths = ["tests"]
+addopts = "-m \"not postgres\""
+markers = ["postgres: Tier 2 suite that needs a PostgreSQL database (TEST_DATABASE_URL)"]
 python_files = ["test_*.py"]
 
 [tool.ruff]

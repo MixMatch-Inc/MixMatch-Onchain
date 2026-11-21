@@ -156,32 +156,28 @@ class TasteProfile(Base):
     last_ingested_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, nullable=False)
 
 
-class Block(Base):
-    """`blocker_id` has blocked `blocked_id`; the relationship is hidden in both directions (#1408)."""
-    __tablename__ = "blocks"
-    __table_args__ = (
-        UniqueConstraint("blocker_id", "blocked_id", name="uq_blocks_pair"),
-        Index("ix_blocks_blocked_id", "blocked_id"),
-    )
+class EscrowDispute(Base):
+    """A dispute over a LOCKED escrow, settled by an arbiter (#1400). Status: OPEN or RESOLVED."""
+    __tablename__ = "escrow_disputes"
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
-    blocker_id: Mapped[str] = mapped_column(String(36), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
-    blocked_id: Mapped[str] = mapped_column(String(36), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, nullable=False)
-
-
-class Report(Base):
-    """A user report awaiting admin review (#1408). Status: OPEN, ACTIONED or DISMISSED."""
-    __tablename__ = "reports"
-    __table_args__ = (Index("ix_reports_status_created", "status", "created_at"),)
-
-    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
-    reporter_id: Mapped[str] = mapped_column(String(36), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
-    reported_id: Mapped[str] = mapped_column(String(36), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
-    reason: Mapped[str] = mapped_column(String(32), nullable=False)
-    details: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
-    status: Mapped[str] = mapped_column(String(16), default="OPEN", nullable=False)
+    escrow_id: Mapped[str] = mapped_column(String(36), ForeignKey("escrows.id", ondelete="CASCADE"), nullable=False, unique=True)
+    opened_by: Mapped[str] = mapped_column(String(36), nullable=False)
+    reason: Mapped[str] = mapped_column(Text, nullable=False)
+    status: Mapped[str] = mapped_column(String(16), default="OPEN", nullable=False, index=True)
+    resolution: Mapped[Optional[str]] = mapped_column(String(16), nullable=True)
     resolution_note: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     resolved_by: Mapped[Optional[str]] = mapped_column(String(36), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, nullable=False)
     resolved_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class EscrowEvidence(Base):
+    """A note one party attached to an open dispute (#1400)."""
+    __tablename__ = "escrow_evidence"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    dispute_id: Mapped[str] = mapped_column(String(36), ForeignKey("escrow_disputes.id", ondelete="CASCADE"), nullable=False, index=True)
+    author_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    note: Mapped[str] = mapped_column(Text, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, nullable=False)

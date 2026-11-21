@@ -11,13 +11,22 @@ import {
   sendPayment,
   subscribeToTransactionStream,
 } from '../services/payments-client';
+import AnchorScreen from './AnchorScreen';
 import MyQrCode from './MyQrCode';
 import QrScanner from './QrScanner';
 import SendPaymentForm from './SendPaymentForm';
 import { ErrorState } from './states';
 import TransactionHistoryList from './TransactionHistoryList';
 
-const Tab = createBottomTabNavigator();
+type Tab = 'send' | 'history' | 'receive' | 'scan' | 'anchor';
+
+const TABS: { key: Tab; label: string }[] = [
+  { key: 'send', label: 'Send' },
+  { key: 'history', label: 'History' },
+  { key: 'receive', label: 'Receive' },
+  { key: 'scan', label: 'Scan' },
+  { key: 'anchor', label: 'Anchor' },
+];
 
 export default function PaymentsScreen() {
   const { accessToken, logout } = useAuth();

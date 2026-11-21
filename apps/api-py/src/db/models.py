@@ -3,7 +3,7 @@ from datetime import datetime, timezone
 from decimal import Decimal
 from typing import Optional, List
 from sqlalchemy import (
-    String, Text, Boolean, Integer, Float, DateTime, ForeignKey, Index, Enum as SAEnum
+    String, Text, Boolean, Integer, Float, DateTime, ForeignKey, Index, UniqueConstraint, Enum as SAEnum
 )
 from sqlalchemy import JSON
 from sqlalchemy.dialects.postgresql import JSONB

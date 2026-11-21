@@ -1,0 +1,68 @@
+name: Coverage
+
+on:
+  pull_request:
+  push:
+    branches: [develop, main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  js:
+    name: JS (api, mobile)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version-file: .nvmrc
+      - uses: pnpm/action-setup@a3252b78c470c02df07e9d59298aecedc3ccdd6d # v3.0.0
+        with:
+          version: 9
+          run_install: false
+      - run: pnpm install --frozen-lockfile
+      - name: Build shared packages
+        run: pnpm turbo run build --filter=./packages/*
+      - name: API coverage (jest)
+        run: pnpm --filter api test:cov -- --coverageReporters=text-summary --coverageReporters=lcov
+      - name: Mobile coverage (jest)
+        run: pnpm --filter mobile exec jest --config jest.coverage.config.js --coverage --coverageReporters=text-summary --coverageReporters=lcov
+      - name: Summary
+        if: always()
+        run: |
+          {
+            echo "### JS coverage (api, mobile)"
+            echo "See the job log for the per-package text summary."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  rust:
+    name: Rust (contracts)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - name: Install cargo-llvm-cov
+        run: |
+          rustup component add llvm-tools-preview
+          cargo install cargo-llvm-cov --locked
+      - name: Coverage
+        run: cargo llvm-cov --workspace --summary-only | tee coverage-summary.txt
+      - name: Summary
+        if: always()
+        run: |
+          {
+            echo "### Rust coverage"
+            echo '```'
+            tail -n 5 coverage-summary.txt || true
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"

@@ -1,15 +1,4 @@
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
+/* Colours, spacing and radii come from @mixmatch/tokens (injected as --mm-* variables in layout.tsx). */
 html,
 body {
   max-width: 100vw;
@@ -17,8 +6,10 @@ body {
 }
 
 body {
-  color: var(--foreground);
-  background: var(--background);
+  color: var(--mm-color-foreground);
+  background: var(--mm-color-background);
+  font-family: var(--font-geist-sans), system-ui, sans-serif;
+  line-height: var(--mm-line-height-normal);
 }
 
 * {
@@ -32,19 +23,79 @@ a {
   text-decoration: none;
 }
 
-.imgDark {
-  display: none;
+/* Layout helpers used by pages (no inline style objects). */
+.page {
+  max-width: 640px;
+  margin: var(--mm-space-10) auto;
+  padding: 0 var(--mm-space-4);
 }
 
-@media (prefers-color-scheme: dark) {
-  html {
-    color-scheme: dark;
-  }
+.page--narrow {
+  max-width: 360px;
+  margin-top: 80px;
+}
 
-  .imgLight {
-    display: none;
-  }
-  .imgDark {
-    display: unset;
-  }
+.stack > * + * {
+  margin-top: var(--mm-space-3);
+}
+
+.row {
+  display: flex;
+  gap: var(--mm-space-2);
+  align-items: center;
+}
+
+.row--between {
+  justify-content: space-between;
+}
+
+.btn {
+  padding: var(--mm-space-2) var(--mm-space-4);
+  font-size: var(--mm-font-size-md);
+  color: var(--mm-color-foreground);
+  background: var(--mm-color-surface);
+  border: 1px solid var(--mm-color-border);
+  border-radius: var(--mm-radius-md);
+  cursor: pointer;
+}
+
+.btn:focus-visible {
+  outline: 2px solid var(--mm-color-focus-ring);
+  outline-offset: 2px;
+}
+
+.btn[aria-pressed='true'],
+.btn:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.btn--primary {
+  color: var(--mm-color-primary-foreground);
+  background: var(--mm-color-primary);
+  border-color: var(--mm-color-primary);
+}
+
+.muted {
+  color: var(--mm-color-muted);
+}
+
+.error-text {
+  color: var(--mm-color-danger);
+}
+
+.card {
+  border: 1px solid var(--mm-color-border);
+  border-radius: var(--mm-radius-md);
+  padding: var(--mm-space-3);
+}
+
+.list-reset {
+  list-style: none;
+  padding: 0;
+}
+
+.theme-toggle {
+  display: flex;
+  gap: var(--mm-space-1);
 }

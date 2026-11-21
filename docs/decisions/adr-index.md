@@ -13,6 +13,7 @@
 | ADR-005 | [Expo for Mobile](./expo-mobile.md) | Decided | 2024 |
 | ADR-006 | [SQLite for Unit Tests](./sqlite-for-tests.md) | Decided | 2024 |
 | ADR-007 | [Turborepo Monorepo Tooling](./turborepo-monorepo.md) | Decided | 2024 |
+| ADR-008 | [Cross-platform UI strategy and mobile navigation](./cross-platform-ui-and-navigation.md) | Proposed | 2026 |
 
 ## MADR Template
 

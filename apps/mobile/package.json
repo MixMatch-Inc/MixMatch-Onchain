@@ -13,13 +13,18 @@
   },
   "dependencies": {
     "@mixmatch/shared": "workspace:*",
+    "@mixmatch/tokens": "workspace:*",
     "@react-native-async-storage/async-storage": "2.2.0",
+    "@react-navigation/bottom-tabs": "^7.0.0",
+    "@react-navigation/native": "^7.0.0",
     "expo": "~57.0.9",
     "expo-camera": "~17.0.9",
     "expo-status-bar": "~57.0.1",
     "react": "19.2.3",
     "react-native": "0.86.2",
     "react-native-qrcode-svg": "^6.3.15",
+    "react-native-safe-area-context": "^5.0.0",
+    "react-native-screens": "^4.0.0",
     "react-native-svg": "15.15.5",
     "zod": "^3.24.1"
   },

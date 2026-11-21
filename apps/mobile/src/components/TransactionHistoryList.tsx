@@ -1,27 +1,21 @@
-import type { TransactionRecord } from '@mixmatch/shared';
+import { paymentStatus, type TransactionRecord } from '@mixmatch/shared';
 import { FlatList, StyleSheet, Text, View } from 'react-native';
+import { Address, Amount, StatusPill } from './display';
+import { EmptyState } from './states';
 
 export interface TransactionHistoryListProps {
   transactions: TransactionRecord[];
 }
 
-const STATUS_COLOR: Record<TransactionRecord['status'], string> = {
-  PENDING: '#b8860b',
-  PENDING_SIGNATURE: '#8860b8',
-  SUCCESS: '#0a0',
-  FAILED: '#e00',
-  NEEDS_REVIEW: '#a05a00',
-};
-
 function TransactionRow({ transaction }: { transaction: TransactionRecord }) {
   return (
     <View style={styles.row} testID={`transaction-${transaction.id}`}>
       <View style={styles.rowHeader}>
-        <Text style={styles.amount}>{transaction.amount} XLM</Text>
-        <Text style={[styles.status, { color: STATUS_COLOR[transaction.status] }]}>{transaction.status}</Text>
+        <Amount style={styles.amount} value={transaction.amount} assetCode="XLM" />
+        <StatusPill {...paymentStatus(transaction.status)} />
       </View>
       <Text style={styles.destination} numberOfLines={1}>
-        To {transaction.destinationPublicKey}
+        To <Address value={transaction.destinationPublicKey} />
       </Text>
       {transaction.memo ? <Text style={styles.memo}>{transaction.memo}</Text> : null}
     </View>
@@ -30,11 +24,7 @@ function TransactionRow({ transaction }: { transaction: TransactionRecord }) {
 
 export default function TransactionHistoryList({ transactions }: TransactionHistoryListProps) {
   if (transactions.length === 0) {
-    return (
-      <View style={styles.empty}>
-        <Text style={styles.emptyText}>No transactions yet</Text>
-      </View>
-    );
+    return <EmptyState message="No transactions yet" />;
   }
 
   return (
@@ -56,9 +46,6 @@ const styles = StyleSheet.create({
   },
   rowHeader: { flexDirection: 'row', justifyContent: 'space-between' },
   amount: { fontSize: 16, fontWeight: '600' },
-  status: { fontSize: 12, fontWeight: '600' },
   destination: { fontSize: 13, color: '#666', marginTop: 2 },
   memo: { fontSize: 13, color: '#999', marginTop: 2 },
-  empty: { padding: 24, alignItems: 'center' },
-  emptyText: { color: '#999' },
 });

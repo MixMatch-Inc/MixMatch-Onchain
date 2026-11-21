@@ -1,28 +1,16 @@
 'use client';
 
-import { depositAnchorSchema, withdrawAnchorSchema, type AnchorTransactionRecord } from '@mixmatch/shared';
+import { anchorStatus, depositAnchorSchema, withdrawAnchorSchema, type AnchorTransactionRecord } from '@mixmatch/shared';
+import { Amount } from '@repo/ui/display';
+import { EmptyState } from '@repo/ui/states';
+import { StatusPill } from '@repo/ui/status-pill';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
 import { depositAnchor, getAnchorHistory, getAnchorStatus, withdrawAnchor } from '../../lib/anchor-client';
+import { ThemeToggle } from '../../components/ThemeToggle';
 import { useAuth } from '../../lib/useAuth';
 
 type Kind = 'deposit' | 'withdraw';
-
-const STATUS_LABEL: Record<AnchorTransactionRecord['status'], string> = {
-  incomplete: 'Waiting on you (open the anchor link)',
-  pending_user_transfer_start: 'Waiting for your transfer to start',
-  pending_user_transfer_complete: 'Waiting for your transfer to complete',
-  pending_external: 'Waiting on an external network',
-  pending_anchor: 'Anchor is processing',
-  pending_stellar: 'Submitted to Stellar',
-  pending_trust: 'Waiting on a trustline',
-  pending_user: 'Waiting on you',
-  on_hold: 'Under review',
-  completed: 'Completed',
-  refunded: 'Refunded',
-  expired: 'Expired',
-  error: 'Failed',
-};
 
 export default function AnchorPage() {
   const router = useRouter();
@@ -100,76 +88,72 @@ export default function AnchorPage() {
   }
 
   return (
-    <main style={{ maxWidth: 640, margin: '40px auto', padding: '0 16px', fontFamily: 'sans-serif' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+    <main className="page">
+      <div className="row row--between">
         <h1>Deposit / Withdraw</h1>
-        <button type="button" onClick={logout} data-testid="logout-button">
-          Log out
-        </button>
+        <div className="row">
+          <ThemeToggle />
+          <button type="button" className="btn" onClick={logout} data-testid="logout-button">
+            Log out
+          </button>
+        </div>
       </div>
-      {user && <p style={{ color: '#666' }}>Signed in as {user.email}</p>}
+      {user && <p className="muted">Signed in as {user.email}</p>}
 
-      <form onSubmit={(event) => void handleSubmit(event)} style={{ marginTop: 24 }}>
-        <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
-          <button type="button" onClick={() => setKind('deposit')} disabled={kind === 'deposit'} data-testid="tab-deposit">
+      <form className="stack" onSubmit={(event) => void handleSubmit(event)} noValidate>
+        <div className="row">
+          <button type="button" className="btn" aria-pressed={kind === 'deposit'} onClick={() => setKind('deposit')} data-testid="tab-deposit">
             Deposit
           </button>
-          <button type="button" onClick={() => setKind('withdraw')} disabled={kind === 'withdraw'} data-testid="tab-withdraw">
+          <button type="button" className="btn" aria-pressed={kind === 'withdraw'} onClick={() => setKind('withdraw')} data-testid="tab-withdraw">
             Withdraw
           </button>
         </div>
 
-        <label style={{ display: 'block', marginBottom: 12 }}>
-          Asset code
-          <input
-            value={assetCode}
-            onChange={(event) => setAssetCode(event.target.value)}
-            style={{ display: 'block', width: '100%', padding: 8, marginTop: 4 }}
-            data-testid="asset-code-input"
-          />
-        </label>
+        <TextField
+          label="Asset code"
+          value={assetCode}
+          onChange={(event) => setAssetCode(event.target.value)}
+          data-testid="asset-code-input"
+        />
 
-        <label style={{ display: 'block', marginBottom: 12 }}>
-          Amount (optional — the anchor can also ask for this)
-          <input
-            value={amount}
-            onChange={(event) => setAmount(event.target.value)}
-            style={{ display: 'block', width: '100%', padding: 8, marginTop: 4 }}
-            data-testid="amount-input"
-          />
-        </label>
+        <TextField
+          label="Amount"
+          helperText="Optional: the anchor can also ask for this."
+          inputMode="decimal"
+          value={amount}
+          onChange={(event) => setAmount(event.target.value)}
+          error={formError ?? undefined}
+          data-testid="amount-input"
+        />
 
-        {formError && <p style={{ color: 'crimson' }}>{formError}</p>}
-
-        <button type="submit" disabled={isSubmitting} data-testid="submit-button">
+        <button type="submit" className="btn btn--primary" disabled={isSubmitting} data-testid="submit-button">
           {isSubmitting ? 'Starting…' : kind === 'deposit' ? 'Start deposit' : 'Start withdrawal'}
         </button>
       </form>
 
-      <h2 style={{ marginTop: 40 }}>History</h2>
+      <h2>History</h2>
       {isLoadingHistory && <p>Loading…</p>}
-      {!isLoadingHistory && transactions.length === 0 && <p>No anchor transactions yet.</p>}
+      {!isLoadingHistory && transactions.length === 0 && <EmptyState message="No anchor transactions yet." />}
       <ul style={{ listStyle: 'none', padding: 0 }} data-testid="anchor-history">
         {transactions.map((transaction) => (
-          <li
-            key={transaction.id}
-            style={{ border: '1px solid #ddd', borderRadius: 8, padding: 12, marginBottom: 8 }}
-          >
-            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+          <li key={transaction.id} className="card">
+            <div className="row row--between">
               <strong>
                 {transaction.kind === 'deposit' ? 'Deposit' : 'Withdraw'} {transaction.assetCode}
               </strong>
               <button
                 type="button"
+                className="btn"
                 onClick={() => void handleRefresh(transaction.id)}
                 disabled={refreshingId === transaction.id}
               >
                 {refreshingId === transaction.id ? 'Refreshing…' : 'Refresh status'}
               </button>
             </div>
-            <p style={{ margin: '4px 0' }}>{STATUS_LABEL[transaction.status]}</p>
+            <p>{STATUS_LABEL[transaction.status]}</p>
             {transaction.amountIn && (
-              <p style={{ margin: '4px 0', color: '#666' }}>
+              <p className="muted">
                 In: {transaction.amountIn}
                 {transaction.amountOut ? ` — Out: ${transaction.amountOut}` : ''}
               </p>

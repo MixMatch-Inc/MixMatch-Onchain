@@ -14,9 +14,13 @@ const geistMono = localFont({
 });
 
 export const metadata: Metadata = {
-  title: { default: "MixMatch Onchain", template: "%s | MixMatch" },
-  description: "Match, chat and pay on Stellar.",
-  icons: { icon: "/logo.svg" },
+  title: { default: "MixMatch", template: "%s | MixMatch" },
+  description: "Meet people through shared taste and pay them instantly over Stellar.",
+  openGraph: {
+    title: "MixMatch",
+    description: "Meet people through shared taste and pay them instantly over Stellar.",
+    type: "website",
+  },
 };
 
 export default function RootLayout({

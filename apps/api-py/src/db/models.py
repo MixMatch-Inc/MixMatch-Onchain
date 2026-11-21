@@ -3,7 +3,7 @@ from datetime import datetime, timezone
 from decimal import Decimal
 from typing import Optional, List
 from sqlalchemy import (
-    String, Text, Boolean, Integer, Float, DateTime, ForeignKey, Index, Enum as SAEnum
+    String, Text, Boolean, Integer, Float, DateTime, ForeignKey, Index, UniqueConstraint, Enum as SAEnum
 )
 from sqlalchemy import JSON
 from sqlalchemy.dialects.postgresql import JSONB
@@ -154,3 +154,34 @@ class TasteProfile(Base):
     energy: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
     valence: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
     last_ingested_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, nullable=False)
+
+
+class Block(Base):
+    """`blocker_id` has blocked `blocked_id`; the relationship is hidden in both directions (#1408)."""
+    __tablename__ = "blocks"
+    __table_args__ = (
+        UniqueConstraint("blocker_id", "blocked_id", name="uq_blocks_pair"),
+        Index("ix_blocks_blocked_id", "blocked_id"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    blocker_id: Mapped[str] = mapped_column(String(36), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    blocked_id: Mapped[str] = mapped_column(String(36), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, nullable=False)
+
+
+class Report(Base):
+    """A user report awaiting admin review (#1408). Status: OPEN, ACTIONED or DISMISSED."""
+    __tablename__ = "reports"
+    __table_args__ = (Index("ix_reports_status_created", "status", "created_at"),)
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    reporter_id: Mapped[str] = mapped_column(String(36), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    reported_id: Mapped[str] = mapped_column(String(36), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    reason: Mapped[str] = mapped_column(String(32), nullable=False)
+    details: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    status: Mapped[str] = mapped_column(String(16), default="OPEN", nullable=False)
+    resolution_note: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    resolved_by: Mapped[Optional[str]] = mapped_column(String(36), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, nullable=False)
+    resolved_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)

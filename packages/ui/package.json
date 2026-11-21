@@ -11,13 +11,7 @@
   },
   "scripts": {
     "lint": "eslint . --max-warnings 0",
-    "generate:component": "turbo gen react-component",
-    "check-types": "tsc --noEmit",
-    "test": "vitest run",
-    "test:watch": "vitest",
-    "storybook": "storybook dev -p 6006",
-    "build-storybook": "storybook build",
-    "test:visual": "playwright test -c visual/playwright.config.ts"
+    "check-types": "tsc --noEmit"
   },
   "devDependencies": {
     "@playwright/test": "^1.49.0",

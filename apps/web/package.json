@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@mixmatch/shared": "workspace:*",
+    "@mixmatch/tokens": "workspace:*",
     "@repo/ui": "workspace:*",
     "next": "16.2.0",
     "react": "^19.2.0",

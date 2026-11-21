@@ -1,0 +1,79 @@
+name: Deploy
+
+# Staging deploys automatically after the API image is published from `develop`. Production is a manual run
+# on the `production` GitHub Environment (add required reviewers there). `rollback` redeploys an older image tag.
+# The deploy itself is one call to the environment's DEPLOY_HOOK_URL (see docs/deployment.md).
+
+on:
+  workflow_run:
+    workflows: ["API image"]
+    types: [completed]
+    branches: [develop]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Target environment
+        type: choice
+        options: [staging, production]
+        default: staging
+      image_tag:
+        description: Image tag to deploy (for example sha-<commit> or main). A previous tag is a rollback.
+        required: true
+        default: main
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-${{ inputs.environment || 'staging' }}
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Deploy ${{ inputs.environment || 'staging' }}
+    # For workflow_run, only deploy when the image workflow succeeded.
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment:
+      name: ${{ inputs.environment || 'staging' }}
+      url: ${{ vars.APP_URL }}
+    env:
+      TARGET: ${{ inputs.environment || 'staging' }}
+      IMAGE_TAG: ${{ inputs.image_tag || format('sha-{0}', github.event.workflow_run.head_sha) }}
+    steps:
+      - name: Record what is being deployed
+        run: |
+          {
+            echo "### Deploy to $TARGET"
+            echo "- image tag: \`$IMAGE_TAG\`"
+            echo "- previous tag (for rollback): \`${PREVIOUS_TAG:-unknown}\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+        env:
+          PREVIOUS_TAG: ${{ vars.CURRENT_IMAGE_TAG }}
+
+      - name: Call the deploy hook
+        env:
+          DEPLOY_HOOK_URL: ${{ secrets.DEPLOY_HOOK_URL }}
+        run: |
+          set -euo pipefail
+          if [ -z "$DEPLOY_HOOK_URL" ]; then
+            echo "::error::DEPLOY_HOOK_URL is not set for the $TARGET environment"; exit 1
+          fi
+          echo "::add-mask::$DEPLOY_HOOK_URL"
+          curl --fail --silent --show-error -X POST "$DEPLOY_HOOK_URL" \
+            -H 'content-type: application/json' \
+            -d "{\"image\":\"ghcr.io/${GITHUB_REPOSITORY}/api-py:${IMAGE_TAG}\",\"environment\":\"${TARGET}\"}"
+
+      - name: Verify the deployment
+        env:
+          APP_URL: ${{ vars.APP_URL }}
+        run: |
+          set -euo pipefail
+          [ -n "$APP_URL" ] || { echo "APP_URL is not set; skipping the health check"; exit 0; }
+          for i in $(seq 1 30); do
+            if curl --fail --silent "${APP_URL%/}/health" >/dev/null; then echo "healthy"; exit 0; fi
+            sleep 5
+          done
+          echo "::error::$TARGET did not become healthy; redeploy the previous tag to roll back"
+          exit 1

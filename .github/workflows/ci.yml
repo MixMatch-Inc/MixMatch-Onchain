@@ -2,9 +2,9 @@ name: CI Pipeline
 
 on:
   push:
-    branches: ["dev", "main"]
+    branches: ["develop", "main"]
   pull_request:
-    branches: ["dev", "main"]
+    branches: ["develop", "main"]
 
 # Least privilege by default; jobs that need more declare it themselves.
 permissions:
@@ -84,3 +84,28 @@ jobs:
 
       - name: Run Tests
         run: pnpm test
+
+  # Python backend: the FastAPI workflow is called from here so that one required
+  # check (`all-checks-passed`) covers every part of the repository, whatever paths changed.
+  python:
+    uses: ./.github/workflows/fastapi-ci.yml
+
+  all-checks-passed:
+    name: all-checks-passed
+    # Run even when a needed job failed or was skipped, so the check is always reported.
+    if: always()
+    needs: [build-and-lint, python]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Require every needed job to have succeeded
+        env:
+          RESULTS: ${{ toJSON(needs) }}
+        run: |
+          echo "$RESULTS"
+          if echo "$RESULTS" | jq -e 'to_entries | map(.value.result) | all(. == "success")' >/dev/null; then
+            echo "All required jobs passed."
+          else
+            echo "::error::A required job failed, was cancelled or was skipped."
+            exit 1
+          fi

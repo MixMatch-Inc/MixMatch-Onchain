@@ -23,6 +23,13 @@ dependencies = [
     "stellar-sdk>=9.3.0",
 ]
 
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.24.0",
+    "asyncpg>=0.29.0",
+]
+
 [build-system]
 requires = ["setuptools>=61.0"]
 build-backend = "setuptools.build_meta"
@@ -30,4 +37,27 @@ build-backend = "setuptools.build_meta"
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 testpaths = ["tests"]
+addopts = "-m \"not postgres\""
+markers = ["postgres: Tier 2 suite that needs a PostgreSQL database (TEST_DATABASE_URL)"]
 python_files = ["test_*.py"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py311"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+# Conservative starting set: pyflakes, pycodestyle errors/warnings, import order, bugbear.
+select = ["E", "F", "W", "I", "B"]
+ignore = ["E501", "B008"]
+
+[tool.mypy]
+python_version = "3.11"
+ignore_missing_imports = true
+warn_unused_ignores = true
+check_untyped_defs = false
+files = ["src"]
+
+[tool.coverage.run]
+source = ["src"]
+branch = false

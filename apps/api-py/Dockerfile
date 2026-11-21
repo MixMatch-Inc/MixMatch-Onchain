@@ -12,9 +12,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     && rm -rf /var/lib/apt/lists/*
 
-COPY pyproject.toml README.md ./
+COPY pyproject.toml README.md requirements.loc[k] ./
+# Install from the pinned lock when present (apps/api-py/scripts/lock.sh), then the project itself.
 RUN pip install --upgrade pip && \
-    pip install .
+    if [ -f requirements.lock ]; then pip install --require-hashes -r requirements.lock; fi && \
+    pip install --no-deps . && \
+    if [ ! -f requirements.lock ]; then pip install .; fi
 
 # Production runtime stage
 FROM python:3.11-slim-bookworm@sha256:a83ba18aef0f865b1a4a611c2cf460fe446f2795673bbb9fe43be570439e3b39 AS runner

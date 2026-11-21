@@ -1,7 +1,9 @@
 'use client';
 
-import { depositAnchorSchema, withdrawAnchorSchema, type AnchorTransactionRecord } from '@mixmatch/shared';
-import { TextField } from '@repo/ui/text-field';
+import { anchorStatus, depositAnchorSchema, withdrawAnchorSchema, type AnchorTransactionRecord } from '@mixmatch/shared';
+import { Amount } from '@repo/ui/display';
+import { EmptyState } from '@repo/ui/states';
+import { StatusPill } from '@repo/ui/status-pill';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
 import { depositAnchor, getAnchorHistory, getAnchorStatus, withdrawAnchor } from '../../lib/anchor-client';
@@ -9,22 +11,6 @@ import { ThemeToggle } from '../../components/ThemeToggle';
 import { useAuth } from '../../lib/useAuth';
 
 type Kind = 'deposit' | 'withdraw';
-
-const STATUS_LABEL: Record<AnchorTransactionRecord['status'], string> = {
-  incomplete: 'Waiting on you (open the anchor link)',
-  pending_user_transfer_start: 'Waiting for your transfer to start',
-  pending_user_transfer_complete: 'Waiting for your transfer to complete',
-  pending_external: 'Waiting on an external network',
-  pending_anchor: 'Anchor is processing',
-  pending_stellar: 'Submitted to Stellar',
-  pending_trust: 'Waiting on a trustline',
-  pending_user: 'Waiting on you',
-  on_hold: 'Under review',
-  completed: 'Completed',
-  refunded: 'Refunded',
-  expired: 'Expired',
-  error: 'Failed',
-};
 
 export default function AnchorPage() {
   const router = useRouter();
@@ -148,8 +134,8 @@ export default function AnchorPage() {
 
       <h2>History</h2>
       {isLoadingHistory && <p>Loading…</p>}
-      {!isLoadingHistory && transactions.length === 0 && <p>No anchor transactions yet.</p>}
-      <ul className="list-reset stack" data-testid="anchor-history">
+      {!isLoadingHistory && transactions.length === 0 && <EmptyState message="No anchor transactions yet." />}
+      <ul style={{ listStyle: 'none', padding: 0 }} data-testid="anchor-history">
         {transactions.map((transaction) => (
           <li key={transaction.id} className="card">
             <div className="row row--between">

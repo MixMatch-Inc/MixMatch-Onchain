@@ -1,0 +1,47 @@
+name: UI visual regression
+
+on:
+  pull_request:
+    paths:
+      - "packages/ui/**"
+      - ".github/workflows/ui-visual.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  visual:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version-file: .nvmrc
+      - uses: pnpm/action-setup@a3252b78c470c02df07e9d59298aecedc3ccdd6d # v3.0.0
+        with:
+          version: 9
+          run_install: false
+      - run: pnpm install --frozen-lockfile
+      - name: Build Storybook
+        run: pnpm --filter @repo/ui build-storybook
+      - name: Install Playwright browser
+        run: pnpm --filter @repo/ui exec playwright install --with-deps chromium
+      - name: Screenshot tests
+        run: |
+          if [ ! -d packages/ui/visual/__screenshots__ ]; then
+            echo "::warning::No screenshot baselines are committed yet. Run 'pnpm --filter @repo/ui test:visual --update-snapshots' and commit packages/ui/visual/__screenshots__."
+            exit 0
+          fi
+          pnpm --filter @repo/ui test:visual
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: failure()
+        with:
+          name: visual-diffs
+          path: packages/ui/test-results

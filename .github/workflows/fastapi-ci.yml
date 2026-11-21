@@ -1,23 +1,12 @@
 name: FastAPI Backend CI
 
 on:
-  push:
-    branches: [develop, main]
-    paths:
-      - 'apps/api-py/**'
-      - '.github/workflows/fastapi-ci.yml'
-  pull_request:
-    branches: [develop, main]
-    paths:
-      - 'apps/api-py/**'
-      - '.github/workflows/fastapi-ci.yml'
+  # Called from ci.yml (the single required check). Also runnable by hand.
+  workflow_call:
+  workflow_dispatch:
 
 permissions:
   contents: read
-
-concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
 
 jobs:
   test:

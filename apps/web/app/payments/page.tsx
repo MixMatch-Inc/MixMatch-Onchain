@@ -44,6 +44,18 @@ export default function PaymentsPage() {
     if (!isLoading && !accessToken) router.push('/login');
   }, [isLoading, accessToken, router]);
 
+  // Tip flow (#1378): the creator page resolves the wallet server-side and
+  // pre-fills this form through the query string.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const tipDestination = params.get('destination');
+    const tipMemo = params.get('memo');
+    const tipAmount = params.get('amount');
+    if (tipDestination) setDestination(tipDestination);
+    if (tipMemo) setMemo(tipMemo);
+    if (tipAmount) setAmount(tipAmount);
+  }, []);
+
   const loadHistory = useCallback(async () => {
     if (!accessToken) return;
     setHistoryError(false);

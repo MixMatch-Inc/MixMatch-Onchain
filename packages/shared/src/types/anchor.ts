@@ -57,3 +57,18 @@ export interface AnchorTransactionHistoryResponse {
   page: number;
   limit: number;
 }
+
+export type AnchorOperation = 'deposit' | 'withdraw';
+
+/** Response of `GET /anchor/rates` (#1402): the anchor's SEP-24 fee for an asset before the user starts. */
+export interface AnchorRateResponse {
+  assetCode: string;
+  operation: AnchorOperation;
+  enabled: boolean;
+  /** Fee for `amount`, when an amount was supplied. */
+  feeTotal: string | null;
+  feeFixed: string | null;
+  feePercent: string | null;
+  minAmount: string | null;
+  maxAmount: string | null;
+}

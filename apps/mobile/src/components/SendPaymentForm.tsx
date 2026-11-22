@@ -1,6 +1,16 @@
-import { sendPaymentSchema, type PathQuoteResponse, type SendPaymentInput, type TransactionRecord } from '@mixmatch/shared';
+import {
+  sendPaymentSchema,
+  type PathQuoteResponse,
+  type SavedContact,
+  type SendPaymentInput,
+  type StellarAsset,
+  type TransactionRecord,
+} from '@mixmatch/shared';
 import { useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { lookupHandle } from '../services/wallet-client';
+import AssetPicker from './AssetPicker';
+import ContactsPicker from './ContactsPicker';
 
 type PaymentField =
   | 'destinationPublicKey'
@@ -23,12 +33,14 @@ export interface SendPaymentFormProps {
     amount: string;
   }) => Promise<PathQuoteResponse>;
   initialDestination?: string;
+  /** Enables saved recipients, handle resolution and verified asset selection. */
+  accessToken?: string;
 }
 
-export default function SendPaymentForm({ onSubmit, onSuccess, onQuote, initialDestination }: SendPaymentFormProps) {
+export default function SendPaymentForm({ onSubmit, onSuccess, onQuote, initialDestination, accessToken }: SendPaymentFormProps) {
   const [destinationPublicKey, setDestinationPublicKey] = useState(initialDestination ?? '');
-  const [amount, setAmount] = useState('');
-  const [memo, setMemo] = useState('');
+  const [amount, setAmount] = useState(initialAmount ?? '');
+  const [memo, setMemo] = useState(initialMemo ?? '');
   const [showAssetFields, setShowAssetFields] = useState(false);
   const [assetCode, setAssetCode] = useState('');
   const [assetIssuer, setAssetIssuer] = useState('');
@@ -41,6 +53,47 @@ export default function SendPaymentForm({ onSubmit, onSuccess, onQuote, initialD
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Partial<Record<PaymentField, string>>>({});
+  const [handleInput, setHandleInput] = useState('');
+  const [handleError, setHandleError] = useState<string | null>(null);
+  const [resolvingHandle, setResolvingHandle] = useState(false);
+  const [showContacts, setShowContacts] = useState(false);
+  const [showAssetPicker, setShowAssetPicker] = useState(false);
+  const [selectedAsset, setSelectedAsset] = useState<StellarAsset | null>(null);
+
+  const handleResolve = async () => {
+    if (!accessToken || !handleInput.trim()) return;
+    setResolvingHandle(true);
+    setHandleError(null);
+    try {
+      const resolved = await lookupHandle(handleInput.trim(), accessToken);
+      setDestinationPublicKey(resolved.publicKey);
+      setMemo(`@${resolved.handle}`);
+    } catch (err) {
+      setHandleError(err instanceof Error ? err.message : 'Could not resolve that handle');
+    } finally {
+      setResolvingHandle(false);
+    }
+  };
+
+  const handleContactSelect = (contact: SavedContact) => {
+    setDestinationPublicKey(contact.destinationPublicKey);
+    setMemo(contact.memo ?? '');
+    setShowContacts(false);
+  };
+
+  const handleAssetSelect = (asset: StellarAsset) => {
+    setSelectedAsset(asset);
+    if (asset.issuer) {
+      setShowAssetFields(true);
+      setAssetCode(asset.code);
+      setAssetIssuer(asset.issuer);
+    } else {
+      setShowAssetFields(false);
+      setAssetCode('');
+      setAssetIssuer('');
+    }
+    setShowAssetPicker(false);
+  };
 
   const handleSubmit = async () => {
     setError(null);
@@ -81,7 +134,7 @@ export default function SendPaymentForm({ onSubmit, onSuccess, onQuote, initialD
       setQuote(null);
       onSuccess?.(transaction);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Something went wrong');
+      setError(err instanceof Error ? err.message : t('common.somethingWrong'));
     } finally {
       setIsSubmitting(false);
     }
@@ -112,6 +165,31 @@ export default function SendPaymentForm({ onSubmit, onSuccess, onQuote, initialD
 
   return (
     <View style={styles.container}>
+      {accessToken ? (
+        <>
+          <Text style={styles.label}>Pay by handle</Text>
+          <View style={styles.inlineRow}>
+            <TextInput
+              style={[styles.input, styles.inlineInput]}
+              placeholder="@artist or artist*mixmatch.app"
+              value={handleInput}
+              onChangeText={setHandleInput}
+              autoCapitalize="none"
+              testID="handle-input"
+            />
+            <TouchableOpacity style={styles.smallButton} onPress={() => void handleResolve()} disabled={resolvingHandle} testID="resolve-handle-button">
+              {resolvingHandle ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Resolve</Text>}
+            </TouchableOpacity>
+          </View>
+          {handleError ? <Text style={styles.fieldError}>{handleError}</Text> : null}
+
+          <TouchableOpacity onPress={() => setShowContacts((prev) => !prev)} testID="toggle-contacts">
+            <Text style={styles.link}>{showContacts ? 'Hide saved recipients' : 'Choose a saved recipient'}</Text>
+          </TouchableOpacity>
+          {showContacts ? <ContactsPicker accessToken={accessToken} onSelect={handleContactSelect} /> : null}
+        </>
+      ) : null}
+
       <Text style={styles.label}>Recipient address</Text>
       <TextInput
         style={styles.input}
@@ -122,7 +200,7 @@ export default function SendPaymentForm({ onSubmit, onSuccess, onQuote, initialD
       />
       {fieldErrors.destinationPublicKey && <Text style={styles.fieldError}>{fieldErrors.destinationPublicKey}</Text>}
 
-      <Text style={styles.label}>Amount (XLM)</Text>
+      <Text style={styles.label}>{t('payments.amountXlm')}</Text>
       <TextInput
         style={styles.input}
         value={amount}
@@ -132,7 +210,7 @@ export default function SendPaymentForm({ onSubmit, onSuccess, onQuote, initialD
       />
       {fieldErrors.amount && <Text style={styles.fieldError}>{fieldErrors.amount}</Text>}
 
-      <Text style={styles.label}>Memo (optional)</Text>
+      <Text style={styles.label}>{t('payments.memoOptional')}</Text>
       <TextInput style={styles.input} value={memo} onChangeText={setMemo} testID="memo-input" />
       {fieldErrors.memo && <Text style={styles.fieldError}>{fieldErrors.memo}</Text>}
 
@@ -140,12 +218,25 @@ export default function SendPaymentForm({ onSubmit, onSuccess, onQuote, initialD
         onPress={() => setShowAssetFields((prev) => !prev)}
         testID="toggle-asset-fields"
       >
-        <Text style={styles.link}>{showAssetFields ? 'Send XLM instead' : 'Send a different asset'}</Text>
+        <Text style={styles.link}>{showAssetFields ? t('payments.sendXlm') : t('payments.sendDifferentAsset')}</Text>
       </TouchableOpacity>
+
+      {accessToken ? (
+        <>
+          <TouchableOpacity onPress={() => setShowAssetPicker((prev) => !prev)} testID="toggle-asset-picker">
+            <Text style={styles.link}>
+              {showAssetPicker ? 'Hide verified assets' : selectedAsset ? `Using ${selectedAsset.code}` : 'Choose a verified asset'}
+            </Text>
+          </TouchableOpacity>
+          {showAssetPicker ? (
+            <AssetPicker accessToken={accessToken} selected={selectedAsset} onSelect={handleAssetSelect} />
+          ) : null}
+        </>
+      ) : null}
 
       {showAssetFields && (
         <>
-          <Text style={styles.label}>Asset code</Text>
+          <Text style={styles.label}>{t('payments.assetCode')}</Text>
           <TextInput
             style={styles.input}
             value={assetCode}
@@ -155,7 +246,7 @@ export default function SendPaymentForm({ onSubmit, onSuccess, onQuote, initialD
           />
           {fieldErrors.assetCode && <Text style={styles.fieldError}>{fieldErrors.assetCode}</Text>}
 
-          <Text style={styles.label}>Asset issuer</Text>
+          <Text style={styles.label}>{t('payments.assetIssuer')}</Text>
           <TextInput
             style={styles.input}
             value={assetIssuer}
@@ -173,14 +264,14 @@ export default function SendPaymentForm({ onSubmit, onSuccess, onQuote, initialD
           testID="toggle-receive-asset-fields"
         >
           <Text style={styles.link}>
-            {showReceiveAssetFields ? "Recipient gets the same asset I send" : "Recipient should get a different asset"}
+            {showReceiveAssetFields ? t('payments.recipientSameAsset') : t('payments.recipientDifferentAsset')}
           </Text>
         </TouchableOpacity>
       )}
 
       {showReceiveAssetFields && (
         <>
-          <Text style={styles.label}>Recipient receives (asset code)</Text>
+          <Text style={styles.label}>{t('payments.receiveAssetCode')}</Text>
           <TextInput
             style={styles.input}
             value={receiveAssetCode}
@@ -193,7 +284,7 @@ export default function SendPaymentForm({ onSubmit, onSuccess, onQuote, initialD
           />
           {fieldErrors.receiveAssetCode && <Text style={styles.fieldError}>{fieldErrors.receiveAssetCode}</Text>}
 
-          <Text style={styles.label}>Recipient receives (asset issuer)</Text>
+          <Text style={styles.label}>{t('payments.receiveAssetIssuer')}</Text>
           <TextInput
             style={styles.input}
             value={receiveAssetIssuer}
@@ -212,14 +303,14 @@ export default function SendPaymentForm({ onSubmit, onSuccess, onQuote, initialD
             disabled={isQuoting}
             testID="get-quote-button"
           >
-            {isQuoting ? <ActivityIndicator /> : <Text style={styles.quoteButtonText}>Preview conversion</Text>}
+            {isQuoting ? <ActivityIndicator /> : <Text style={styles.quoteButtonText}>{t('payments.previewConversion')}</Text>}
           </TouchableOpacity>
 
           {quoteError && <Text style={styles.error}>{quoteError}</Text>}
 
           {quote && (
             <Text style={styles.quotePreview} testID="quote-preview">
-              You send {quote.sourceAmount}, recipient gets approximately {quote.destAmount}
+              {t('payments.quotePreview', { source: quote.sourceAmount, dest: quote.destAmount })}
             </Text>
           )}
         </>
@@ -228,7 +319,7 @@ export default function SendPaymentForm({ onSubmit, onSuccess, onQuote, initialD
       {error && <Text style={styles.error}>{error}</Text>}
 
       <TouchableOpacity style={styles.button} onPress={() => void handleSubmit()} disabled={isSubmitting} testID="send-button">
-        {isSubmitting ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Send payment</Text>}
+        {isSubmitting ? <ActivityIndicator color={colors.primaryText} /> : <Text style={styles.buttonText}>{t('payments.sendPayment')}</Text>}
       </TouchableOpacity>
     </View>
   );
@@ -236,6 +327,9 @@ export default function SendPaymentForm({ onSubmit, onSuccess, onQuote, initialD
 
 const styles = StyleSheet.create({
   container: { padding: 16 },
+  inlineRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  inlineInput: { flex: 1 },
+  smallButton: { backgroundColor: '#4f46e5', borderRadius: 8, paddingVertical: 12, paddingHorizontal: 14 },
   label: { fontSize: 14, color: '#666', marginTop: 12, marginBottom: 4 },
   input: {
     borderWidth: 1,

@@ -30,6 +30,42 @@ class TransactionResponse(BaseModel):
     created_at: datetime
     updated_at: datetime
 
+class AssetResponse(BaseModel):
+    code: str
+    issuer: Optional[str] = None
+    name: Optional[str] = None
+    trustline_established: bool = False
+
+
+class AssetsResponse(BaseModel):
+    assets: List[AssetResponse]
+
+
+class TrustlineRequest(BaseModel):
+    asset_code: str = Field(..., min_length=1, max_length=12)
+    asset_issuer: str = Field(..., min_length=56, max_length=56)
+    limit: Optional[str] = None
+
+
+class TrustlineResponse(BaseModel):
+    stellar_tx_hash: str
+    asset_code: str
+    asset_issuer: str
+
+
+class TransactionTimelineEntry(BaseModel):
+    status: str
+    label: str
+    at: Optional[datetime] = None
+    description: str
+
+
+class TransactionDetailResponse(BaseModel):
+    transaction: TransactionResponse
+    timeline: List[TransactionTimelineEntry]
+    explorer_url: Optional[str] = None
+
+
 class PaginatedTransactionsResponse(BaseModel):
     transactions: List[TransactionResponse]
     total: int

@@ -78,6 +78,9 @@ app.include_router(creators_router, prefix="/api")
 app.include_router(uploads_router, prefix="/api")
 app.include_router(moderation_router, prefix="/api")
 
+# SEP-1/SEP-2 endpoints live at the domain root; the handle lookup is explicitly /api.
+app.include_router(federation_router)
+
 app.include_router(health_router)
 
 

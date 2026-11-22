@@ -53,6 +53,12 @@
         {
           "cameraPermission": "MixMatch uses your camera to scan a payment QR code."
         }
+      ],
+      [
+        "expo-notifications",
+        {
+          "defaultChannel": "payments"
+        }
       ]
     ],
     "scheme": "mixmatch"

@@ -19,6 +19,7 @@
     "@react-navigation/native": "^7.0.0",
     "expo": "~57.0.9",
     "expo-camera": "~17.0.9",
+    "expo-notifications": "~57.0.25",
     "expo-status-bar": "~57.0.1",
     "expo-web-browser": "~15.0.0",
     "react": "19.2.3",

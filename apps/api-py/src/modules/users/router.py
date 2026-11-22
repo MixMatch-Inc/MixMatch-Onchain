@@ -19,6 +19,7 @@ class UserProfileResponse(BaseModel):
     avatar_url: Optional[str] = None
     bio: Optional[str] = None
     is_active: bool
+    email_verified_at: Optional[datetime] = None
 
 class UpdateProfileRequest(BaseModel):
     display_name: Optional[str] = Field(None, min_length=1, max_length=255)

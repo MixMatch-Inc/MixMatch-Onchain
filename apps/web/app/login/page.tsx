@@ -2,6 +2,7 @@
 
 import { loginSchema, registerSchema } from '@mixmatch/shared';
 import { TextField } from '@repo/ui/text-field';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { loginUser, registerUser } from '../../lib/auth-client';
@@ -116,6 +117,7 @@ export default function LoginPage() {
           {mode === 'login' ? 'Log in' : 'Register'}
         </button>
       </form>
+      <p><Link href="/forgot-password">Forgot your password?</Link></p>
     </main>
   );
 }

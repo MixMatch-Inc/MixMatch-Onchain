@@ -1,6 +1,6 @@
 import uuid
 from typing import Annotated
-from fastapi import APIRouter, Depends, HTTPException, Query, Path, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Path, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sse_starlette.sse import EventSourceResponse
 from src.core.prometheus import track_sse
@@ -28,9 +28,23 @@ router = APIRouter(prefix="/payments", tags=["payments"])
 async def get_current_user_id() -> str:
     return "00000000-0000-0000-0000-000000000001"
 
+
+async def _notify_payment(user_id: str, amount: str, status_value: str, transaction_id: str) -> None:
+    async with AsyncSessionLocal() as session:
+        await send_push_notification(
+            session,
+            user_id,
+            "Payment update",
+            f"Your payment of {amount} is {status_value.lower()}.",
+            "payments",
+            {"transactionId": transaction_id, "url": "mixmatch://payments"},
+        )
+
+
 @router.post("/send", response_model=TransactionResponse)
 async def send_payment(
     req: SendPaymentRequest,
+    background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db),
     user_id: str = Depends(get_current_user_id),
 ):
@@ -44,6 +58,7 @@ async def send_payment(
         asset_code=req.asset_code,
         asset_issuer=req.asset_issuer,
     )
+    background_tasks.add_task(_notify_payment, user_id, tx.amount, tx.status, tx.id)
     return tx
 
 @router.get("/assets", response_model=AssetsResponse)

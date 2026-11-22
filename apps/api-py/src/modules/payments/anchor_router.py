@@ -107,6 +107,9 @@ async def withdraw(
     db: AsyncSession = Depends(get_db),
     user: CurrentUser = Depends(get_current_user),
 ):
+    account = (await db.execute(select(User).where(User.id == user.id))).scalar_one_or_none()
+    if account is None or account.email_verified_at is None:
+        raise HTTPException(status_code=403, detail="Verify your email before withdrawing")
     svc = AnchorService(db=db)
     return await svc.withdraw_for_user(user.id, req.asset_code, req.amount)
 

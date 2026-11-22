@@ -19,6 +19,7 @@ from src.modules.auth_security.router import router as auth_security_router
 from src.modules.notifications.router import router as notifications_router
 from src.modules.payments.export_router import router as export_router
 from src.modules.payments.router import router as payments_router
+from src.modules.payments.wallet_router import router as wallet_router
 from src.modules.payments.admin_router import router as admin_router
 from src.modules.payments.anchor_router import router as anchor_router
 from src.modules.payments.escrow_router import router as escrow_router
@@ -26,6 +27,8 @@ from src.modules.payments.escrow_dispute import router as escrow_dispute_router
 from src.modules.streaming.router import router as streaming_router
 from src.modules.taste.router import router as taste_router
 from src.modules.users.router import router as users_router
+from src.modules.creators.router import router as creators_router
+from src.modules.uploads.router import router as uploads_router
 from src.modules.moderation.router import router as moderation_router
 from src.modules.payments.errors import BaseDomainError
 
@@ -70,7 +73,7 @@ app.include_router(metrics_router)
 app.include_router(auth_security_router, prefix="/api")
 app.include_router(notifications_router, prefix="/api")
 app.include_router(payments_router, prefix="/api")
-app.include_router(export_router, prefix="/api")
+app.include_router(wallet_router, prefix="/api")
 app.include_router(admin_router, prefix="/api")
 app.include_router(anchor_router, prefix="/api")
 app.include_router(escrow_router, prefix="/api")
@@ -78,7 +81,12 @@ app.include_router(escrow_dispute_router, prefix="/api")
 app.include_router(streaming_router, prefix="/api")
 app.include_router(taste_router, prefix="/api")
 app.include_router(users_router, prefix="/api")
+app.include_router(creators_router, prefix="/api")
+app.include_router(uploads_router, prefix="/api")
 app.include_router(moderation_router, prefix="/api")
+
+# SEP-1/SEP-2 endpoints live at the domain root; the handle lookup is explicitly /api.
+app.include_router(federation_router)
 
 app.include_router(health_router)
 

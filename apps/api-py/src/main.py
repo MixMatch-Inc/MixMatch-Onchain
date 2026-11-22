@@ -15,6 +15,8 @@ from src.core.prometheus import PrometheusMiddleware, cleanup_dead_process_files
 from src.core.tracing import setup_tracing
 from src.core.database import engine
 from src.core.request_id import RequestIdMiddleware, get_request_id, install_log_record_factory
+from src.modules.settings.router import router as settings_router
+from src.modules.social_auth.router import router as social_auth_router
 from src.modules.payments.router import router as payments_router
 from src.modules.payments.admin_router import router as admin_router
 from src.modules.payments.anchor_router import router as anchor_router
@@ -64,6 +66,8 @@ setup_tracing(
 )
 
 app.include_router(metrics_router)
+app.include_router(social_auth_router, prefix="/api")
+app.include_router(settings_router, prefix="/api")
 app.include_router(payments_router, prefix="/api")
 app.include_router(admin_router, prefix="/api")
 app.include_router(anchor_router, prefix="/api")

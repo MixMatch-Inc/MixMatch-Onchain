@@ -5,6 +5,7 @@ import { TextField } from '@repo/ui/text-field';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { loginUser, registerUser } from '../../lib/auth-client';
+import { getSocialAuthUrl } from '../../lib/settings-client';
 import { ThemeToggle } from '../../components/ThemeToggle';
 import { useAuth } from '../../lib/useAuth';
 
@@ -18,6 +19,19 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const startSocialLogin = async (provider: 'google' | 'apple') => {
+    setError(null);
+    try {
+      const { url, state } = await getSocialAuthUrl(provider);
+      window.sessionStorage.setItem('mixmatch.social.provider', provider);
+      window.sessionStorage.setItem('mixmatch.social.state', state);
+      window.sessionStorage.removeItem('mixmatch.social.link');
+      window.location.assign(url);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not start social login');
+    }
+  };
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -78,6 +92,10 @@ export default function LoginPage() {
           {mode === 'login' ? 'Log in' : 'Register'}
         </button>
       </form>
+      <div className="stack">
+        <button type="button" className="btn" onClick={() => void startSocialLogin('google')}>Continue with Google</button>
+        <button type="button" className="btn" onClick={() => void startSocialLogin('apple')}>Continue with Apple</button>
+      </div>
     </main>
   );
 }

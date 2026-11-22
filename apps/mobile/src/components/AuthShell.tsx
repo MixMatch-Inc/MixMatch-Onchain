@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { useAuth } from '../hooks/useAuth';
 import { loginUser, registerUser } from '../services/auth-client';
+import { startSocialLogin } from '../services/settings-client';
 
 interface Props {
   children: React.ReactNode;
@@ -26,6 +27,18 @@ export default function AuthShell({ children }: Props) {
   if (user) {
     return <>{children}</>;
   }
+
+  const handleSocialLogin = async (provider: 'google' | 'apple') => {
+    setError('');
+    setSubmitting(true);
+    try {
+      setAuth(await startSocialLogin(provider));
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Something went wrong');
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   const handleSubmit = async () => {
     setError('');
@@ -76,6 +89,23 @@ export default function AuthShell({ children }: Props) {
         <Text style={styles.buttonText}>
           {submitting ? 'Please wait...' : isRegistering ? 'Register' : 'Log In'}
         </Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity
+        style={[styles.button, styles.socialButton]}
+        onPress={() => void handleSocialLogin('google')}
+        disabled={submitting}
+        testID="google-signin-button"
+      >
+        <Text style={styles.socialButtonText}>Continue with Google</Text>
+      </TouchableOpacity>
+      <TouchableOpacity
+        style={[styles.button, styles.socialButton]}
+        onPress={() => void handleSocialLogin('apple')}
+        disabled={submitting}
+        testID="apple-signin-button"
+      >
+        <Text style={styles.socialButtonText}>Continue with Apple</Text>
       </TouchableOpacity>
 
       <TouchableOpacity onPress={() => setIsRegistering((prev) => !prev)} disabled={submitting}>
@@ -133,6 +163,17 @@ const styles = StyleSheet.create({
   },
   buttonText: {
     color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  socialButton: {
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#000',
+    marginTop: 8,
+  },
+  socialButtonText: {
+    color: '#000',
     fontSize: 16,
     fontWeight: '600',
   },

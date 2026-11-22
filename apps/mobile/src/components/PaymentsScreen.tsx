@@ -4,6 +4,8 @@ import type { TransactionRecord } from '@mixmatch/shared';
 import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, SafeAreaView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useAuth } from '../hooks/useAuth';
+import { promptBiometric } from '../services/biometrics';
+import { getSettings } from '../services/settings-client';
 import {
   getStellarAccount,
   getTransactionHistory,
@@ -15,6 +17,7 @@ import AnchorScreen from './AnchorScreen';
 import MyQrCode from './MyQrCode';
 import QrScanner from './QrScanner';
 import SendPaymentForm from './SendPaymentForm';
+import SettingsScreen from './SettingsScreen';
 import { ErrorState } from './states';
 import TransactionHistoryList from './TransactionHistoryList';
 
@@ -37,6 +40,8 @@ export default function PaymentsScreen() {
   const [transactions, setTransactions] = useState<TransactionRecord[]>([]);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
   const [streamAvailable, setStreamAvailable] = useState(true);
+  const [settingsVisible, setSettingsVisible] = useState(false);
+  const [biometricsEnabled, setBiometricsEnabled] = useState(false);
 
   const loadAccount = useCallback(async () => {
     if (!accessToken) return;
@@ -61,6 +66,13 @@ export default function PaymentsScreen() {
   useEffect(() => {
     void loadAccount();
   }, [loadAccount]);
+
+  useEffect(() => {
+    if (!accessToken) return;
+    void getSettings(accessToken)
+      .then((settings) => setBiometricsEnabled(settings.biometricsEnabled))
+      .catch(() => undefined);
+  }, [accessToken]);
 
   useEffect(() => {
     if (historyFocused) {
@@ -107,6 +119,9 @@ export default function PaymentsScreen() {
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.title}>MixMatch Onchain</Text>
+        <TouchableOpacity onPress={() => setSettingsVisible(true)} testID="settings-button">
+          <Text style={styles.logout}>Settings</Text>
+        </TouchableOpacity>
         <TouchableOpacity onPress={logout} testID="logout-button">
           <Text style={styles.logout}>Log out</Text>
         </TouchableOpacity>
@@ -121,6 +136,9 @@ export default function PaymentsScreen() {
                   <SendPaymentForm
                     initialDestination={scannedDestination}
                     onSubmit={async (values) => {
+                      if (biometricsEnabled) {
+                        await promptBiometric('Approve this MixMatch payment.');
+                      }
                       const { transaction } = await sendPayment(values, accessToken);
                       return transaction;
                     }}
@@ -176,6 +194,21 @@ export default function PaymentsScreen() {
           </Tab.Navigator>
         </NavigationContainer>
       </View>
+
+      {settingsVisible ? (
+        <View style={styles.settingsOverlay}>
+          <SettingsScreen
+            onClose={() => {
+              setSettingsVisible(false);
+              if (accessToken) {
+                void getSettings(accessToken)
+                  .then((settings) => setBiometricsEnabled(settings.biometricsEnabled))
+                  .catch(() => undefined);
+              }
+            }}
+          />
+        </View>
+      ) : null}
     </SafeAreaView>
   );
 }
@@ -188,9 +221,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 16,
     paddingVertical: 12,
+    gap: 12,
   },
   title: { fontSize: 18, fontWeight: '700' },
   logout: { color: '#007AFF' },
   content: { flex: 1 },
   loading: { marginTop: 40 },
+  settingsOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: '#fff',
+    zIndex: 10,
+  },
 });

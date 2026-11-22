@@ -145,6 +145,7 @@ export default function PaymentsPage() {
         <h1>Payments</h1>
         <nav>
           <Link href="/anchor">Deposit / withdraw</Link>{' '}
+          <Link href="/settings">Settings</Link>{' '}
           <button type="button" onClick={logout}>Log out</button>
         </nav>
       </header>

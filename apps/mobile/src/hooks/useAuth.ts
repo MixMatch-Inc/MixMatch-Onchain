@@ -1,8 +1,10 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { AuthTokenResponse, AuthUser } from '@mixmatch/shared';
+import * as SecureStore from 'expo-secure-store';
 import { useCallback, useEffect, useState } from 'react';
 
-const STORAGE_KEY = 'mixmatch.auth';
+const SECURE_KEY = 'mixmatch.auth';
+const LEGACY_KEY = 'mixmatch.auth.legacy';
 
 interface StoredAuth {
   user: AuthUser;
@@ -16,39 +18,45 @@ export function useAuth() {
 
   useEffect(() => {
     let cancelled = false;
-
-    AsyncStorage.getItem(STORAGE_KEY)
-      .then((raw) => {
-        if (cancelled || !raw) return;
+    void (async () => {
+      let stored: StoredAuth | null = null;
+      try {
+        const raw = await SecureStore.getItemAsync(SECURE_KEY);
+        if (raw) stored = JSON.parse(raw) as StoredAuth;
+      } catch {
+        stored = null;
+      }
+      const legacy = await AsyncStorage.getItem(LEGACY_KEY);
+      if (legacy) {
         try {
-          const stored = JSON.parse(raw) as StoredAuth;
-          if (stored.user && stored.accessToken) {
-            setUser(stored.user);
-            setAccessToken(stored.accessToken);
-          }
+          stored = stored ?? (JSON.parse(legacy) as StoredAuth);
         } catch {
-          void AsyncStorage.removeItem(STORAGE_KEY);
+          stored = null;
         }
-      })
-      .finally(() => {
-        if (!cancelled) setIsLoading(false);
-      });
-
+        await AsyncStorage.removeItem(LEGACY_KEY);
+      }
+      if (cancelled) return;
+      if (stored?.user && stored.accessToken) {
+        setUser(stored.user);
+        setAccessToken(stored.accessToken);
+        await SecureStore.setItemAsync(SECURE_KEY, JSON.stringify(stored)).catch(() => undefined);
+      }
+      setIsLoading(false);
+    })();
     return () => {
       cancelled = true;
     };
   }, []);
 
   const setAuth = useCallback((auth: AuthTokenResponse) => {
-    void AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(auth)).catch(() => {
-      // storage full or unavailable — auth still works in memory for this session
-    });
+    void SecureStore.setItemAsync(SECURE_KEY, JSON.stringify(auth)).catch(() => undefined);
     setUser(auth.user);
     setAccessToken(auth.accessToken);
   }, []);
 
   const logout = useCallback(() => {
-    void AsyncStorage.removeItem(STORAGE_KEY);
+    void SecureStore.deleteItemAsync(SECURE_KEY).catch(() => undefined);
+    void AsyncStorage.removeItem(LEGACY_KEY);
     setUser(null);
     setAccessToken(null);
   }, []);

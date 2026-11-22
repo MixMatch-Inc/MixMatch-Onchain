@@ -2,6 +2,7 @@
   "expo": {
     "name": "MixMatch",
     "slug": "mixmatch",
+    "scheme": "mixmatch",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -34,6 +35,18 @@
         "expo-camera",
         {
           "cameraPermission": "MixMatch uses your camera to scan a payment QR code."
+        }
+      ],
+      [
+        "expo-secure-store",
+        {
+          "faceIDPermission": "MixMatch uses Face ID to unlock secure wallet actions."
+        }
+      ],
+      [
+        "expo-local-authentication",
+        {
+          "faceIDPermission": "MixMatch uses Face ID to approve payments."
         }
       ]
     ]

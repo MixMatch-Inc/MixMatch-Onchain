@@ -34,7 +34,15 @@ class Settings(BaseSettings):
     STELLAR_NETWORK: str = Field(default="testnet", alias="STELLAR_NETWORK")
     HORIZON_URL: str = Field(default="https://horizon-testnet.stellar.org", alias="HORIZON_URL")
     ANCHOR_HOME_DOMAIN: Optional[str] = Field(default=None, alias="ANCHOR_HOME_DOMAIN")
+
+    GOOGLE_CLIENT_ID: Optional[str] = Field(default=None, alias="GOOGLE_CLIENT_ID")
+    GOOGLE_CLIENT_SECRET: Optional[str] = Field(default=None, alias="GOOGLE_CLIENT_SECRET")
+    APPLE_CLIENT_ID: Optional[str] = Field(default=None, alias="APPLE_CLIENT_ID")
+    APPLE_CLIENT_SECRET: Optional[str] = Field(default=None, alias="APPLE_CLIENT_SECRET")
+    OAUTH_REDIRECT_URI: str = Field(default="http://localhost:3000/social-callback", alias="OAUTH_REDIRECT_URI")
+    OAUTH_MOBILE_REDIRECT_URI: str = Field(default="mixmatch://social-callback", alias="OAUTH_MOBILE_REDIRECT_URI")
     
+
     VAULT_ADDR: Optional[str] = Field(default=None, alias="VAULT_ADDR")
     VAULT_TOKEN: Optional[str] = Field(default=None, alias="VAULT_TOKEN")
     WALLET_ENCRYPTION_KEY: str = Field(

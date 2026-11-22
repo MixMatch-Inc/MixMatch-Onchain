@@ -1,6 +1,6 @@
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { NavigationContainer } from '@react-navigation/native';
-import type { TransactionRecord } from '@mixmatch/shared';
+import type { BalanceItem, TransactionRecord } from '@mixmatch/shared';
 import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, SafeAreaView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useAuth } from '../hooks/useAuth';
@@ -11,14 +11,17 @@ import {
   sendPayment,
   subscribeToTransactionStream,
 } from '../services/payments-client';
+import { getBalances } from '../services/wallet-setup-client';
 import AnchorScreen from './AnchorScreen';
 import MyQrCode from './MyQrCode';
+import ProfileEditScreen from './ProfileEditScreen';
 import QrScanner from './QrScanner';
 import SendPaymentForm from './SendPaymentForm';
 import { ErrorState } from './states';
 import TransactionHistoryList from './TransactionHistoryList';
+import WalletScreen from './WalletScreen';
 
-type Tab = 'send' | 'history' | 'receive' | 'scan' | 'anchor';
+type Tab = 'send' | 'history' | 'receive' | 'scan' | 'anchor' | 'wallet';
 
 const TABS: { key: Tab; label: string }[] = [
   { key: 'send', label: 'Send' },
@@ -26,6 +29,7 @@ const TABS: { key: Tab; label: string }[] = [
   { key: 'receive', label: 'Receive' },
   { key: 'scan', label: 'Scan' },
   { key: 'anchor', label: 'Anchor' },
+  { key: 'wallet', label: 'Wallet' },
 ];
 
 export default function PaymentsScreen() {
@@ -37,11 +41,19 @@ export default function PaymentsScreen() {
   const [transactions, setTransactions] = useState<TransactionRecord[]>([]);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
   const [streamAvailable, setStreamAvailable] = useState(true);
+  const [balances, setBalances] = useState<BalanceItem[]>([]);
+  const [editingProfile, setEditingProfile] = useState(false);
 
   const loadAccount = useCallback(async () => {
     if (!accessToken) return;
     const account = await getStellarAccount(accessToken);
     setPublicKey(account.publicKey);
+    try {
+      const result = await getBalances(accessToken);
+      setBalances(result.balances);
+    } catch {
+      setBalances([]);
+    }
   }, [accessToken]);
 
   const loadHistory = useCallback(async () => {
@@ -103,14 +115,33 @@ export default function PaymentsScreen() {
     return () => clearInterval(interval);
   }, [streamAvailable, historyFocused, loadHistory]);
 
+  if (editingProfile) {
+    return <ProfileEditScreen onDone={() => setEditingProfile(false)} />;
+  }
+
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.title}>MixMatch Onchain</Text>
-        <TouchableOpacity onPress={logout} testID="logout-button">
-          <Text style={styles.logout}>Log out</Text>
-        </TouchableOpacity>
+        <View style={styles.headerActions}>
+          <TouchableOpacity onPress={() => setEditingProfile(true)} testID="edit-profile-button">
+            <Text style={styles.logout}>Profile</Text>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={logout} testID="logout-button">
+            <Text style={styles.logout}>Log out</Text>
+          </TouchableOpacity>
+        </View>
       </View>
+
+      {balances.length ? (
+        <View style={styles.balanceStrip} testID="balance-strip">
+          {balances.slice(0, 3).map((item) => (
+            <Text key={`${item.assetCode}:${item.assetIssuer ?? 'native'}`} style={styles.balanceText}>
+              {item.assetCode} {item.balance}
+            </Text>
+          ))}
+        </View>
+      ) : null}
 
       <View style={styles.content}>
         <NavigationContainer>
@@ -173,6 +204,9 @@ export default function PaymentsScreen() {
                 />
               )}
             </Tab.Screen>
+            <Tab.Screen name="Wallet">
+              {() => (accessToken ? <WalletScreen accessToken={accessToken} /> : null)}
+            </Tab.Screen>
           </Tab.Navigator>
         </NavigationContainer>
       </View>
@@ -191,6 +225,9 @@ const styles = StyleSheet.create({
   },
   title: { fontSize: 18, fontWeight: '700' },
   logout: { color: '#007AFF' },
+  headerActions: { flexDirection: 'row', gap: 16 },
+  balanceStrip: { flexDirection: 'row', gap: 12, paddingHorizontal: 16, paddingBottom: 8 },
+  balanceText: { fontSize: 12, color: '#555' },
   content: { flex: 1 },
   loading: { marginTop: 40 },
 });

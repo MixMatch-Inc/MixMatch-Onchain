@@ -34,7 +34,7 @@ export default function LoginPage() {
     try {
       const auth = mode === 'login' ? await loginUser(result.data) : await registerUser(result.data);
       setAuth(auth);
-      router.push('/payments');
+      router.push(mode === 'register' ? '/onboarding' : '/payments');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Something went wrong');
     } finally {

@@ -2,6 +2,9 @@ import { useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { useAuth } from '../hooks/useAuth';
 import { loginUser, registerUser } from '../services/auth-client';
+import { forgotPassword, resetPassword } from '../services/security-client';
+
+type Mode = 'login' | 'register' | 'forgot' | 'reset';
 
 interface Props {
   children: React.ReactNode;
@@ -9,9 +12,10 @@ interface Props {
 
 export default function AuthShell({ children }: Props) {
   const { user, isLoading, setAuth } = useAuth();
-  const [isRegistering, setIsRegistering] = useState(false);
+  const [mode, setMode] = useState<Mode>('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [resetToken, setResetToken] = useState('');
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
@@ -31,7 +35,15 @@ export default function AuthShell({ children }: Props) {
     setError('');
     setSubmitting(true);
     try {
-      const response = isRegistering ? await registerUser({ email, password }) : await loginUser({ email, password });
+      if (mode === 'forgot') {
+        setError(await forgotPassword({ email }));
+        return;
+      }
+      if (mode === 'reset') {
+        setError(await resetPassword({ token: resetToken, newPassword: password }));
+        return;
+      }
+      const response = mode === 'register' ? await registerUser({ email, password }) : await loginUser({ email, password });
       setAuth(response);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Something went wrong');
@@ -43,29 +55,46 @@ export default function AuthShell({ children }: Props) {
   return (
     <View style={styles.container}>
       <Text style={styles.title}>MixMatch Onchain</Text>
-      <Text style={styles.subtitle}>{isRegistering ? 'Create Account' : 'Sign In'}</Text>
+      <Text style={styles.subtitle}>
+        {mode === 'register' ? 'Create Account' : mode === 'forgot' ? 'Reset password' : mode === 'reset' ? 'Choose a new password' : 'Sign In'}
+      </Text>
 
       {error ? <Text style={styles.error}>{error}</Text> : null}
 
-      <TextInput
-        style={styles.input}
-        placeholder="Email"
-        placeholderTextColor="#999"
-        value={email}
-        onChangeText={setEmail}
-        autoCapitalize="none"
-        keyboardType="email-address"
-        testID="email-input"
-      />
-      <TextInput
-        style={styles.input}
-        placeholder="Password"
-        placeholderTextColor="#999"
-        value={password}
-        onChangeText={setPassword}
-        secureTextEntry
-        testID="password-input"
-      />
+      {mode !== 'reset' ? (
+        <TextInput
+          style={styles.input}
+          placeholder="Email"
+          placeholderTextColor="#999"
+          value={email}
+          onChangeText={setEmail}
+          autoCapitalize="none"
+          keyboardType="email-address"
+          testID="email-input"
+        />
+      ) : null}
+      {mode === 'reset' ? (
+        <TextInput
+          style={styles.input}
+          placeholder="Reset token"
+          placeholderTextColor="#999"
+          value={resetToken}
+          onChangeText={setResetToken}
+          autoCapitalize="none"
+          testID="reset-token-input"
+        />
+      ) : null}
+      {mode !== 'forgot' ? (
+        <TextInput
+          style={styles.input}
+          placeholder={mode === 'reset' ? 'New password' : 'Password'}
+          placeholderTextColor="#999"
+          value={password}
+          onChangeText={setPassword}
+          secureTextEntry
+          testID="password-input"
+        />
+      ) : null}
 
       <TouchableOpacity
         style={styles.button}
@@ -74,15 +103,36 @@ export default function AuthShell({ children }: Props) {
         testID="submit-button"
       >
         <Text style={styles.buttonText}>
-          {submitting ? 'Please wait...' : isRegistering ? 'Register' : 'Log In'}
+          {submitting
+            ? 'Please wait...'
+            : mode === 'register'
+              ? 'Register'
+              : mode === 'forgot'
+                ? 'Send reset link'
+                : mode === 'reset'
+                  ? 'Reset password'
+                  : 'Log In'}
         </Text>
       </TouchableOpacity>
 
-      <TouchableOpacity onPress={() => setIsRegistering((prev) => !prev)} disabled={submitting}>
+      <TouchableOpacity
+        onPress={() => setMode(mode === 'login' ? 'register' : 'login')}
+        disabled={submitting}
+      >
         <Text style={styles.switchText}>
-          {isRegistering ? 'Already have an account? Sign In' : "Don't have an account? Register"}
+          {mode === 'register' ? 'Already have an account? Sign In' : "Don't have an account? Register"}
         </Text>
       </TouchableOpacity>
+      {mode === 'login' ? (
+        <TouchableOpacity onPress={() => setMode('forgot')} disabled={submitting}>
+          <Text style={styles.switchText}>Forgot password?</Text>
+        </TouchableOpacity>
+      ) : null}
+      {mode === 'forgot' ? (
+        <TouchableOpacity onPress={() => setMode('reset')} disabled={submitting}>
+          <Text style={styles.switchText}>Have a reset token? Reset password</Text>
+        </TouchableOpacity>
+      ) : null}
     </View>
   );
 }

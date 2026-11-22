@@ -10,6 +10,7 @@ export interface AuthUser {
   role: UserRole;
   createdAt: string;
   updatedAt: string;
+  emailVerifiedAt?: string | null;
 }
 
 export interface AuthTokenResponse {

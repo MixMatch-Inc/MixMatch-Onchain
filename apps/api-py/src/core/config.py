@@ -34,7 +34,16 @@ class Settings(BaseSettings):
     STELLAR_NETWORK: str = Field(default="testnet", alias="STELLAR_NETWORK")
     HORIZON_URL: str = Field(default="https://horizon-testnet.stellar.org", alias="HORIZON_URL")
     ANCHOR_HOME_DOMAIN: Optional[str] = Field(default=None, alias="ANCHOR_HOME_DOMAIN")
+
+    SMTP_HOST: Optional[str] = Field(default=None, alias="SMTP_HOST")
+    SMTP_PORT: int = Field(default=587, alias="SMTP_PORT")
+    SMTP_USER: Optional[str] = Field(default=None, alias="SMTP_USER")
+    SMTP_PASSWORD: Optional[str] = Field(default=None, alias="SMTP_PASSWORD")
+    MAIL_FROM: str = Field(default="no-reply@mixmatch.app", alias="MAIL_FROM")
+    APP_FRONTEND_URL: str = Field(default="http://localhost:3000", alias="APP_FRONTEND_URL")
+    EXPO_PUSH_ACCESS_TOKEN: Optional[str] = Field(default=None, alias="EXPO_PUSH_ACCESS_TOKEN")
     
+
     VAULT_ADDR: Optional[str] = Field(default=None, alias="VAULT_ADDR")
     VAULT_TOKEN: Optional[str] = Field(default=None, alias="VAULT_TOKEN")
     WALLET_ENCRYPTION_KEY: str = Field(

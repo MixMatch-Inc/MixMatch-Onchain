@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Path, status
 from pydantic import BaseModel, EmailStr, ConfigDict
@@ -17,6 +18,7 @@ class UserProfileResponse(BaseModel):
     avatar_url: Optional[str] = None
     bio: Optional[str] = None
     is_active: bool
+    email_verified_at: Optional[datetime] = None
 
 class UpdateProfileRequest(BaseModel):
     display_name: Optional[str] = None

@@ -10,6 +10,7 @@ import {
   sendPayment,
   subscribeToTransactionStream,
 } from '../../lib/payments-client';
+import { downloadExport, getEmailVerified, sendVerificationEmail } from '../../lib/security-client';
 import { useAuth } from '../../lib/useAuth';
 
 type Tab = 'send' | 'history' | 'receive';
@@ -37,6 +38,7 @@ export default function PaymentsPage() {
   const [formError, setFormError] = useState<string | null>(null);
   const [isSending, setIsSending] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [emailVerified, setEmailVerified] = useState(true);
 
   useEffect(() => {
     if (!isLoading && !accessToken) router.push('/login');
@@ -63,6 +65,9 @@ export default function PaymentsPage() {
     getStellarAccount(accessToken)
       .then((account) => setPublicKey(account.publicKey))
       .catch(() => setPublicKey(null));
+    getEmailVerified(accessToken)
+      .then(setEmailVerified)
+      .catch(() => setEmailVerified(true));
   }, [accessToken]);
 
   // Live updates: one stream per session; announce status changes in the live region.
@@ -145,9 +150,44 @@ export default function PaymentsPage() {
         <h1>Payments</h1>
         <nav>
           <Link href="/anchor">Deposit / withdraw</Link>{' '}
+          <Link href="/change-password">Password</Link>{' '}
+          <Link href="/notifications">Notifications</Link>{' '}
           <button type="button" onClick={logout}>Log out</button>
         </nav>
       </header>
+
+      {!emailVerified && accessToken ? (
+        <div style={{ background: '#fef3c7', padding: 12, marginBottom: 12 }} role="status">
+          Verify your email to withdraw through the anchor.{' '}
+          <button
+            type="button"
+            onClick={() => {
+              void sendVerificationEmail(accessToken).then((result) => setNotice(result.message));
+            }}
+          >
+            Send verification email
+          </button>
+        </div>
+      ) : null}
+
+      <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
+        <button
+          type="button"
+          onClick={() => {
+            if (accessToken) void downloadExport('csv', accessToken).catch((err) => setNotice(String(err)));
+          }}
+        >
+          Export CSV
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            if (accessToken) void downloadExport('pdf', accessToken).catch((err) => setNotice(String(err)));
+          }}
+        >
+          Export PDF
+        </button>
+      </div>
 
       <div role="status" aria-live="polite" style={{ minHeight: 24 }}>{notice}</div>
 

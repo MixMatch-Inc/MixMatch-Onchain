@@ -14,6 +14,7 @@ import {
 import AnchorScreen from './AnchorScreen';
 import MyQrCode from './MyQrCode';
 import QrScanner from './QrScanner';
+import SecurityScreen from './SecurityScreen';
 import SendPaymentForm from './SendPaymentForm';
 import { ErrorState } from './states';
 import TransactionHistoryList from './TransactionHistoryList';
@@ -37,6 +38,7 @@ export default function PaymentsScreen() {
   const [transactions, setTransactions] = useState<TransactionRecord[]>([]);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
   const [streamAvailable, setStreamAvailable] = useState(true);
+  const [showSecurity, setShowSecurity] = useState(false);
 
   const loadAccount = useCallback(async () => {
     if (!accessToken) return;
@@ -103,10 +105,17 @@ export default function PaymentsScreen() {
     return () => clearInterval(interval);
   }, [streamAvailable, historyFocused, loadHistory]);
 
+  if (showSecurity) {
+    return <SecurityScreen onDone={() => setShowSecurity(false)} />;
+  }
+
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.title}>MixMatch Onchain</Text>
+        <TouchableOpacity onPress={() => setShowSecurity(true)} testID="security-button">
+          <Text style={styles.logout}>Security</Text>
+        </TouchableOpacity>
         <TouchableOpacity onPress={logout} testID="logout-button">
           <Text style={styles.logout}>Log out</Text>
         </TouchableOpacity>

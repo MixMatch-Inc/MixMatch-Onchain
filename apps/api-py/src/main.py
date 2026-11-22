@@ -23,6 +23,8 @@ from src.modules.payments.escrow_dispute import router as escrow_dispute_router
 from src.modules.streaming.router import router as streaming_router
 from src.modules.taste.router import router as taste_router
 from src.modules.users.router import router as users_router
+from src.modules.creators.router import router as creators_router
+from src.modules.uploads.router import router as uploads_router
 from src.modules.moderation.router import router as moderation_router
 from src.modules.payments.errors import BaseDomainError
 
@@ -72,6 +74,8 @@ app.include_router(escrow_dispute_router, prefix="/api")
 app.include_router(streaming_router, prefix="/api")
 app.include_router(taste_router, prefix="/api")
 app.include_router(users_router, prefix="/api")
+app.include_router(creators_router, prefix="/api")
+app.include_router(uploads_router, prefix="/api")
 app.include_router(moderation_router, prefix="/api")
 
 app.include_router(health_router)

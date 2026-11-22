@@ -13,6 +13,7 @@ import {
 } from '../services/payments-client';
 import AnchorScreen from './AnchorScreen';
 import MyQrCode from './MyQrCode';
+import ProfileScreen from './ProfileScreen';
 import QrScanner from './QrScanner';
 import SendPaymentForm from './SendPaymentForm';
 import { ErrorState } from './states';
@@ -37,6 +38,7 @@ export default function PaymentsScreen() {
   const [transactions, setTransactions] = useState<TransactionRecord[]>([]);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
   const [streamAvailable, setStreamAvailable] = useState(true);
+  const [showProfile, setShowProfile] = useState(false);
 
   const loadAccount = useCallback(async () => {
     if (!accessToken) return;
@@ -103,13 +105,29 @@ export default function PaymentsScreen() {
     return () => clearInterval(interval);
   }, [streamAvailable, historyFocused, loadHistory]);
 
+  if (showProfile && accessToken) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <TouchableOpacity onPress={() => setShowProfile(false)} testID="profile-back">
+          <Text style={styles.logout}>‹ Back</Text>
+        </TouchableOpacity>
+        <ProfileScreen accessToken={accessToken} />
+      </SafeAreaView>
+    );
+  }
+
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.title}>MixMatch Onchain</Text>
-        <TouchableOpacity onPress={logout} testID="logout-button">
-          <Text style={styles.logout}>Log out</Text>
-        </TouchableOpacity>
+        <View style={styles.headerActions}>
+          <TouchableOpacity onPress={() => setShowProfile(true)} testID="profile-button">
+            <Text style={styles.logout}>Profile</Text>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={logout} testID="logout-button">
+            <Text style={styles.logout}>Log out</Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       <View style={styles.content}>
@@ -191,6 +209,7 @@ const styles = StyleSheet.create({
   },
   title: { fontSize: 18, fontWeight: '700' },
   logout: { color: '#007AFF' },
+  headerActions: { flexDirection: 'row', gap: 16 },
   content: { flex: 1 },
   loading: { marginTop: 40 },
 });

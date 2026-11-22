@@ -6,7 +6,7 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-    "userInterfaceStyle": "light",
+    "userInterfaceStyle": "automatic",
     "runtimeVersion": {
       "policy": "appVersion"
     },
@@ -25,6 +25,24 @@
       },
       "permissions": [
         "android.permission.CAMERA"
+      ],
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ],
+          "data": [
+            {
+              "scheme": "mixmatch",
+              "host": "pay"
+            },
+            {
+              "scheme": "web+stellar"
+            }
+          ]
+        }
       ]
     },
     "web": {
@@ -38,17 +56,12 @@
         }
       ],
       [
-        "expo-secure-store",
+        "expo-notifications",
         {
-          "faceIDPermission": "MixMatch uses Face ID to unlock secure wallet actions."
-        }
-      ],
-      [
-        "expo-local-authentication",
-        {
-          "faceIDPermission": "MixMatch uses Face ID to approve payments."
+          "defaultChannel": "payments"
         }
       ]
-    ]
+    ],
+    "scheme": "mixmatch"
   }
 }

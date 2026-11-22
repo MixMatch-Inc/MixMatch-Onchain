@@ -25,43 +25,37 @@ class User(Base):
     password_hash: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     role: Mapped[str] = mapped_column(String(32), default="USER", nullable=False)
     display_name: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    handle: Mapped[Optional[str]] = mapped_column(String(64), nullable=True, unique=True, index=True)
     avatar_url: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     bio: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    email_verified_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    notification_preferences: Mapped[Optional[dict]] = mapped_column(JSONType, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, nullable=False)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow, nullable=False)
 
     stellar_account: Mapped[Optional["StellarAccount"]] = relationship("StellarAccount", back_populates="user", uselist=False, cascade="all, delete-orphan")
+    contacts: Mapped[List["Contact"]] = relationship("Contact", back_populates="user", cascade="all, delete-orphan")
     streaming_connections: Mapped[List["StreamingConnection"]] = relationship("StreamingConnection", back_populates="user", cascade="all, delete-orphan")
 
 
-class SocialAccount(Base):
-    __tablename__ = "social_accounts"
+class Contact(Base):
+    """Saved recipient with an optional default memo (#1387)."""
+    __tablename__ = "contacts"
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     user_id: Mapped[str] = mapped_column(String(36), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
-    provider: Mapped[str] = mapped_column(String(24), nullable=False, index=True)
-    provider_account_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
-    email: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
-    email_verified: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
-    encrypted_token: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
-    scope: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
-    last_sync_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, nullable=False)
+    label: Mapped[str] = mapped_column(String(120), nullable=False)
+    destination_public_key: Mapped[str] = mapped_column(String(56), nullable=False)
+    memo: Mapped[Optional[str]] = mapped_column(String(28), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, nullable=False)
-
-    __table_args__ = (UniqueConstraint("provider", "provider_account_id", name="uq_social_provider_account"),)
-
-
-class UserSetting(Base):
-    __tablename__ = "user_settings"
-
-    user_id: Mapped[str] = mapped_column(String(36), ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
-    network: Mapped[str] = mapped_column(String(16), default="testnet", nullable=False)
-    display_currency: Mapped[str] = mapped_column(String(8), default="USD", nullable=False)
-    language: Mapped[str] = mapped_column(String(8), default="en", nullable=False)
-    notification_preferences: Mapped[Optional[dict]] = mapped_column(JSONType, nullable=True)
-    biometrics_enabled: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow, nullable=False)
+
+    user: Mapped["User"] = relationship("User", back_populates="contacts")
+
+    __table_args__ = (
+        Index("ix_contacts_user_label", "user_id", "label"),
+    )
 
 
 class StellarAccount(Base):

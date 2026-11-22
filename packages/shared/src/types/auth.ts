@@ -8,8 +8,12 @@ export interface AuthUser {
   id: string;
   email: string;
   role: UserRole;
+  displayName?: string;
+  avatarUrl?: string | null;
+  bio?: string | null;
   createdAt: string;
   updatedAt: string;
+  emailVerifiedAt?: string | null;
 }
 
 export interface AuthTokenResponse {

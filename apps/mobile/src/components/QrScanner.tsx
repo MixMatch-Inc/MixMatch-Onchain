@@ -1,6 +1,9 @@
 import { CameraView, useCameraPermissions, type BarcodeScanningResult } from 'expo-camera';
-import { useCallback, useRef } from 'react';
+import { useCallback, useMemo, useRef } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useT } from '../i18n-context';
+import type { Palette } from '../palette';
+import { useTheme } from '../theme-context';
 
 export interface QrScannerProps {
   onScanned: (data: string) => void;
@@ -10,6 +13,9 @@ export interface QrScannerProps {
 export default function QrScanner({ onScanned }: QrScannerProps) {
   const [permission, requestPermission] = useCameraPermissions();
   const hasScannedRef = useRef(false);
+  const { t } = useT();
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
 
   const handleBarcodeScanned = useCallback(
     (result: BarcodeScanningResult) => {
@@ -27,9 +33,9 @@ export default function QrScanner({ onScanned }: QrScannerProps) {
   if (!permission.granted) {
     return (
       <View style={styles.permissionContainer} testID="qr-scanner-permission">
-        <Text style={styles.permissionText}>Camera access is needed to scan a payment QR code.</Text>
+        <Text style={styles.permissionText}>{t('payments.cameraNeeded')}</Text>
         <TouchableOpacity style={styles.button} onPress={() => void requestPermission()} testID="grant-permission-button">
-          <Text style={styles.buttonText}>Grant camera access</Text>
+          <Text style={styles.buttonText}>{t('payments.grantCamera')}</Text>
         </TouchableOpacity>
       </View>
     );
@@ -46,10 +52,11 @@ export default function QrScanner({ onScanned }: QrScannerProps) {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, minHeight: 300 },
-  permissionContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24 },
-  permissionText: { textAlign: 'center', marginBottom: 16, color: '#666' },
-  button: { backgroundColor: '#000', borderRadius: 8, paddingVertical: 12, paddingHorizontal: 20 },
-  buttonText: { color: '#fff', fontWeight: '600' },
-});
+const makeStyles = (c: Palette) =>
+  StyleSheet.create({
+    container: { flex: 1, minHeight: 300 },
+    permissionContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24 },
+    permissionText: { textAlign: 'center', marginBottom: 16, color: c.textMuted },
+    button: { backgroundColor: c.primary, borderRadius: 8, paddingVertical: 12, paddingHorizontal: 20 },
+    buttonText: { color: c.primaryText, fontWeight: '600' },
+  });

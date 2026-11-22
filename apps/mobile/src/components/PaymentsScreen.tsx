@@ -2,7 +2,7 @@ import { parsePaymentUri, type PaymentRequest, type TransactionRecord } from '@m
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { NavigationContainer } from '@react-navigation/native';
-import type { TransactionRecord } from '@mixmatch/shared';
+import type { BalanceItem, TransactionRecord } from '@mixmatch/shared';
 import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, SafeAreaView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useAuth } from '../hooks/useAuth';
@@ -16,20 +16,17 @@ import {
   sendPayment,
   subscribeToTransactionStream,
 } from '../services/payments-client';
-import { useTheme } from '../theme-context';
-import MyQrCode from './MyQrCode';
-import QrScanner from './QrScanner';
-import SendPaymentForm from './SendPaymentForm';
-import SettingsBar from './SettingsBar';
+import { getBalances } from '../services/wallet-setup-client';
 import AnchorScreen from './AnchorScreen';
 import MyQrCode from './MyQrCode';
-import ProfileScreen from './ProfileScreen';
+import ProfileEditScreen from './ProfileEditScreen';
 import QrScanner from './QrScanner';
 import SendPaymentForm from './SendPaymentForm';
 import { ErrorState } from './states';
 import TransactionHistoryList from './TransactionHistoryList';
+import WalletScreen from './WalletScreen';
 
-type Tab = 'send' | 'history' | 'receive' | 'scan' | 'anchor';
+type Tab = 'send' | 'history' | 'receive' | 'scan' | 'anchor' | 'wallet';
 
 const TABS: { key: Tab; labelKey: 'payments.tab.send' | 'payments.tab.history' | 'payments.tab.receive' | 'payments.tab.scan' }[] = [
   { key: 'send', labelKey: 'payments.tab.send' },
@@ -42,6 +39,7 @@ const TABS: { key: Tab; label: string }[] = [
   { key: 'receive', label: 'Receive' },
   { key: 'scan', label: 'Scan' },
   { key: 'anchor', label: 'Anchor' },
+  { key: 'wallet', label: 'Wallet' },
 ];
 
 export default function PaymentsScreen() {
@@ -59,13 +57,19 @@ export default function PaymentsScreen() {
   const [transactions, setTransactions] = useState<TransactionRecord[]>([]);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
   const [streamAvailable, setStreamAvailable] = useState(true);
-  const [showProfile, setShowProfile] = useState(false);
+  const [balances, setBalances] = useState<BalanceItem[]>([]);
+  const [editingProfile, setEditingProfile] = useState(false);
 
   const loadAccount = useCallback(async () => {
     if (!accessToken) return;
     const account = await getStellarAccount(accessToken);
     setPublicKey(account.publicKey);
-    setNetwork(account.network);
+    try {
+      const result = await getBalances(accessToken);
+      setBalances(result.balances);
+    } catch {
+      setBalances([]);
+    }
   }, [accessToken]);
 
   const loadHistory = useCallback(async () => {
@@ -140,15 +144,8 @@ export default function PaymentsScreen() {
   usePaymentLinks(applyRequest);
   }, [streamAvailable, historyFocused, loadHistory]);
 
-  if (showProfile && accessToken) {
-    return (
-      <SafeAreaView style={styles.container}>
-        <TouchableOpacity onPress={() => setShowProfile(false)} testID="profile-back">
-          <Text style={styles.logout}>‹ Back</Text>
-        </TouchableOpacity>
-        <ProfileScreen accessToken={accessToken} />
-      </SafeAreaView>
-    );
+  if (editingProfile) {
+    return <ProfileEditScreen onDone={() => setEditingProfile(false)} />;
   }
 
   return (
@@ -156,7 +153,7 @@ export default function PaymentsScreen() {
       <View style={styles.header}>
         <Text style={styles.title}>MixMatch Onchain</Text>
         <View style={styles.headerActions}>
-          <TouchableOpacity onPress={() => setShowProfile(true)} testID="profile-button">
+          <TouchableOpacity onPress={() => setEditingProfile(true)} testID="edit-profile-button">
             <Text style={styles.logout}>Profile</Text>
           </TouchableOpacity>
           <TouchableOpacity onPress={logout} testID="logout-button">
@@ -165,17 +162,15 @@ export default function PaymentsScreen() {
         </View>
       </View>
 
-      <View style={styles.settings}>
-        <SettingsBar />
-      </View>
-
-      <View style={styles.tabs}>
-        {TABS.map(({ key, labelKey }) => (
-          <TouchableOpacity key={key} onPress={() => setTab(key)} style={[styles.tab, tab === key && styles.tabActive]}>
-            <Text style={[styles.tabText, tab === key && styles.tabTextActive]}>{t(labelKey)}</Text>
-          </TouchableOpacity>
-        ))}
-      </View>
+      {balances.length ? (
+        <View style={styles.balanceStrip} testID="balance-strip">
+          {balances.slice(0, 3).map((item) => (
+            <Text key={`${item.assetCode}:${item.assetIssuer ?? 'native'}`} style={styles.balanceText}>
+              {item.assetCode} {item.balance}
+            </Text>
+          ))}
+        </View>
+      ) : null}
 
       <View style={styles.content}>
         {tab === 'send' && accessToken && (
@@ -278,6 +273,9 @@ export default function PaymentsScreen() {
                 />
               )}
             </Tab.Screen>
+            <Tab.Screen name="Wallet">
+              {() => (accessToken ? <WalletScreen accessToken={accessToken} /> : null)}
+            </Tab.Screen>
           </Tab.Navigator>
         </NavigationContainer>
       </View>
@@ -318,6 +316,8 @@ const styles = StyleSheet.create({
   title: { fontSize: 18, fontWeight: '700' },
   logout: { color: '#007AFF' },
   headerActions: { flexDirection: 'row', gap: 16 },
+  balanceStrip: { flexDirection: 'row', gap: 12, paddingHorizontal: 16, paddingBottom: 8 },
+  balanceText: { fontSize: 12, color: '#555' },
   content: { flex: 1 },
   loading: { marginTop: 40 },
 });

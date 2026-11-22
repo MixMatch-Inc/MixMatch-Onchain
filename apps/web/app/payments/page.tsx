@@ -1,6 +1,6 @@
 'use client';
 
-import { paymentStatus, sendPaymentSchema, formatAmount, truncateAddress, type TransactionRecord } from '@mixmatch/shared';
+import { paymentStatus, sendPaymentSchema, formatAmount, truncateAddress, type BalanceItem, type TransactionRecord } from '@mixmatch/shared';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -11,6 +11,7 @@ import {
   subscribeToTransactionStream,
 } from '../../lib/payments-client';
 import { useAuth } from '../../lib/useAuth';
+import { getBalances } from '../../lib/wallet-setup-client';
 
 type Tab = 'send' | 'history' | 'receive';
 const TABS: { key: Tab; label: string }[] = [
@@ -26,6 +27,7 @@ export default function PaymentsPage() {
   const [transactions, setTransactions] = useState<TransactionRecord[]>([]);
   const [historyError, setHistoryError] = useState(false);
   const [publicKey, setPublicKey] = useState<string | null>(null);
+  const [balances, setBalances] = useState<BalanceItem[]>([]);
   const [notice, setNotice] = useState('');
   const [streamAvailable, setStreamAvailable] = useState(true);
   const lastStatus = useRef(new Map<string, string>());
@@ -75,6 +77,9 @@ export default function PaymentsPage() {
     getStellarAccount(accessToken)
       .then((account) => setPublicKey(account.publicKey))
       .catch(() => setPublicKey(null));
+    getBalances(accessToken)
+      .then((result) => setBalances(result.balances))
+      .catch(() => setBalances([]));
   }, [accessToken]);
 
   // Live updates: one stream per session; announce status changes in the live region.
@@ -157,12 +162,19 @@ export default function PaymentsPage() {
         <h1>Payments</h1>
         <nav>
           <Link href="/anchor">Deposit / withdraw</Link>{' '}
-          <Link href="/creators">Creators</Link>{' '}
-          <Link href="/dashboard">Dashboard</Link>{' '}
-          <Link href="/profile">Profile</Link>{' '}
+          <Link href="/wallet">Wallet</Link>{' '}
+          <Link href="/profile/edit">Profile</Link>{' '}
           <button type="button" onClick={logout}>Log out</button>
         </nav>
       </header>
+
+      {balances.length ? (
+        <div data-testid="balance-strip" style={{ display: 'flex', gap: 12, fontSize: 12, color: '#555' }}>
+          {balances.slice(0, 3).map((item) => (
+            <span key={`${item.assetCode}:${item.assetIssuer ?? 'native'}`}>{item.assetCode} {item.balance}</span>
+          ))}
+        </div>
+      ) : null}
 
       <div role="status" aria-live="polite" style={{ minHeight: 24 }}>{notice}</div>
 

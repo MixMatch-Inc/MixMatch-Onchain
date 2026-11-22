@@ -13,6 +13,7 @@ import {
 } from '../services/payments-client';
 import AnchorScreen from './AnchorScreen';
 import MyQrCode from './MyQrCode';
+import TransactionDetailScreen from './TransactionDetailScreen';
 import QrScanner from './QrScanner';
 import SendPaymentForm from './SendPaymentForm';
 import { ErrorState } from './states';
@@ -37,11 +38,14 @@ export default function PaymentsScreen() {
   const [transactions, setTransactions] = useState<TransactionRecord[]>([]);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
   const [streamAvailable, setStreamAvailable] = useState(true);
+  const [selectedTransaction, setSelectedTransaction] = useState<TransactionRecord | null>(null);
+  const [network, setNetwork] = useState<'testnet' | 'public'>('testnet');
 
   const loadAccount = useCallback(async () => {
     if (!accessToken) return;
     const account = await getStellarAccount(accessToken);
     setPublicKey(account.publicKey);
+    setNetwork(account.network);
   }, [accessToken]);
 
   const loadHistory = useCallback(async () => {
@@ -103,6 +107,19 @@ export default function PaymentsScreen() {
     return () => clearInterval(interval);
   }, [streamAvailable, historyFocused, loadHistory]);
 
+  if (selectedTransaction) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <TransactionDetailScreen
+          transactionId={selectedTransaction.id}
+          initialTransaction={selectedTransaction}
+          network={network}
+          onBack={() => setSelectedTransaction(null)}
+        />
+      </SafeAreaView>
+    );
+  }
+
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
@@ -119,6 +136,7 @@ export default function PaymentsScreen() {
               {() =>
                 accessToken ? (
                   <SendPaymentForm
+                    accessToken={accessToken}
                     initialDestination={scannedDestination}
                     onSubmit={async (values) => {
                       const { transaction } = await sendPayment(values, accessToken);
@@ -156,7 +174,7 @@ export default function PaymentsScreen() {
                     action={{ label: 'Retry', onPress: () => void loadHistory() }}
                   />
                 ) : (
-                  <TransactionHistoryList transactions={transactions} />
+                  <TransactionHistoryList transactions={transactions} onSelect={setSelectedTransaction} />
                 )
               }
             </Tab.Screen>

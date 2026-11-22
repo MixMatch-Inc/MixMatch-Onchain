@@ -5,6 +5,8 @@ export interface StellarTomlInfo {
   signingKey?: string;
   webAuthEndpoint?: string;
   transferServerSep24?: string;
+  /** SEP-2 federation server endpoint. */
+  federationServer?: string;
   currencies: Array<{ code: string; issuer?: string }>;
 }
 
@@ -12,6 +14,7 @@ interface RawStellarToml {
   SIGNING_KEY?: unknown;
   WEB_AUTH_ENDPOINT?: unknown;
   TRANSFER_SERVER_SEP0024?: unknown;
+  FEDERATION_SERVER?: unknown;
   CURRENCIES?: unknown;
 }
 
@@ -51,6 +54,7 @@ export async function fetchStellarToml(homeDomain: string): Promise<StellarTomlI
     signingKey: asString(raw.SIGNING_KEY),
     webAuthEndpoint: asString(raw.WEB_AUTH_ENDPOINT),
     transferServerSep24: asString(raw.TRANSFER_SERVER_SEP0024),
+    federationServer: asString(raw.FEDERATION_SERVER),
     currencies: parseCurrencies(raw.CURRENCIES),
   };
 }

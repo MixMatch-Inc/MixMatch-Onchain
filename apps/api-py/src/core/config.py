@@ -34,6 +34,8 @@ class Settings(BaseSettings):
     STELLAR_NETWORK: str = Field(default="testnet", alias="STELLAR_NETWORK")
     HORIZON_URL: str = Field(default="https://horizon-testnet.stellar.org", alias="HORIZON_URL")
     ANCHOR_HOME_DOMAIN: Optional[str] = Field(default=None, alias="ANCHOR_HOME_DOMAIN")
+    ANCHOR_ASSET_ISSUER: Optional[str] = Field(default=None, alias="ANCHOR_ASSET_ISSUER")
+    ANCHOR_ASSET_CODE: str = Field(default="SRT", alias="ANCHOR_ASSET_CODE")
     
     VAULT_ADDR: Optional[str] = Field(default=None, alias="VAULT_ADDR")
     VAULT_TOKEN: Optional[str] = Field(default=None, alias="VAULT_TOKEN")

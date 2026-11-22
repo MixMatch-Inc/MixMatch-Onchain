@@ -1,9 +1,16 @@
-import { sendPaymentSchema, type PathQuoteResponse, type SendPaymentInput, type TransactionRecord } from '@mixmatch/shared';
-import { useMemo, useState } from 'react';
+import {
+  sendPaymentSchema,
+  type PathQuoteResponse,
+  type SavedContact,
+  type SendPaymentInput,
+  type StellarAsset,
+  type TransactionRecord,
+} from '@mixmatch/shared';
+import { useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
-import { useT } from '../i18n-context';
-import type { Palette } from '../palette';
-import { useTheme } from '../theme-context';
+import { lookupHandle } from '../services/wallet-client';
+import AssetPicker from './AssetPicker';
+import ContactsPicker from './ContactsPicker';
 
 type PaymentField =
   | 'destinationPublicKey'
@@ -26,22 +33,11 @@ export interface SendPaymentFormProps {
     amount: string;
   }) => Promise<PathQuoteResponse>;
   initialDestination?: string;
-  /** Prefill from a payment link or QR (#1405). */
-  initialAmount?: string;
-  initialMemo?: string;
+  /** Enables saved recipients, handle resolution and verified asset selection. */
+  accessToken?: string;
 }
 
-export default function SendPaymentForm({
-  onSubmit,
-  onSuccess,
-  onQuote,
-  initialDestination,
-  initialAmount,
-  initialMemo,
-}: SendPaymentFormProps) {
-  const { t } = useT();
-  const { colors } = useTheme();
-  const styles = useMemo(() => makeStyles(colors), [colors]);
+export default function SendPaymentForm({ onSubmit, onSuccess, onQuote, initialDestination, accessToken }: SendPaymentFormProps) {
   const [destinationPublicKey, setDestinationPublicKey] = useState(initialDestination ?? '');
   const [amount, setAmount] = useState(initialAmount ?? '');
   const [memo, setMemo] = useState(initialMemo ?? '');
@@ -57,6 +53,47 @@ export default function SendPaymentForm({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Partial<Record<PaymentField, string>>>({});
+  const [handleInput, setHandleInput] = useState('');
+  const [handleError, setHandleError] = useState<string | null>(null);
+  const [resolvingHandle, setResolvingHandle] = useState(false);
+  const [showContacts, setShowContacts] = useState(false);
+  const [showAssetPicker, setShowAssetPicker] = useState(false);
+  const [selectedAsset, setSelectedAsset] = useState<StellarAsset | null>(null);
+
+  const handleResolve = async () => {
+    if (!accessToken || !handleInput.trim()) return;
+    setResolvingHandle(true);
+    setHandleError(null);
+    try {
+      const resolved = await lookupHandle(handleInput.trim(), accessToken);
+      setDestinationPublicKey(resolved.publicKey);
+      setMemo(`@${resolved.handle}`);
+    } catch (err) {
+      setHandleError(err instanceof Error ? err.message : 'Could not resolve that handle');
+    } finally {
+      setResolvingHandle(false);
+    }
+  };
+
+  const handleContactSelect = (contact: SavedContact) => {
+    setDestinationPublicKey(contact.destinationPublicKey);
+    setMemo(contact.memo ?? '');
+    setShowContacts(false);
+  };
+
+  const handleAssetSelect = (asset: StellarAsset) => {
+    setSelectedAsset(asset);
+    if (asset.issuer) {
+      setShowAssetFields(true);
+      setAssetCode(asset.code);
+      setAssetIssuer(asset.issuer);
+    } else {
+      setShowAssetFields(false);
+      setAssetCode('');
+      setAssetIssuer('');
+    }
+    setShowAssetPicker(false);
+  };
 
   const handleSubmit = async () => {
     setError(null);
@@ -128,7 +165,32 @@ export default function SendPaymentForm({
 
   return (
     <View style={styles.container}>
-      <Text style={styles.label}>{t('payments.recipient')}</Text>
+      {accessToken ? (
+        <>
+          <Text style={styles.label}>Pay by handle</Text>
+          <View style={styles.inlineRow}>
+            <TextInput
+              style={[styles.input, styles.inlineInput]}
+              placeholder="@artist or artist*mixmatch.app"
+              value={handleInput}
+              onChangeText={setHandleInput}
+              autoCapitalize="none"
+              testID="handle-input"
+            />
+            <TouchableOpacity style={styles.smallButton} onPress={() => void handleResolve()} disabled={resolvingHandle} testID="resolve-handle-button">
+              {resolvingHandle ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Resolve</Text>}
+            </TouchableOpacity>
+          </View>
+          {handleError ? <Text style={styles.fieldError}>{handleError}</Text> : null}
+
+          <TouchableOpacity onPress={() => setShowContacts((prev) => !prev)} testID="toggle-contacts">
+            <Text style={styles.link}>{showContacts ? 'Hide saved recipients' : 'Choose a saved recipient'}</Text>
+          </TouchableOpacity>
+          {showContacts ? <ContactsPicker accessToken={accessToken} onSelect={handleContactSelect} /> : null}
+        </>
+      ) : null}
+
+      <Text style={styles.label}>Recipient address</Text>
       <TextInput
         style={styles.input}
         value={destinationPublicKey}
@@ -158,6 +220,19 @@ export default function SendPaymentForm({
       >
         <Text style={styles.link}>{showAssetFields ? t('payments.sendXlm') : t('payments.sendDifferentAsset')}</Text>
       </TouchableOpacity>
+
+      {accessToken ? (
+        <>
+          <TouchableOpacity onPress={() => setShowAssetPicker((prev) => !prev)} testID="toggle-asset-picker">
+            <Text style={styles.link}>
+              {showAssetPicker ? 'Hide verified assets' : selectedAsset ? `Using ${selectedAsset.code}` : 'Choose a verified asset'}
+            </Text>
+          </TouchableOpacity>
+          {showAssetPicker ? (
+            <AssetPicker accessToken={accessToken} selected={selectedAsset} onSelect={handleAssetSelect} />
+          ) : null}
+        </>
+      ) : null}
 
       {showAssetFields && (
         <>
@@ -250,17 +325,38 @@ export default function SendPaymentForm({
   );
 }
 
-const makeStyles = (c: Palette) =>
-  StyleSheet.create({
-    container: { padding: 16 },
-    label: { fontSize: 14, color: c.textMuted, marginTop: 12, marginBottom: 4 },
-    input: { borderWidth: 1, borderColor: c.border, borderRadius: 8, padding: 12, fontSize: 16, color: c.text },
-    fieldError: { color: c.error, fontSize: 12, marginTop: 4 },
-    link: { color: c.link, fontSize: 14, marginTop: 16 },
-    error: { color: c.error, textAlign: 'center', marginTop: 12 },
-    quoteButton: { borderWidth: 1, borderColor: c.text, borderRadius: 8, paddingVertical: 10, alignItems: 'center', marginTop: 12 },
-    quoteButtonText: { color: c.text, fontSize: 14, fontWeight: '600' },
-    quotePreview: { fontSize: 14, color: c.text, marginTop: 8, textAlign: 'center' },
-    button: { backgroundColor: c.primary, borderRadius: 8, paddingVertical: 14, alignItems: 'center', marginTop: 20 },
-    buttonText: { color: c.primaryText, fontSize: 16, fontWeight: '600' },
-  });
+const styles = StyleSheet.create({
+  container: { padding: 16 },
+  inlineRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  inlineInput: { flex: 1 },
+  smallButton: { backgroundColor: '#4f46e5', borderRadius: 8, paddingVertical: 12, paddingHorizontal: 14 },
+  label: { fontSize: 14, color: '#666', marginTop: 12, marginBottom: 4 },
+  input: {
+    borderWidth: 1,
+    borderColor: '#ccc',
+    borderRadius: 8,
+    padding: 12,
+    fontSize: 16,
+  },
+  fieldError: { color: '#e00', fontSize: 12, marginTop: 4 },
+  link: { color: '#0066cc', fontSize: 14, marginTop: 16 },
+  error: { color: '#e00', textAlign: 'center', marginTop: 12 },
+  quoteButton: {
+    borderWidth: 1,
+    borderColor: '#000',
+    borderRadius: 8,
+    paddingVertical: 10,
+    alignItems: 'center',
+    marginTop: 12,
+  },
+  quoteButtonText: { color: '#000', fontSize: 14, fontWeight: '600' },
+  quotePreview: { fontSize: 14, color: '#333', marginTop: 8, textAlign: 'center' },
+  button: {
+    backgroundColor: '#000',
+    borderRadius: 8,
+    paddingVertical: 14,
+    alignItems: 'center',
+    marginTop: 20,
+  },
+  buttonText: { color: '#fff', fontSize: 16, fontWeight: '600' },
+});

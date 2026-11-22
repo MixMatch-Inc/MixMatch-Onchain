@@ -5,47 +5,39 @@ import { useT } from '../i18n-context';
 import type { Palette } from '../palette';
 import { useTheme } from '../theme-context';
 import { paymentStatus, type TransactionRecord } from '@mixmatch/shared';
-import { FlatList, StyleSheet, Text, View } from 'react-native';
+import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Address, Amount, StatusPill } from './display';
 import { EmptyState } from './states';
 
 export interface TransactionHistoryListProps {
   transactions: TransactionRecord[];
+  /** Opens the receipt screen (#1389). */
+  onSelect?: (transaction: TransactionRecord) => void;
 }
 
-// Status colours that keep enough contrast on both the light and the dark background.
-const STATUS_COLOR: Record<'light' | 'dark', Record<TransactionRecord['status'], string>> = {
-  light: { PENDING: '#7a4a00', PENDING_SIGNATURE: '#5b3a8f', SUCCESS: '#0b5d1e', FAILED: '#8f1111', NEEDS_REVIEW: '#7a4a00' },
-  dark: { PENDING: '#f0c060', PENDING_SIGNATURE: '#c3a6ff', SUCCESS: '#6fdc8c', FAILED: '#ff8a8a', NEEDS_REVIEW: '#f0c060' },
-};
-
-function TransactionRow({ transaction }: { transaction: TransactionRecord }) {
-  const { t } = useT();
-  const { colors, isDark } = useTheme();
-  const styles = useMemo(() => makeStyles(colors), [colors]);
+function TransactionRow({ transaction, onSelect }: { transaction: TransactionRecord; onSelect?: (transaction: TransactionRecord) => void }) {
   return (
-    <View style={styles.row} testID={`transaction-${transaction.id}`}>
+    <Pressable
+      style={styles.row}
+      testID={`transaction-${transaction.id}`}
+      onPress={() => onSelect?.(transaction)}
+      accessibilityRole="button"
+      accessibilityLabel={`Open receipt for payment ${transaction.id}`}
+      disabled={!onSelect}
+    >
       <View style={styles.rowHeader}>
-        <Text style={styles.amount}>{transaction.amount} XLM</Text>
-        <Text style={[styles.status, { color: STATUS_COLOR[isDark ? 'dark' : 'light'][transaction.status] }]}>{transaction.status}</Text>
-      </View>
-      <Text style={styles.destination} numberOfLines={1}>
-        {t('payments.to', { address: transaction.destinationPublicKey })}
-        <Amount style={styles.amount} value={transaction.amount} assetCode="XLM" />
+        <Amount style={styles.amount} value={transaction.amount} assetCode={transaction.assetCode ?? 'XLM'} />
         <StatusPill {...paymentStatus(transaction.status)} />
       </View>
       <Text style={styles.destination} numberOfLines={1}>
         To <Address value={transaction.destinationPublicKey} />
       </Text>
       {transaction.memo ? <Text style={styles.memo}>{transaction.memo}</Text> : null}
-    </View>
+    </Pressable>
   );
 }
 
-export default function TransactionHistoryList({ transactions }: TransactionHistoryListProps) {
-  const { t } = useT();
-  const { colors } = useTheme();
-  const styles = useMemo(() => makeStyles(colors), [colors]);
+export default function TransactionHistoryList({ transactions, onSelect }: TransactionHistoryListProps) {
   if (transactions.length === 0) {
     return (
       <View style={styles.empty}>
@@ -59,7 +51,7 @@ export default function TransactionHistoryList({ transactions }: TransactionHist
     <FlatList
       data={transactions}
       keyExtractor={(item) => item.id}
-      renderItem={({ item }) => <TransactionRow transaction={item} />}
+      renderItem={({ item }) => <TransactionRow transaction={item} onSelect={onSelect} />}
       testID="transaction-history-list"
     />
   );

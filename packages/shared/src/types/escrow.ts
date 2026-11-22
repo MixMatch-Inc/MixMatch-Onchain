@@ -1,4 +1,4 @@
-export type EscrowStatus = 'PENDING' | 'LOCKED' | 'RELEASED' | 'REFUNDED' | 'FAILED';
+export type EscrowStatus = 'PENDING' | 'LOCKED' | 'RELEASED' | 'REFUNDED' | 'FAILED' | 'DISPUTED';
 
 export interface EscrowRecord {
   id: string;

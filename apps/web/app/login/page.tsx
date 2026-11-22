@@ -1,11 +1,13 @@
 'use client';
 
 import { loginSchema, registerSchema } from '@mixmatch/shared';
+import { TextField } from '@repo/ui/text-field';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { loginUser, registerUser } from '../../lib/auth-client';
 import { LanguageSwitcher } from '../../components/LanguageSwitcher';
 import { useT } from '../../lib/i18n';
+import { ThemeToggle } from '../../components/ThemeToggle';
 import { useAuth } from '../../lib/useAuth';
 
 type Mode = 'login' | 'register';
@@ -35,7 +37,7 @@ export default function LoginPage() {
     try {
       const auth = mode === 'login' ? await loginUser(result.data) : await registerUser(result.data);
       setAuth(auth);
-      router.push('/anchor');
+      router.push('/payments');
     } catch (err) {
       setError(err instanceof Error ? err.message : t('common.somethingWrong'));
     } finally {
@@ -79,6 +81,39 @@ export default function LoginPage() {
         {error && <p style={{ color: 'crimson' }}>{error}</p>}
         <button type="submit" disabled={isSubmitting} data-testid="submit-button">
           {mode === 'login' ? t('auth.logIn') : t('auth.register')}
+    <main className="page page--narrow">
+      <div className="row row--between">
+        <h1>MixMatch Onchain</h1>
+        <ThemeToggle />
+      </div>
+      <div className="row">
+        <button type="button" className="btn" aria-pressed={mode === 'login'} onClick={() => setMode('login')}>
+          Log in
+        </button>
+        <button type="button" className="btn" aria-pressed={mode === 'register'} onClick={() => setMode('register')}>
+          Register
+        </button>
+      </div>
+      <form className="stack" onSubmit={(event) => void handleSubmit(event)} noValidate>
+        <TextField
+          label="Email"
+          type="email"
+          autoComplete="email"
+          value={email}
+          onChange={(event) => setEmail(event.target.value)}
+          data-testid="email-input"
+        />
+        <TextField
+          label="Password"
+          type="password"
+          autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
+          value={password}
+          onChange={(event) => setPassword(event.target.value)}
+          error={error ?? undefined}
+          data-testid="password-input"
+        />
+        <button type="submit" className="btn btn--primary" disabled={isSubmitting} data-testid="submit-button">
+          {mode === 'login' ? 'Log in' : 'Register'}
         </button>
       </form>
     </main>

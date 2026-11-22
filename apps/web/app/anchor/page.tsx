@@ -12,6 +12,14 @@ import { useCallback, useEffect, useState } from 'react';
 import { LanguageSwitcher } from '../../components/LanguageSwitcher';
 import { depositAnchor, getAnchorHistory, getAnchorRates, getAnchorStatus, withdrawAnchor } from '../../lib/anchor-client';
 import { useT } from '../../lib/i18n';
+import { anchorStatus, depositAnchorSchema, withdrawAnchorSchema, type AnchorTransactionRecord } from '@mixmatch/shared';
+import { Amount } from '@repo/ui/display';
+import { EmptyState } from '@repo/ui/states';
+import { StatusPill } from '@repo/ui/status-pill';
+import { useRouter } from 'next/navigation';
+import { useCallback, useEffect, useState } from 'react';
+import { depositAnchor, getAnchorHistory, getAnchorStatus, withdrawAnchor } from '../../lib/anchor-client';
+import { ThemeToggle } from '../../components/ThemeToggle';
 import { useAuth } from '../../lib/useAuth';
 
 type Kind = 'deposit' | 'withdraw';
@@ -186,18 +194,63 @@ export default function AnchorPage() {
       <h2 style={{ marginTop: 40 }}>{t('anchor.history')}</h2>
       {isLoadingHistory && <p>{t('common.loading')}</p>}
       {!isLoadingHistory && transactions.length === 0 && <p>{t('anchor.noTransactions')}</p>}
+    <main className="page">
+      <div className="row row--between">
+        <h1>Deposit / Withdraw</h1>
+        <div className="row">
+          <ThemeToggle />
+          <button type="button" className="btn" onClick={logout} data-testid="logout-button">
+            Log out
+          </button>
+        </div>
+      </div>
+      {user && <p className="muted">Signed in as {user.email}</p>}
+
+      <form className="stack" onSubmit={(event) => void handleSubmit(event)} noValidate>
+        <div className="row">
+          <button type="button" className="btn" aria-pressed={kind === 'deposit'} onClick={() => setKind('deposit')} data-testid="tab-deposit">
+            Deposit
+          </button>
+          <button type="button" className="btn" aria-pressed={kind === 'withdraw'} onClick={() => setKind('withdraw')} data-testid="tab-withdraw">
+            Withdraw
+          </button>
+        </div>
+
+        <TextField
+          label="Asset code"
+          value={assetCode}
+          onChange={(event) => setAssetCode(event.target.value)}
+          data-testid="asset-code-input"
+        />
+
+        <TextField
+          label="Amount"
+          helperText="Optional: the anchor can also ask for this."
+          inputMode="decimal"
+          value={amount}
+          onChange={(event) => setAmount(event.target.value)}
+          error={formError ?? undefined}
+          data-testid="amount-input"
+        />
+
+        <button type="submit" className="btn btn--primary" disabled={isSubmitting} data-testid="submit-button">
+          {isSubmitting ? 'Starting…' : kind === 'deposit' ? 'Start deposit' : 'Start withdrawal'}
+        </button>
+      </form>
+
+      <h2>History</h2>
+      {isLoadingHistory && <p>Loading…</p>}
+      {!isLoadingHistory && transactions.length === 0 && <EmptyState message="No anchor transactions yet." />}
       <ul style={{ listStyle: 'none', padding: 0 }} data-testid="anchor-history">
         {transactions.map((transaction) => (
-          <li
-            key={transaction.id}
-            style={{ border: '1px solid #ddd', borderRadius: 8, padding: 12, marginBottom: 8 }}
-          >
-            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+          <li key={transaction.id} className="card">
+            <div className="row row--between">
               <strong>
                 {transaction.kind === 'deposit' ? t('anchor.deposit') : t('anchor.withdraw')} {transaction.assetCode}
               </strong>
               <button
                 type="button"
+                className="btn"
                 onClick={() => void handleRefresh(transaction.id)}
                 disabled={refreshingId === transaction.id}
               >
@@ -209,6 +262,11 @@ export default function AnchorPage() {
               <p style={{ margin: '4px 0', color: '#666' }}>
                 {t('anchor.amountIn', { amount: transaction.amountIn })}
                 {transaction.amountOut ? t('anchor.amountOut', { amount: transaction.amountOut }) : ''}
+            <p>{STATUS_LABEL[transaction.status]}</p>
+            {transaction.amountIn && (
+              <p className="muted">
+                In: {transaction.amountIn}
+                {transaction.amountOut ? ` — Out: ${transaction.amountOut}` : ''}
               </p>
             )}
             {transaction.interactiveUrl && SEP24_INCOMPLETE_STATUSES.has(transaction.status) && (

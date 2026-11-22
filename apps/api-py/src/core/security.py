@@ -23,3 +23,15 @@ async def require_admin(
             detail="Admin role required for this action",
         )
     return current_user
+
+
+async def require_arbiter(
+    current_user: CurrentUser = Depends(get_current_user),
+) -> CurrentUser:
+    """Escrow disputes (#1400): ARBITER or ADMIN may settle them."""
+    if current_user.role not in ("ARBITER", "ADMIN"):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Arbiter role required for this action",
+        )
+    return current_user

@@ -2,7 +2,7 @@
  * Shared authentication types used across the API, web, and mobile apps.
  */
 
-export type UserRole = 'USER' | 'ADMIN';
+export type UserRole = 'USER' | 'ADMIN' | 'ARBITER';
 
 export interface AuthUser {
   id: string;

@@ -23,7 +23,7 @@ import SendPaymentForm from './SendPaymentForm';
 import SettingsBar from './SettingsBar';
 import AnchorScreen from './AnchorScreen';
 import MyQrCode from './MyQrCode';
-import TransactionDetailScreen from './TransactionDetailScreen';
+import ProfileScreen from './ProfileScreen';
 import QrScanner from './QrScanner';
 import SendPaymentForm from './SendPaymentForm';
 import { ErrorState } from './states';
@@ -59,8 +59,7 @@ export default function PaymentsScreen() {
   const [transactions, setTransactions] = useState<TransactionRecord[]>([]);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
   const [streamAvailable, setStreamAvailable] = useState(true);
-  const [selectedTransaction, setSelectedTransaction] = useState<TransactionRecord | null>(null);
-  const [network, setNetwork] = useState<'testnet' | 'public'>('testnet');
+  const [showProfile, setShowProfile] = useState(false);
 
   const loadAccount = useCallback(async () => {
     if (!accessToken) return;
@@ -141,15 +140,13 @@ export default function PaymentsScreen() {
   usePaymentLinks(applyRequest);
   }, [streamAvailable, historyFocused, loadHistory]);
 
-  if (selectedTransaction) {
+  if (showProfile && accessToken) {
     return (
       <SafeAreaView style={styles.container}>
-        <TransactionDetailScreen
-          transactionId={selectedTransaction.id}
-          initialTransaction={selectedTransaction}
-          network={network}
-          onBack={() => setSelectedTransaction(null)}
-        />
+        <TouchableOpacity onPress={() => setShowProfile(false)} testID="profile-back">
+          <Text style={styles.logout}>‹ Back</Text>
+        </TouchableOpacity>
+        <ProfileScreen accessToken={accessToken} />
       </SafeAreaView>
     );
   }
@@ -157,10 +154,15 @@ export default function PaymentsScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.title}>{t('common.appName')}</Text>
-        <TouchableOpacity onPress={logout} testID="logout-button">
-          <Text style={styles.logout}>{t('common.logOut')}</Text>
-        </TouchableOpacity>
+        <Text style={styles.title}>MixMatch Onchain</Text>
+        <View style={styles.headerActions}>
+          <TouchableOpacity onPress={() => setShowProfile(true)} testID="profile-button">
+            <Text style={styles.logout}>Profile</Text>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={logout} testID="logout-button">
+            <Text style={styles.logout}>Log out</Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       <View style={styles.settings}>
@@ -315,6 +317,7 @@ const styles = StyleSheet.create({
   },
   title: { fontSize: 18, fontWeight: '700' },
   logout: { color: '#007AFF' },
+  headerActions: { flexDirection: 'row', gap: 16 },
   content: { flex: 1 },
   loading: { marginTop: 40 },
 });

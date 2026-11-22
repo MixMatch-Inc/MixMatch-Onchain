@@ -3,6 +3,7 @@ export * from './validation/payments.schema.js';
 export * from './validation/escrow.schema.js';
 export * from './validation/anchor.schema.js';
 export * from './types/auth.js';
+export * from './types/creator.js';
 export * from './types/payments.js';
 export * from './types/wallet.js';
 export * from './types/escrow.js';

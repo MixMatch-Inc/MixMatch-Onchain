@@ -34,9 +34,15 @@ class Settings(BaseSettings):
     STELLAR_NETWORK: str = Field(default="testnet", alias="STELLAR_NETWORK")
     HORIZON_URL: str = Field(default="https://horizon-testnet.stellar.org", alias="HORIZON_URL")
     ANCHOR_HOME_DOMAIN: Optional[str] = Field(default=None, alias="ANCHOR_HOME_DOMAIN")
-    ANCHOR_ASSET_ISSUER: Optional[str] = Field(default=None, alias="ANCHOR_ASSET_ISSUER")
-    ANCHOR_ASSET_CODE: str = Field(default="SRT", alias="ANCHOR_ASSET_CODE")
-    
+
+    # Object-storage uploads (#1380).
+    UPLOAD_MAX_BYTES: int = 52_428_800
+    UPLOAD_SIGNED_URL_TTL_SECONDS: int = 900
+    UPLOAD_STORAGE_BUCKET: str = "mixmatch-audio"
+    UPLOAD_STORAGE_BASE_URL: str = "https://storage.mixmatch.app"
+    UPLOAD_VIRUS_SCAN_WEBHOOK: Optional[str] = None
+    UPLOAD_TRANSCODE_WEBHOOK: Optional[str] = None
+
     VAULT_ADDR: Optional[str] = Field(default=None, alias="VAULT_ADDR")
     VAULT_TOKEN: Optional[str] = Field(default=None, alias="VAULT_TOKEN")
     WALLET_ENCRYPTION_KEY: str = Field(

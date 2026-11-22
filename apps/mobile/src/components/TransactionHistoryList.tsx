@@ -1,3 +1,9 @@
+import type { TransactionRecord } from '@mixmatch/shared';
+import { useMemo } from 'react';
+import { FlatList, StyleSheet, Text, View } from 'react-native';
+import { useT } from '../i18n-context';
+import type { Palette } from '../palette';
+import { useTheme } from '../theme-context';
 import { paymentStatus, type TransactionRecord } from '@mixmatch/shared';
 import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Address, Amount, StatusPill } from './display';
@@ -33,6 +39,11 @@ function TransactionRow({ transaction, onSelect }: { transaction: TransactionRec
 
 export default function TransactionHistoryList({ transactions, onSelect }: TransactionHistoryListProps) {
   if (transactions.length === 0) {
+    return (
+      <View style={styles.empty}>
+        <Text style={styles.emptyText}>{t('payments.noTransactions')}</Text>
+      </View>
+    );
     return <EmptyState message="No transactions yet" />;
   }
 
@@ -46,6 +57,17 @@ export default function TransactionHistoryList({ transactions, onSelect }: Trans
   );
 }
 
+const makeStyles = (c: Palette) =>
+  StyleSheet.create({
+    row: { paddingVertical: 12, paddingHorizontal: 16, borderBottomWidth: 1, borderBottomColor: c.border },
+    rowHeader: { flexDirection: 'row', justifyContent: 'space-between' },
+    amount: { fontSize: 16, fontWeight: '600', color: c.text },
+    status: { fontSize: 12, fontWeight: '600' },
+    destination: { fontSize: 13, color: c.textMuted, marginTop: 2 },
+    memo: { fontSize: 13, color: c.textMuted, marginTop: 2 },
+    empty: { padding: 24, alignItems: 'center' },
+    emptyText: { color: c.textMuted },
+  });
 const styles = StyleSheet.create({
   row: {
     paddingVertical: 12,

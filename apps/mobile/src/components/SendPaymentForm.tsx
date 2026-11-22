@@ -39,8 +39,8 @@ export interface SendPaymentFormProps {
 
 export default function SendPaymentForm({ onSubmit, onSuccess, onQuote, initialDestination, accessToken }: SendPaymentFormProps) {
   const [destinationPublicKey, setDestinationPublicKey] = useState(initialDestination ?? '');
-  const [amount, setAmount] = useState('');
-  const [memo, setMemo] = useState('');
+  const [amount, setAmount] = useState(initialAmount ?? '');
+  const [memo, setMemo] = useState(initialMemo ?? '');
   const [showAssetFields, setShowAssetFields] = useState(false);
   const [assetCode, setAssetCode] = useState('');
   const [assetIssuer, setAssetIssuer] = useState('');
@@ -134,7 +134,7 @@ export default function SendPaymentForm({ onSubmit, onSuccess, onQuote, initialD
       setQuote(null);
       onSuccess?.(transaction);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Something went wrong');
+      setError(err instanceof Error ? err.message : t('common.somethingWrong'));
     } finally {
       setIsSubmitting(false);
     }
@@ -200,7 +200,7 @@ export default function SendPaymentForm({ onSubmit, onSuccess, onQuote, initialD
       />
       {fieldErrors.destinationPublicKey && <Text style={styles.fieldError}>{fieldErrors.destinationPublicKey}</Text>}
 
-      <Text style={styles.label}>Amount (XLM)</Text>
+      <Text style={styles.label}>{t('payments.amountXlm')}</Text>
       <TextInput
         style={styles.input}
         value={amount}
@@ -210,7 +210,7 @@ export default function SendPaymentForm({ onSubmit, onSuccess, onQuote, initialD
       />
       {fieldErrors.amount && <Text style={styles.fieldError}>{fieldErrors.amount}</Text>}
 
-      <Text style={styles.label}>Memo (optional)</Text>
+      <Text style={styles.label}>{t('payments.memoOptional')}</Text>
       <TextInput style={styles.input} value={memo} onChangeText={setMemo} testID="memo-input" />
       {fieldErrors.memo && <Text style={styles.fieldError}>{fieldErrors.memo}</Text>}
 
@@ -218,7 +218,7 @@ export default function SendPaymentForm({ onSubmit, onSuccess, onQuote, initialD
         onPress={() => setShowAssetFields((prev) => !prev)}
         testID="toggle-asset-fields"
       >
-        <Text style={styles.link}>{showAssetFields ? 'Send XLM instead' : 'Send a different asset'}</Text>
+        <Text style={styles.link}>{showAssetFields ? t('payments.sendXlm') : t('payments.sendDifferentAsset')}</Text>
       </TouchableOpacity>
 
       {accessToken ? (
@@ -236,7 +236,7 @@ export default function SendPaymentForm({ onSubmit, onSuccess, onQuote, initialD
 
       {showAssetFields && (
         <>
-          <Text style={styles.label}>Asset code</Text>
+          <Text style={styles.label}>{t('payments.assetCode')}</Text>
           <TextInput
             style={styles.input}
             value={assetCode}
@@ -246,7 +246,7 @@ export default function SendPaymentForm({ onSubmit, onSuccess, onQuote, initialD
           />
           {fieldErrors.assetCode && <Text style={styles.fieldError}>{fieldErrors.assetCode}</Text>}
 
-          <Text style={styles.label}>Asset issuer</Text>
+          <Text style={styles.label}>{t('payments.assetIssuer')}</Text>
           <TextInput
             style={styles.input}
             value={assetIssuer}
@@ -264,14 +264,14 @@ export default function SendPaymentForm({ onSubmit, onSuccess, onQuote, initialD
           testID="toggle-receive-asset-fields"
         >
           <Text style={styles.link}>
-            {showReceiveAssetFields ? "Recipient gets the same asset I send" : "Recipient should get a different asset"}
+            {showReceiveAssetFields ? t('payments.recipientSameAsset') : t('payments.recipientDifferentAsset')}
           </Text>
         </TouchableOpacity>
       )}
 
       {showReceiveAssetFields && (
         <>
-          <Text style={styles.label}>Recipient receives (asset code)</Text>
+          <Text style={styles.label}>{t('payments.receiveAssetCode')}</Text>
           <TextInput
             style={styles.input}
             value={receiveAssetCode}
@@ -284,7 +284,7 @@ export default function SendPaymentForm({ onSubmit, onSuccess, onQuote, initialD
           />
           {fieldErrors.receiveAssetCode && <Text style={styles.fieldError}>{fieldErrors.receiveAssetCode}</Text>}
 
-          <Text style={styles.label}>Recipient receives (asset issuer)</Text>
+          <Text style={styles.label}>{t('payments.receiveAssetIssuer')}</Text>
           <TextInput
             style={styles.input}
             value={receiveAssetIssuer}
@@ -303,14 +303,14 @@ export default function SendPaymentForm({ onSubmit, onSuccess, onQuote, initialD
             disabled={isQuoting}
             testID="get-quote-button"
           >
-            {isQuoting ? <ActivityIndicator /> : <Text style={styles.quoteButtonText}>Preview conversion</Text>}
+            {isQuoting ? <ActivityIndicator /> : <Text style={styles.quoteButtonText}>{t('payments.previewConversion')}</Text>}
           </TouchableOpacity>
 
           {quoteError && <Text style={styles.error}>{quoteError}</Text>}
 
           {quote && (
             <Text style={styles.quotePreview} testID="quote-preview">
-              You send {quote.sourceAmount}, recipient gets approximately {quote.destAmount}
+              {t('payments.quotePreview', { source: quote.sourceAmount, dest: quote.destAmount })}
             </Text>
           )}
         </>
@@ -319,7 +319,7 @@ export default function SendPaymentForm({ onSubmit, onSuccess, onQuote, initialD
       {error && <Text style={styles.error}>{error}</Text>}
 
       <TouchableOpacity style={styles.button} onPress={() => void handleSubmit()} disabled={isSubmitting} testID="send-button">
-        {isSubmitting ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Send payment</Text>}
+        {isSubmitting ? <ActivityIndicator color={colors.primaryText} /> : <Text style={styles.buttonText}>{t('payments.sendPayment')}</Text>}
       </TouchableOpacity>
     </View>
   );

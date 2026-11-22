@@ -7,4 +7,6 @@ export * from './types/payments.js';
 export * from './types/wallet.js';
 export * from './types/escrow.js';
 export * from './types/anchor.js';
+export * from './i18n/index.js';
+export * from './payment-uri.js';
 export * from './stream.js';

@@ -5,7 +5,7 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-    "userInterfaceStyle": "light",
+    "userInterfaceStyle": "automatic",
     "runtimeVersion": {
       "policy": "appVersion"
     },
@@ -24,6 +24,24 @@
       },
       "permissions": [
         "android.permission.CAMERA"
+      ],
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ],
+          "data": [
+            {
+              "scheme": "mixmatch",
+              "host": "pay"
+            },
+            {
+              "scheme": "web+stellar"
+            }
+          ]
+        }
       ]
     },
     "web": {
@@ -36,6 +54,7 @@
           "cameraPermission": "MixMatch uses your camera to scan a payment QR code."
         }
       ]
-    ]
+    ],
+    "scheme": "mixmatch"
   }
 }

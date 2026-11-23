@@ -80,6 +80,7 @@ app.include_router(escrow_router, prefix="/api")
 app.include_router(escrow_dispute_router, prefix="/api")
 app.include_router(streaming_router, prefix="/api")
 app.include_router(taste_router, prefix="/api")
+app.include_router(matches_router, prefix="/api")
 app.include_router(users_router, prefix="/api")
 app.include_router(creators_router, prefix="/api")
 app.include_router(uploads_router, prefix="/api")
@@ -107,3 +108,4 @@ async def lifespan(_app):
 app.router.lifespan_context = lifespan
 
 init_sentry(settings.SENTRY_DSN, settings.ENVIRONMENT, settings.SENTRY_RELEASE, settings.SENTRY_TRACES_SAMPLE_RATE)
+_SAMPLE_RATE)

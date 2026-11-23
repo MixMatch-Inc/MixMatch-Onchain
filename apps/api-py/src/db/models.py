@@ -169,13 +169,16 @@ class TasteProfile(Base):
     __tablename__ = "taste_profiles"
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
-    user_id: Mapped[str] = mapped_column(String(36), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    user_id: Mapped[str] = mapped_column(String(36), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
     top_artists: Mapped[Optional[List[str]]] = mapped_column(JSONType, nullable=True)
     top_genres: Mapped[Optional[List[str]]] = mapped_column(JSONType, nullable=True)
+    top_tracks: Mapped[Optional[List[str]]] = mapped_column(JSONType, nullable=True)
     acousticness: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
     danceability: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
     energy: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
     valence: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    embedding: Mapped[Optional[List[float]]] = mapped_column(JSONType, nullable=True)
+    source: Mapped[str] = mapped_column(String(32), default="mock", nullable=False)
     last_ingested_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, nullable=False)
 
 

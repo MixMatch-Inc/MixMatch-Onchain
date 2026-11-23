@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.core.database import get_db
 from src.core.security import CurrentUser, get_current_user
-from src.db.models import SocialAccount, UserSetting
+from src.db.models import SocialAccount, StreamingConnection, UserSetting
 from src.modules.streaming.router import _OAUTH_CONNECTIONS
 
 router = APIRouter(prefix="/settings", tags=["Settings & linked accounts"])
@@ -116,7 +116,23 @@ async def list_linked_accounts(
         )
         for row in result.scalars().all()
     ]
+    seen_ids = {a.id for a in accounts}
+    stream_result = await db.execute(select(StreamingConnection).where(StreamingConnection.user_id == current_user.id))
+    for row in stream_result.scalars().all():
+        if row.id in seen_ids:
+            continue
+        accounts.append(
+            LinkedAccountResponse(
+                id=row.id,
+                provider=row.provider,
+                label=row.provider_account_id or row.provider,
+                lastSyncAt=row.updated_at.isoformat() if row.updated_at else None,
+            )
+        )
+        seen_ids.add(row.id)
     for connection_id, connection in _OAUTH_CONNECTIONS.items():
+        if connection_id in seen_ids:
+            continue
         if connection.get("user_id") == current_user.id:
             accounts.append(
                 LinkedAccountResponse(
@@ -142,6 +158,19 @@ async def disconnect_linked_account(
     ).scalar_one_or_none()
     if row:
         await db.delete(row)
+        await db.commit()
+        return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+    stream_row = (
+        await db.execute(
+            select(StreamingConnection).where(
+                StreamingConnection.id == account_id,
+                StreamingConnection.user_id == current_user.id,
+            )
+        )
+    ).scalar_one_or_none()
+    if stream_row:
+        await db.delete(stream_row)
         await db.commit()
         return Response(status_code=status.HTTP_204_NO_CONTENT)
 

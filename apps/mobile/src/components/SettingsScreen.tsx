@@ -13,9 +13,12 @@ import { useAuth } from '../hooks/useAuth';
 import { isBiometricAvailable } from '../services/biometrics';
 import {
   disconnectLinkedAccount,
+  disconnectStreamingConnection,
   getSettings,
   listLinkedAccounts,
+  listStreamingConnections,
   startSocialLogin,
+  startSpotifyConnect,
   updateSettings,
 } from '../services/settings-client';
 
@@ -31,9 +34,10 @@ const LANGUAGES = [
 ];
 
 export default function SettingsScreen({ onClose }: Props) {
-  const { accessToken } = useAuth();
+  const { accessToken, user } = useAuth();
   const [settings, setSettings] = useState<UserSettings | null>(null);
   const [accounts, setAccounts] = useState<LinkedAccount[]>([]);
+  const [streamingConnections, setStreamingConnections] = useState<Record<string, any>[]>([]);
   const [biometricAvailable, setBiometricAvailable] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [legal, setLegal] = useState<'terms' | 'privacy' | null>(null);
@@ -47,6 +51,9 @@ export default function SettingsScreen({ onClose }: Props) {
     void listLinkedAccounts(accessToken)
       .then(setAccounts)
       .catch(() => setMessage('Could not load linked accounts.'));
+    if (user?.id) {
+      void listStreamingConnections(String(user.id)).then(setStreamingConnections).catch(() => undefined);
+    }
   }, [accessToken]);
 
   const save = async (next: UserSettings) => {
@@ -68,6 +75,16 @@ export default function SettingsScreen({ onClose }: Props) {
       }
     } catch (err) {
       setMessage(err instanceof Error ? err.message : 'Could not link provider.');
+    }
+  };
+
+  const connectSpotify = async () => {
+    if (!user?.id) return;
+    try {
+      await startSpotifyConnect(String(user.id));
+      setStreamingConnections(await listStreamingConnections(String(user.id)));
+    } catch (err) {
+      setMessage(err instanceof Error ? err.message : 'Could not connect Spotify.');
     }
   };
 
@@ -175,6 +192,28 @@ export default function SettingsScreen({ onClose }: Props) {
               if (!accessToken) return;
               void disconnectLinkedAccount(account.id, accessToken).then(() =>
                 setAccounts((prev) => prev.filter((item) => item.id !== account.id)),
+              );
+            }}
+          >
+            <Text style={styles.link}>Disconnect</Text>
+          </TouchableOpacity>
+        </View>
+      ))}
+
+      <Text style={styles.section}>Streaming connections</Text>
+      <TouchableOpacity style={styles.button} onPress={() => void connectSpotify()} testID="connect-spotify-button">
+        <Text style={styles.buttonText}>Connect Spotify</Text>
+      </TouchableOpacity>
+      {streamingConnections.map((conn) => (
+        <View style={styles.accountRow} key={String(conn.id)}>
+          <View style={styles.accountInfo}>
+            <Text style={styles.accountLabel}>{String(conn.provider)}: {String(conn.provider_account_id ?? conn.id)}</Text>
+          </View>
+          <TouchableOpacity
+            onPress={() => {
+              if (!accessToken) return;
+              void disconnectStreamingConnection(String(conn.id), accessToken).then(() =>
+                setStreamingConnections((prev) => prev.filter((item) => String(item.id) !== String(conn.id))),
               );
             }}
           >

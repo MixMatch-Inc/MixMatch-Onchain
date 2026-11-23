@@ -4,18 +4,23 @@ import type { LinkedAccount, UserSettings } from '@mixmatch/shared';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import {
+  completeSpotifyCallback,
   disconnectLinkedAccount,
+  disconnectStreamingConnection,
   getSettings,
   getSocialAuthUrl,
+  getSpotifyAuthUrl,
   listLinkedAccounts,
+  listStreamingConnections,
   updateSettings,
 } from '../../lib/settings-client';
 import { useAuth } from '../../lib/useAuth';
 
 export default function SettingsPage() {
-  const { accessToken } = useAuth();
+  const { accessToken, user } = useAuth();
   const [settings, setSettings] = useState<UserSettings | null>(null);
   const [accounts, setAccounts] = useState<LinkedAccount[]>([]);
+  const [streamingConnections, setStreamingConnections] = useState<Record<string, unknown>[]>([]);
   const [message, setMessage] = useState<string | null>(null);
 
   useEffect(() => {
@@ -26,7 +31,12 @@ export default function SettingsPage() {
     void listLinkedAccounts(accessToken)
       .then(setAccounts)
       .catch(() => setMessage('Could not load linked accounts.'));
-  }, [accessToken]);
+    if (user?.id) {
+      void listStreamingConnections(user.id)
+        .then((rows) => setStreamingConnections(rows as Record<string, unknown>[]))
+        .catch(() => undefined);
+    }
+  }, [accessToken, user?.id]);
 
   const linkProvider = async (provider: 'google' | 'apple') => {
     try {
@@ -39,6 +49,35 @@ export default function SettingsPage() {
       setMessage(err instanceof Error ? err.message : 'Could not link provider.');
     }
   };
+
+  const connectSpotify = async () => {
+    if (!user?.id) return;
+    try {
+      const redirectUri = `${window.location.origin}/settings`;
+      const { url } = await getSpotifyAuthUrl(user.id, redirectUri);
+      window.sessionStorage.setItem('mixmatch.spotify.connect', 'true');
+      window.location.assign(url);
+    } catch (err) {
+      setMessage(err instanceof Error ? err.message : 'Could not connect Spotify.');
+    }
+  };
+
+  useEffect(() => {
+    if (!accessToken || !user?.id) return;
+    const params = new URLSearchParams(window.location.search);
+    const code = params.get('code');
+    const state = params.get('state');
+    const pending = window.sessionStorage.getItem('mixmatch.spotify.connect') === 'true';
+    if (!pending || !code || !state) return;
+    window.sessionStorage.removeItem('mixmatch.spotify.connect');
+    void completeSpotifyCallback(code, state)
+      .then(() => {
+        window.history.replaceState({}, '', '/settings');
+        return listStreamingConnections(user.id);
+      })
+      .then((rows) => setStreamingConnections(rows as Record<string, unknown>[]))
+      .catch((err) => setMessage(err instanceof Error ? err.message : 'Could not complete Spotify connection.'));
+  }, [accessToken, user?.id]);
 
   const save = async (next: UserSettings) => {
     if (!accessToken) return;
@@ -124,6 +163,29 @@ export default function SettingsPage() {
                 if (!accessToken) return;
                 void disconnectLinkedAccount(account.id, accessToken).then(() =>
                   setAccounts((prev) => prev.filter((item) => item.id !== account.id)),
+                );
+              }}
+            >
+              Disconnect
+            </button>
+          </div>
+        ))}
+      </div>
+
+      <h2>Streaming connections</h2>
+      <div className="stack">
+        <button type="button" onClick={() => void connectSpotify()}>Connect Spotify</button>
+        {streamingConnections.length === 0 ? <p className="muted">No streaming connections.</p> : null}
+        {streamingConnections.map((conn) => (
+          <div className="row row--between" key={String(conn.id)}>
+            <span>
+              {String(conn.provider)}: {String(conn.provider_account_id ?? conn.id)}
+            </span>
+            <button
+              type="button"
+              onClick={() => {
+                void disconnectStreamingConnection(String(conn.id)).then(() =>
+                  setStreamingConnections((prev) => prev.filter((item) => String(item.id) !== String(conn.id))),
                 );
               }}
             >

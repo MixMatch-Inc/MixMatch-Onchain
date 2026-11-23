@@ -26,6 +26,7 @@ from src.modules.payments.escrow_router import router as escrow_router
 from src.modules.payments.escrow_dispute import router as escrow_dispute_router
 from src.modules.streaming.router import router as streaming_router
 from src.modules.taste.router import router as taste_router
+from src.modules.parties.router import router as parties_router
 from src.modules.users.router import router as users_router
 from src.modules.creators.router import router as creators_router
 from src.modules.uploads.router import router as uploads_router
@@ -80,7 +81,9 @@ app.include_router(escrow_router, prefix="/api")
 app.include_router(escrow_dispute_router, prefix="/api")
 app.include_router(streaming_router, prefix="/api")
 app.include_router(taste_router, prefix="/api")
-app.include_router(matches_router, prefix="/api")
+app.include_router(parties_router, prefix="/api")
+app.include_router(messages_router, prefix="/api")
+app.include_router(swipes_router, prefix="/api")
 app.include_router(users_router, prefix="/api")
 app.include_router(creators_router, prefix="/api")
 app.include_router(uploads_router, prefix="/api")
@@ -108,4 +111,6 @@ async def lifespan(_app):
 app.router.lifespan_context = lifespan
 
 init_sentry(settings.SENTRY_DSN, settings.ENVIRONMENT, settings.SENTRY_RELEASE, settings.SENTRY_TRACES_SAMPLE_RATE)
-_SAMPLE_RATE)
+SAMPLE_RATE)
+)
+SAMPLE_RATE)

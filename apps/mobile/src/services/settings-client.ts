@@ -93,3 +93,38 @@ export async function startSocialLogin(provider: SocialProvider, accessToken?: s
   }
   return completeSocialLogin(provider, code, state, accessToken);
 }
+
+export function getSpotifyAuthUrl(userId: string, redirectUri?: string): Promise<{ url: string; state: string }> {
+  const q = new URLSearchParams({ user_id: userId });
+  if (redirectUri) q.set('redirect_uri', redirectUri);
+  return request<Raw>(`/streaming/spotify/authorize?${q.toString()}`).then((row) => ({
+    url: String(row.url),
+    state: String(row.state),
+  }));
+}
+
+export function listStreamingConnections(userId: string): Promise<Raw[]> {
+  return request<Raw>(`/streaming/connections?user_id=${encodeURIComponent(userId)}`).then((row) => (row.connections ?? []) as Raw[]);
+}
+
+export function disconnectStreamingConnection(id: string, accessToken: string): Promise<void> {
+  return request<void>(`/streaming/connections/${encodeURIComponent(id)}`, {
+    method: 'DELETE',
+    headers: authHeaders(accessToken),
+  });
+}
+
+export async function startSpotifyConnect(userId: string): Promise<void> {
+  if (Platform.OS === 'web') {
+    WebBrowser.maybeCompleteAuthSession();
+  }
+  const redirectUri = SOCIAL_REDIRECT_URI;
+  const { url, state } = await getSpotifyAuthUrl(userId, redirectUri);
+  const result = await WebBrowser.openAuthSessionAsync(url, redirectUri, { preferEphemeralSession: true });
+  if (result.type !== 'success') throw new Error('Spotify sign in was cancelled.');
+  const params = new URLSearchParams(result.url.split('?')[1] ?? '');
+  const code = params.get('code');
+  const returnedState = params.get('state');
+  if (!code || returnedState !== state) throw new Error('Invalid Spotify sign in response.');
+  await request<Raw>(`/streaming/spotify/callback?code=${encodeURIComponent(code)}&state=${encodeURIComponent(state)}`);
+}

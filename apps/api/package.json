@@ -42,7 +42,7 @@
     "@eslint/js": "^9.18.0",
     "@nestjs/cli": "^11.0.0",
     "@nestjs/schematics": "^11.0.0",
-    "@nestjs/testing": "^11.0.1",
+    "@nestjs/testing": "^12.6.0",
     "@stellar/stellar-sdk": "^13.1.0",
     "@types/bcryptjs": "^2.4.6",
     "@types/express": "^5.0.0",

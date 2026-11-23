@@ -225,3 +225,28 @@ export const escrows = pgTable('escrows', {
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });
+
+export const swipeDirectionEnum = pgEnum('swipe_direction', ['like', 'pass']);
+
+export const swipes = pgTable('swipes', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  swiperId: uuid('swiper_id')
+    .references(() => users.id, { onDelete: 'cascade' })
+    .notNull(),
+  swipedId: uuid('swiped_id')
+    .references(() => users.id, { onDelete: 'cascade' })
+    .notNull(),
+  direction: swipeDirectionEnum('direction').notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+export const matches = pgTable('matches', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  userAId: uuid('user_a_id')
+    .references(() => users.id, { onDelete: 'cascade' })
+    .notNull(),
+  userBId: uuid('user_b_id')
+    .references(() => users.id, { onDelete: 'cascade' })
+    .notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
